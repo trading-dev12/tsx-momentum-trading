@@ -27,12 +27,33 @@ def get_breakout_status(quote):
     return "WEAK / BELOW CLOSE"
 
 
+def get_average_volume(symbol, days=20):
+    ticker = yf.Ticker(symbol + ".TO")
+    history = ticker.history(period="30d")
+
+    if history.empty or "Volume" not in history:
+        return 0
+
+    volumes = history["Volume"].tail(days)
+    return int(volumes.mean())
+
+
+def get_rvol_status(relative_volume):
+    if relative_volume >= 2:
+        return "HIGH"
+
+    if relative_volume >= 1:
+        return "NORMAL"
+
+    return "LOW"
+
+
 def get_live_quote(symbol):
     ticker = yf.Ticker(symbol + ".TO")
     info = ticker.fast_info
 
-    price = info.get("lastPrice", 0)
-    volume = info.get("lastVolume", 0)
+    price = info.get("lastPrice", 0) or 0
+    volume = info.get("lastVolume", 0) or 0
 
     previous_day = get_previous_day(symbol)
 
@@ -52,6 +73,13 @@ def get_live_quote(symbol):
         change_percent = 0
         gap_percent = 0
 
+    average_volume = get_average_volume(symbol)
+
+    if average_volume > 0:
+        relative_volume = round(volume / average_volume, 2)
+    else:
+        relative_volume = 0
+
     quote = {
         "symbol": symbol,
         "price": price,
@@ -61,6 +89,9 @@ def get_live_quote(symbol):
         "gap_percent": gap_percent,
         "change_percent": change_percent,
         "volume": volume,
+        "average_volume": average_volume,
+        "relative_volume": relative_volume,
+        "rvol_status": get_rvol_status(relative_volume),
         "status": "Live Data",
     }
 

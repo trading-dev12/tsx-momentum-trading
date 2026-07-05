@@ -6,7 +6,6 @@ from scanner.market_scanner import display_market_data
 
 
 def main():
-
     settings = load_settings()
 
     print("======================================")
@@ -34,6 +33,7 @@ def main():
     print(len(watchlist), "symbols loaded")
 
     quotes = get_quotes(watchlist)
+
 
     display_market_data(quotes)
 

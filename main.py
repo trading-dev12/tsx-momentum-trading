@@ -2,6 +2,7 @@ from core.startup import startup
 from core.config_loader import load_settings
 from core.watchlist_loader import load_watchlist
 from core.market_data import get_quotes
+from scanner.market_scanner import display_market_data
 
 
 def main():
@@ -34,12 +35,7 @@ def main():
 
     quotes = get_quotes(watchlist)
 
-    print()
-    print("Market Data")
-    print("-----------")
-
-    for quote in quotes:
-        print(quote)
+    display_market_data(quotes)
 
 
 if __name__ == "__main__":

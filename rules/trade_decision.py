@@ -1,15 +1,30 @@
 def get_trade_decision(quote):
     """
-    Returns WATCH, BUY or IGNORE.
+    Determines whether a stock is READY, WATCH, or IGNORE.
     """
 
-    score = quote["score"]
+    tmqs = quote["tmqs"]
+    rvol = quote["relative_volume"]
+    breakout = quote["breakout_status"]
+    momentum = quote["grades"]["Momentum"]
+    liquidity = quote["grades"]["Liquidity"]
 
-    if score >= 50:
-        return "BUY"
+    # READY
+    if (
+        tmqs >= 80
+        and rvol >= 1.5
+        and breakout in ["BREAKOUT", "NEAR BREAKOUT"]
+        and momentum in ["A", "B"]
+        and liquidity in ["A", "B"]
+    ):
+        return "READY"
 
-    elif score >= 25:
+    # WATCH
+    if (
+        tmqs >= 60
+        and breakout in ["BREAKOUT", "NEAR BREAKOUT", "INSIDE RANGE"]
+    ):
         return "WATCH"
 
-    else:
-        return "IGNORE"
+    # IGNORE
+    return "IGNORE"

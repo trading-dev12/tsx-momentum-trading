@@ -13,10 +13,12 @@ class TradingWorkstation:
     def __init__(self, root):
         self.root = root
         self.root.title("TSX Momentum Pro")
-        self.root.geometry("1200x700")
+        self.root.geometry("1200x720")
 
         self.auto_refresh = True
-        self.refresh_interval = 5000  # 5 seconds for testing
+        self.refresh_interval_seconds = 30
+        self.countdown_seconds = self.refresh_interval_seconds
+        self.is_refreshing = False
 
         self.market_label = tk.Label(
             root,
@@ -56,28 +58,33 @@ class TradingWorkstation:
 
         self.tree = ttk.Treeview(root, columns=columns, show="headings")
 
-        self.tree.heading("rank", text="#")
-        self.tree.heading("symbol", text="Symbol")
-        self.tree.heading("price", text="Price")
-        self.tree.heading("tmqs", text="TMQS")
-        self.tree.heading("rvol", text="RVOL")
-        self.tree.heading("breakout", text="Breakout")
-        self.tree.heading("momentum", text="Momentum")
-        self.tree.heading("liquidity", text="Liquidity")
-        self.tree.heading("decision", text="Decision")
+        headings = {
+            "rank": "#",
+            "symbol": "Symbol",
+            "price": "Price",
+            "tmqs": "TMQS",
+            "rvol": "RVOL",
+            "breakout": "Breakout",
+            "momentum": "Momentum",
+            "liquidity": "Liquidity",
+            "decision": "Decision",
+        }
+
+        for column, title in headings.items():
+            self.tree.heading(column, text=title)
 
         self.tree.column("rank", width=50, anchor="center")
         self.tree.column("symbol", width=100, anchor="center")
         self.tree.column("price", width=100, anchor="center")
         self.tree.column("tmqs", width=80, anchor="center")
         self.tree.column("rvol", width=80, anchor="center")
-        self.tree.column("breakout", width=140, anchor="center")
+        self.tree.column("breakout", width=160, anchor="center")
         self.tree.column("momentum", width=100, anchor="center")
         self.tree.column("liquidity", width=100, anchor="center")
         self.tree.column("decision", width=120, anchor="center")
 
-        self.tree.tag_configure("READY", background="#c6efce")
-        self.tree.tag_configure("BUY", background="#c6efce")
+        self.tree.tag_configure("READY", background="#b6d7a8")
+        self.tree.tag_configure("BUY", background="#b6d7a8")
         self.tree.tag_configure("WATCH", background="#fff2cc")
         self.tree.tag_configure("IGNORE", background="#f4cccc")
 
@@ -85,15 +92,20 @@ class TradingWorkstation:
 
         self.status_label = tk.Label(
             root,
-            text="Last Refresh: Never",
+            text="Starting...",
             font=("Arial", 10),
             anchor="w",
         )
         self.status_label.pack(fill="x", padx=10, pady=5)
 
         self.refresh_data()
+        self.update_countdown()
 
     def refresh_data(self):
+        if self.is_refreshing:
+            return
+
+        self.is_refreshing = True
         self.refresh_button.config(state="disabled", text="Refreshing...")
         self.status_label.config(text="Refreshing data...")
 
@@ -173,19 +185,37 @@ class TradingWorkstation:
                 tags=(decision,),
             )
 
-        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        self.status_label.config(
-            text=f"Last Refresh: {now} | Auto-refresh: ON | Every 5 seconds"
-        )
+        self.countdown_seconds = self.refresh_interval_seconds
+        self.is_refreshing = False
 
         self.refresh_button.config(state="normal", text="Refresh Scanner")
-
-        if self.auto_refresh:
-            self.root.after(self.refresh_interval, self.refresh_data)
 
     def show_error(self, error):
+        self.is_refreshing = False
         self.status_label.config(text=f"Error: {error}")
         self.refresh_button.config(state="normal", text="Refresh Scanner")
+
+    def update_countdown(self):
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        if self.is_refreshing:
+            status = f"Refreshing data... | Time: {now}"
+        else:
+            status = (
+                f"Last Update: {now} | "
+                f"Auto-refresh: ON | "
+                f"Next refresh in: {self.countdown_seconds}s"
+            )
+
+        self.status_label.config(text=status)
+
+        if not self.is_refreshing:
+            self.countdown_seconds -= 1
+
+            if self.countdown_seconds <= 0:
+                self.refresh_data()
+
+        self.root.after(1000, self.update_countdown)
 
     def format_percent(self, value):
         if value is None:
@@ -193,10 +223,9 @@ class TradingWorkstation:
         return f"{value}%"
 
 
-
 def main():
     root = tk.Tk()
-    app = TradingWorkstation(root)
+    TradingWorkstation(root)
     root.mainloop()
 
 

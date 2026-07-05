@@ -1,0 +1,5 @@
+print("====================================")
+print(" TSX Momentum Trading Scanner ")
+print(" Version 1.0")
+print("====================================")
+print("Project initialized successfully!")

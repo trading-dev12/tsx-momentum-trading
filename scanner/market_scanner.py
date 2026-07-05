@@ -6,10 +6,6 @@ from rules.trade_decision import get_trade_decision
 
 def display_market_data(quotes):
 
-    print()
-    print("Top Momentum")
-    print("------------")
-
     for quote in quotes:
         quote["score"] = calculate_score(quote)
         quote["grades"] = grade_stock(quote)
@@ -18,14 +14,24 @@ def display_market_data(quotes):
 
     quotes.sort(key=lambda q: q["tmqs"], reverse=True)
 
+    print()
+    print("=" * 60)
+    print("TOP TSX MOMENTUM SETUPS")
+    print("=" * 60)
+
     for rank, quote in enumerate(quotes, start=1):
-        print(
-            f"{rank}. {quote['symbol']}: "
-            f"${quote['price']:.2f} | "
-            f"TMQS: {quote['tmqs']} | "
-            f"Score: {quote['score']:.1f} | "
-            f"Gap: {quote['gap_percent']:+.2f}% | "
-            f"Momentum: {quote['grades']['Momentum']} | "
-            f"Liquidity: {quote['grades']['Liquidity']} | "
-            f"Decision: {quote['decision']}"
-        )
+        print()
+        print(f"{rank}. {quote['symbol']}")
+        print("-" * 60)
+        print(f"Price:          ${quote['price']:.2f}")
+        print(f"TMQS:           {quote['tmqs']}/100")
+        print(f"Momentum Score: {quote['score']:.1f}")
+        print(f"Gap:            {quote['gap_percent']:+.2f}%")
+        print(f"Previous High:  ${quote['previous_high']:.2f}")
+        print(f"Previous Close: ${quote['previous_close']:.2f}")
+        print(f"Momentum Grade: {quote['grades']['Momentum']}")
+        print(f"Liquidity Grade:{quote['grades']['Liquidity']}")
+        print(f"Decision:       {quote['decision']}")
+
+    print()
+    print("=" * 60)

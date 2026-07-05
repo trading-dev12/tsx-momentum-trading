@@ -1,13 +1,15 @@
-def make_trade_decision(quote):
+def get_trade_decision(quote):
+    """
+    Returns WATCH, BUY or IGNORE.
+    """
+
     score = quote["score"]
-    gap = quote["gap_percent"]
-    momentum = quote["grades"]["Momentum"]
-    liquidity = quote["grades"]["Liquidity"]
 
-    if score >= 50 and gap >= 2 and momentum == "A" and liquidity == "A":
-        return "TRADE READY"
+    if score >= 50:
+        return "BUY"
 
-    if score >= 30 and gap > 0 and liquidity in ["A", "B"]:
+    elif score >= 25:
         return "WATCH"
 
-    return "IGNORE"
+    else:
+        return "IGNORE"

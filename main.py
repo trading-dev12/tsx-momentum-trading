@@ -1,8 +1,8 @@
 from core.config_loader import load_settings
 from core.watchlist_loader import load_watchlist
 from core.market_data import get_quotes
-from scanner.market_scanner import display_market_data
 from core.market_context import score_market_context
+from scanner.market_scanner import display_market_data
 
 
 def display_market_summary(market):
@@ -15,10 +15,15 @@ def display_market_summary(market):
     print("MARKET HEALTH")
     print("-" * 90)
 
-    print(f"TSX:        {market['tsx_change']}%")
-    print(f"Oil:        {market['oil_change']}%")
-    print(f"Bitcoin:    {market['bitcoin_change']}%")
-    print(f"VIX:        {market['vix_change']}%")
+    tsx = market["tsx_change"] if market["tsx_change"] is not None else "N/A"
+    oil = market["oil_change"] if market["oil_change"] is not None else "N/A"
+    bitcoin = market["bitcoin_change"] if market["bitcoin_change"] is not None else "N/A"
+    vix = market["vix_change"] if market["vix_change"] is not None else "N/A"
+
+    print(f"TSX:        {tsx}%")
+    print(f"Oil:        {oil}%")
+    print(f"Bitcoin:    {bitcoin}%")
+    print(f"VIX:        {vix}%")
 
     print()
     print(f"Overall Market Status: {market['status']}")
@@ -37,22 +42,10 @@ def main():
     settings = load_settings()
     watchlist = load_watchlist(settings["watchlist_file"])
 
-    print()
-    print("Loaded Watchlist:")
-    print("-" * 90)
-
-    for symbol in watchlist:
-        print(symbol)
-
-    print()
-    print(len(watchlist), "symbols loaded")
-
+    quotes = get_quotes(watchlist)
     market = score_market_context()
 
-    quotes = get_quotes(watchlist)
-
     display_market_summary(market)
-
     display_market_data(quotes)
 
 

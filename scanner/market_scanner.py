@@ -7,31 +7,60 @@ RESET = "\033[0m"
 def shorten_breakout_status(status):
     if status == "BREAKOUT":
         return "Breakout"
-    if status == "NEAR BREAKOUT":
+    elif status == "NEAR BREAKOUT":
         return "Near BO"
-    if status == "INSIDE RANGE":
+    elif status == "INSIDE RANGE":
         return "Inside"
-    if status == "WEAK / BELOW CLOSE":
+    elif status == "WEAK / BELOW CLOSE":
         return "Weak"
     return "Unknown"
 
 
 def color_decision(decision):
-    if decision == "READY":
+    if decision in ("READY", "BUY"):
         return GREEN + decision + RESET
-    if decision == "BUY":
-        return GREEN + decision + RESET
-    if decision == "WATCH":
+    elif decision == "WATCH":
         return YELLOW + decision + RESET
-    if decision == "IGNORE":
+    elif decision == "IGNORE":
         return RED + decision + RESET
     return decision
 
 
+def display_scanner_summary(quotes):
+    total = len(quotes)
+
+    ready = sum(1 for q in quotes if q["decision"] == "READY")
+    buy = sum(1 for q in quotes if q["decision"] == "BUY")
+    watch = sum(1 for q in quotes if q["decision"] == "WATCH")
+    ignore = sum(1 for q in quotes if q["decision"] == "IGNORE")
+
+    avg_tmqs = sum(q["tmqs"] for q in quotes) / total if total else 0
+    best = max(quotes, key=lambda q: q["tmqs"]) if total else None
+
+    print()
+    print("=" * 100)
+    print("SCANNER SUMMARY")
+    print("=" * 100)
+    print(f"Stocks Scanned : {total}")
+    print(f"READY          : {ready}")
+    print(f"BUY            : {buy}")
+    print(f"WATCH          : {watch}")
+    print(f"IGNORE         : {ignore}")
+    print(f"Average TMQS   : {avg_tmqs:.1f}")
+
+    if best:
+        print(f"Best Candidate : {best['symbol']} (TMQS {best['tmqs']})")
+
+    print("=" * 100)
+    print()
+
+
 def display_market_data(quotes):
-    print("=" * 82)
-    print("TSX MOMENTUM SCANNER - DASHBOARD")
-    print("=" * 82)
+    display_scanner_summary(quotes)
+
+    print("=" * 100)
+    print("TSX MOMENTUM TRADING WORKSTATION")
+    print("=" * 100)
 
     print(
         f"{'#':<4}"
@@ -40,11 +69,12 @@ def display_market_data(quotes):
         f"{'TMQS':>8}"
         f"{'RVOL':>8}"
         f"{'Breakout':>14}"
-        f"{'Grade':>10}"
-        f"{'Decision':>12}"
+        f"{'Mom':>8}"
+        f"{'Liq':>8}"
+        f"{'Decision':>14}"
     )
 
-    print("-" * 82)
+    print("-" * 100)
 
     for rank, quote in enumerate(quotes, start=1):
         symbol = quote["symbol"]
@@ -52,24 +82,20 @@ def display_market_data(quotes):
         tmqs = quote["tmqs"]
         rvol = quote["relative_volume"]
         breakout = shorten_breakout_status(quote["breakout_status"])
-        momentum_grade = quote["grades"]["Momentum"]
-        liquidity_grade = quote["grades"]["Liquidity"]
-        decision = quote["decision"]
+        momentum = quote["grades"]["Momentum"]
+        liquidity = quote["grades"]["Liquidity"]
+        decision = color_decision(quote["decision"])
 
-        plain_row = (
+        print(
             f"{rank:<4}"
             f"{symbol:<8}"
             f"{price:>10.2f}"
             f"{tmqs:>8}"
             f"{rvol:>7.2f}x"
             f"{breakout:>14}"
-            f"{momentum_grade + '/' + liquidity_grade:>10}"
-            f"{decision:>12}"
+            f"{momentum:>8}"
+            f"{liquidity:>8}"
+            f"{decision:>14}"
         )
 
-        colored_decision = color_decision(decision)
-        row_without_decision = plain_row[:-12]
-
-        print(row_without_decision + f"{colored_decision:>12}")
-
-    print("=" * 82)
+    print("=" * 100)

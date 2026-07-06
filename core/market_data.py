@@ -5,7 +5,7 @@ from scanner.momentum_score import calculate_score
 from scanner.stock_grader import grade_stock
 from scanner.tmqs_score import calculate_tmqs
 from rules.trade_decision import get_trade_decision
-
+from scanner.confidence_score import calculate_confidence_score
 
 def get_breakout_status(quote):
     price = quote.get("price", 0)
@@ -104,6 +104,7 @@ def get_live_quote(symbol):
         quote["grades"] = grade_stock(quote)
         quote["tmqs"] = calculate_tmqs(quote)
         quote["breakout_status"] = get_breakout_status(quote)
+        quote["confidence_score"] = calculate_confidence_score(quote)
         quote["decision"] = get_trade_decision(quote)
 
         return quote

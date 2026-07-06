@@ -13,12 +13,12 @@ class TradingWorkstation:
     def __init__(self, root):
         self.root = root
         self.root.title("TSX Momentum Pro")
-        self.root.geometry("1250x720")
+        self.root.geometry("1450x760")
 
-        self.auto_refresh = True
         self.refresh_interval_seconds = 30
         self.countdown_seconds = self.refresh_interval_seconds
         self.is_refreshing = False
+        self.latest_quotes = []
 
         self.market_label = tk.Label(root, text="Market Health: Loading...", font=("Arial", 16, "bold"), anchor="w")
         self.market_label.pack(fill="x", padx=10, pady=5)
@@ -29,18 +29,23 @@ class TradingWorkstation:
         self.refresh_button = tk.Button(root, text="Refresh Scanner", command=self.refresh_data, font=("Arial", 11, "bold"))
         self.refresh_button.pack(padx=10, pady=5, anchor="w")
 
+        main_frame = tk.Frame(root)
+        main_frame.pack(fill="both", expand=True, padx=10, pady=10)
+
         columns = (
-            "rank", "symbol", "price", "tmqs", "rvol", "rvol_grade",
-            "breakout", "momentum", "liquidity", "decision"
+            "rank", "symbol", "price", "tmqs", "confidence",
+            "rvol", "rvol_grade", "breakout", "momentum",
+            "liquidity", "decision"
         )
 
-        self.tree = ttk.Treeview(root, columns=columns, show="headings")
+        self.tree = ttk.Treeview(main_frame, columns=columns, show="headings", height=22)
 
         headings = {
             "rank": "#",
             "symbol": "Symbol",
             "price": "Price",
             "tmqs": "TMQS",
+            "confidence": "Confidence",
             "rvol": "RVOL",
             "rvol_grade": "RVOL Grade",
             "breakout": "Breakout",
@@ -52,23 +57,48 @@ class TradingWorkstation:
         for column, title in headings.items():
             self.tree.heading(column, text=title)
 
-        self.tree.column("rank", width=50, anchor="center")
-        self.tree.column("symbol", width=100, anchor="center")
-        self.tree.column("price", width=100, anchor="center")
-        self.tree.column("tmqs", width=80, anchor="center")
-        self.tree.column("rvol", width=80, anchor="center")
-        self.tree.column("rvol_grade", width=100, anchor="center")
-        self.tree.column("breakout", width=160, anchor="center")
-        self.tree.column("momentum", width=100, anchor="center")
-        self.tree.column("liquidity", width=100, anchor="center")
-        self.tree.column("decision", width=120, anchor="center")
+        self.tree.column("rank", width=45, anchor="center")
+        self.tree.column("symbol", width=85, anchor="center")
+        self.tree.column("price", width=90, anchor="center")
+        self.tree.column("tmqs", width=70, anchor="center")
+        self.tree.column("confidence", width=90, anchor="center")
+        self.tree.column("rvol", width=75, anchor="center")
+        self.tree.column("rvol_grade", width=90, anchor="center")
+        self.tree.column("breakout", width=145, anchor="center")
+        self.tree.column("momentum", width=90, anchor="center")
+        self.tree.column("liquidity", width=90, anchor="center")
+        self.tree.column("decision", width=100, anchor="center")
 
         self.tree.tag_configure("READY", background="#b6d7a8")
         self.tree.tag_configure("BUY", background="#b6d7a8")
         self.tree.tag_configure("WATCH", background="#fff2cc")
         self.tree.tag_configure("IGNORE", background="#f4cccc")
 
-        self.tree.pack(fill="both", expand=True, padx=10, pady=10)
+        self.tree.pack(side="left", fill="both", expand=True)
+
+        self.tree.bind("<<TreeviewSelect>>", self.show_trade_checklist)
+
+        checklist_frame = tk.Frame(main_frame, width=320)
+        checklist_frame.pack(side="right", fill="y", padx=(10, 0))
+
+        checklist_title = tk.Label(
+            checklist_frame,
+            text="Trade Checklist",
+            font=("Arial", 14, "bold"),
+            anchor="w",
+        )
+        checklist_title.pack(fill="x", pady=(0, 5))
+
+        self.checklist_text = tk.Text(
+            checklist_frame,
+            width=38,
+            height=28,
+            font=("Consolas", 10),
+            wrap="word",
+        )
+        self.checklist_text.pack(fill="both", expand=True)
+        self.checklist_text.insert("1.0", "Click a stock to view details.")
+        self.checklist_text.config(state="disabled")
 
         self.status_label = tk.Label(root, text="Starting...", font=("Arial", 10), anchor="w")
         self.status_label.pack(fill="x", padx=10, pady=5)
@@ -101,11 +131,10 @@ class TradingWorkstation:
             self.root.after(0, lambda: self.show_error(error))
 
     def update_dashboard(self, market, quotes):
+        self.latest_quotes = quotes
+
         for row in self.tree.get_children():
             self.tree.delete(row)
-
-        market_status = market["status"]
-        market_score = market["score"]
 
         tsx = self.format_percent(market["tsx_change"])
         oil = self.format_percent(market["oil_change"])
@@ -114,8 +143,8 @@ class TradingWorkstation:
 
         self.market_label.config(
             text=(
-                f"Market Health: {market_status} | "
-                f"Score: {market_score}/100 | "
+                f"Market Health: {market['status']} | "
+                f"Score: {market['score']}/100 | "
                 f"TSX: {tsx} | Oil: {oil} | "
                 f"Bitcoin: {bitcoin} | VIX: {vix}"
             )
@@ -141,15 +170,18 @@ class TradingWorkstation:
         for rank, quote in enumerate(quotes, start=1):
             decision = quote["decision"]
             rvol_grade = quote.get("grades", {}).get("RVOL", "N/A")
+            confidence = quote.get("confidence_score", 0)
 
             self.tree.insert(
                 "",
                 "end",
+                iid=str(rank - 1),
                 values=(
                     rank,
                     quote["symbol"],
                     f"{quote['price']:.2f}",
                     quote["tmqs"],
+                    f"{confidence}%",
                     f"{quote['relative_volume']:.2f}x",
                     rvol_grade,
                     quote["breakout_status"],
@@ -163,6 +195,64 @@ class TradingWorkstation:
         self.countdown_seconds = self.refresh_interval_seconds
         self.is_refreshing = False
         self.refresh_button.config(state="normal", text="Refresh Scanner")
+
+    def show_trade_checklist(self, event):
+        selected = self.tree.selection()
+
+        if not selected:
+            return
+
+        index = int(selected[0])
+
+        if index >= len(self.latest_quotes):
+            return
+
+        quote = self.latest_quotes[index]
+
+        checklist = self.build_checklist_text(quote)
+
+        self.checklist_text.config(state="normal")
+        self.checklist_text.delete("1.0", tk.END)
+        self.checklist_text.insert("1.0", checklist)
+        self.checklist_text.config(state="disabled")
+
+    def build_checklist_text(self, quote):
+        symbol = quote["symbol"]
+        price = quote["price"]
+        tmqs = quote["tmqs"]
+        confidence = quote.get("confidence_score", 0)
+        rvol = quote["relative_volume"]
+        rvol_grade = quote.get("grades", {}).get("RVOL", "N/A")
+        breakout = quote["breakout_status"]
+        momentum = quote["grades"]["Momentum"]
+        liquidity = quote["grades"]["Liquidity"]
+        decision = quote["decision"]
+
+        rvol_check = "PASS" if rvol >= 0.75 else "FAIL"
+        breakout_check = "PASS" if breakout in ["BREAKOUT", "NEAR BREAKOUT"] else "FAIL"
+        momentum_check = "PASS" if momentum in ["A", "B"] else "FAIL"
+        liquidity_check = "PASS" if liquidity in ["A", "B"] else "FAIL"
+
+        return (
+            f"{symbol}\n"
+            f"{'-' * 32}\n"
+            f"Price:        {price:.2f}\n"
+            f"TMQS:         {tmqs}\n"
+            f"Confidence:   {confidence}%\n"
+            f"Decision:     {decision}\n\n"
+            f"Checklist\n"
+            f"{'-' * 32}\n"
+            f"RVOL:         {rvol:.2f}x ({rvol_grade}) [{rvol_check}]\n"
+            f"Breakout:     {breakout} [{breakout_check}]\n"
+            f"Momentum:     {momentum} [{momentum_check}]\n"
+            f"Liquidity:    {liquidity} [{liquidity_check}]\n\n"
+            f"Rule Notes\n"
+            f"{'-' * 32}\n"
+            f"READY needs strong TMQS, strong RVOL,\n"
+            f"good breakout, momentum, and liquidity.\n\n"
+            f"WATCH needs TMQS >= 60, RVOL >= 0.75,\n"
+            f"and acceptable momentum/liquidity.\n"
+        )
 
     def show_error(self, error):
         self.is_refreshing = False

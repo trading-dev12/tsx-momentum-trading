@@ -1,6 +1,6 @@
 def get_trade_decision(quote):
     """
-    Determines whether a stock is READY, WATCH, or IGNORE.
+    Returns a clean decision and reason.
     """
 
     tmqs = quote["tmqs"]
@@ -9,7 +9,6 @@ def get_trade_decision(quote):
     momentum = quote["grades"]["Momentum"]
     liquidity = quote["grades"]["Liquidity"]
 
-    # READY
     if (
         tmqs >= 80
         and rvol >= 1.5
@@ -17,9 +16,8 @@ def get_trade_decision(quote):
         and momentum in ["A", "B"]
         and liquidity in ["A", "B"]
     ):
-        return "READY"
+        return "READY", "All rules passed"
 
-    # WATCH
     if (
         tmqs >= 60
         and rvol >= 0.75
@@ -27,7 +25,18 @@ def get_trade_decision(quote):
         and momentum in ["A", "B"]
         and liquidity in ["A", "B"]
     ):
-        return "WATCH"
+        return "WATCH", "Waiting for confirmation"
 
-    # IGNORE
-    return "IGNORE"
+    if rvol < 0.75:
+        return "IGNORE", "RVOL too low"
+
+    if momentum == "C":
+        return "IGNORE", "Weak momentum"
+
+    if liquidity == "C":
+        return "IGNORE", "Low liquidity"
+
+    if breakout == "WEAK / BELOW CLOSE":
+        return "IGNORE", "Below previous close"
+
+    return "IGNORE", "Low TMQS"

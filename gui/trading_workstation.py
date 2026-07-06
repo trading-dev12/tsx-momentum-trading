@@ -20,22 +20,46 @@ class TradingWorkstation:
         self.is_refreshing = False
         self.latest_quotes = []
 
-        self.market_label = tk.Label(root, text="Market Health: Loading...", font=("Arial", 16, "bold"), anchor="w")
+        self.market_label = tk.Label(
+            root,
+            text="Market Health: Loading...",
+            font=("Arial", 16, "bold"),
+            anchor="w",
+        )
         self.market_label.pack(fill="x", padx=10, pady=5)
 
-        self.summary_label = tk.Label(root, text="Scanner Summary: Loading...", font=("Arial", 12), anchor="w")
+        self.summary_label = tk.Label(
+            root,
+            text="Scanner Summary: Loading...",
+            font=("Arial", 12),
+            anchor="w",
+        )
         self.summary_label.pack(fill="x", padx=10, pady=5)
 
-        self.refresh_button = tk.Button(root, text="Refresh Scanner", command=self.refresh_data, font=("Arial", 11, "bold"))
+        self.refresh_button = tk.Button(
+            root,
+            text="Refresh Scanner",
+            command=self.refresh_data,
+            font=("Arial", 11, "bold"),
+        )
         self.refresh_button.pack(padx=10, pady=5, anchor="w")
 
         main_frame = tk.Frame(root)
         main_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
         columns = (
-            "rank", "symbol", "price", "tmqs", "confidence",
-            "rvol", "rvol_grade", "breakout", "momentum",
-            "liquidity", "decision"
+            "rank",
+            "symbol",
+            "price",
+            "tmqs",
+            "confidence",
+            "rvol",
+            "rvol_grade",
+            "breakout",
+            "momentum",
+            "liquidity",
+            "decision",
+            "reason",
         )
 
         self.tree = ttk.Treeview(main_frame, columns=columns, show="headings", height=22)
@@ -52,6 +76,7 @@ class TradingWorkstation:
             "momentum": "Momentum",
             "liquidity": "Liquidity",
             "decision": "Decision",
+            "reason": "Reason",
         }
 
         for column, title in headings.items():
@@ -68,6 +93,7 @@ class TradingWorkstation:
         self.tree.column("momentum", width=90, anchor="center")
         self.tree.column("liquidity", width=90, anchor="center")
         self.tree.column("decision", width=100, anchor="center")
+        self.tree.column("reason", width=180, anchor="w")
 
         self.tree.tag_configure("READY", background="#b6d7a8")
         self.tree.tag_configure("BUY", background="#b6d7a8")
@@ -75,7 +101,6 @@ class TradingWorkstation:
         self.tree.tag_configure("IGNORE", background="#f4cccc")
 
         self.tree.pack(side="left", fill="both", expand=True)
-
         self.tree.bind("<<TreeviewSelect>>", self.show_trade_checklist)
 
         checklist_frame = tk.Frame(main_frame, width=320)
@@ -100,7 +125,12 @@ class TradingWorkstation:
         self.checklist_text.insert("1.0", "Click a stock to view details.")
         self.checklist_text.config(state="disabled")
 
-        self.status_label = tk.Label(root, text="Starting...", font=("Arial", 10), anchor="w")
+        self.status_label = tk.Label(
+            root,
+            text="Starting...",
+            font=("Arial", 10),
+            anchor="w",
+        )
         self.status_label.pack(fill="x", padx=10, pady=5)
 
         self.refresh_data()
@@ -169,6 +199,7 @@ class TradingWorkstation:
 
         for rank, quote in enumerate(quotes, start=1):
             decision = quote["decision"]
+            reason = quote.get("reason", "")
             rvol_grade = quote.get("grades", {}).get("RVOL", "N/A")
             confidence = quote.get("confidence_score", 0)
 
@@ -188,6 +219,7 @@ class TradingWorkstation:
                     quote["grades"]["Momentum"],
                     quote["grades"]["Liquidity"],
                     decision,
+                    reason,
                 ),
                 tags=(decision,),
             )
@@ -208,7 +240,6 @@ class TradingWorkstation:
             return
 
         quote = self.latest_quotes[index]
-
         checklist = self.build_checklist_text(quote)
 
         self.checklist_text.config(state="normal")
@@ -227,6 +258,7 @@ class TradingWorkstation:
         momentum = quote["grades"]["Momentum"]
         liquidity = quote["grades"]["Liquidity"]
         decision = quote["decision"]
+        reason = quote.get("reason", "")
 
         rvol_check = "PASS" if rvol >= 0.75 else "FAIL"
         breakout_check = "PASS" if breakout in ["BREAKOUT", "NEAR BREAKOUT"] else "FAIL"
@@ -239,7 +271,8 @@ class TradingWorkstation:
             f"Price:        {price:.2f}\n"
             f"TMQS:         {tmqs}\n"
             f"Confidence:   {confidence}%\n"
-            f"Decision:     {decision}\n\n"
+            f"Decision:     {decision}\n"
+            f"Reason:       {reason}\n\n"
             f"Checklist\n"
             f"{'-' * 32}\n"
             f"RVOL:         {rvol:.2f}x ({rvol_grade}) [{rvol_check}]\n"

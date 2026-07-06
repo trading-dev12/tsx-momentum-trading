@@ -40,7 +40,7 @@ def get_average_volume(symbol, days=20):
 
     except Exception:
         return 0
-
+values=(
 
 def get_rvol_status(relative_volume):
     if relative_volume >= 2:
@@ -105,7 +105,10 @@ def get_live_quote(symbol):
         quote["tmqs"] = calculate_tmqs(quote)
         quote["breakout_status"] = get_breakout_status(quote)
         quote["confidence_score"] = calculate_confidence_score(quote)
-        quote["decision"] = get_trade_decision(quote)
+        decision, reason = get_trade_decision(quote)
+
+        quote["decision"] = decision
+        quote["reason"] = reason
 
         return quote
 

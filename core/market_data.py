@@ -40,7 +40,7 @@ def get_average_volume(symbol, days=20):
 
     except Exception:
         return 0
-values=(
+
 
 def get_rvol_status(relative_volume):
     if relative_volume >= 2:

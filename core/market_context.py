@@ -12,7 +12,7 @@ MARKET_SYMBOLS = {
 def get_symbol_change(symbol):
     try:
         ticker = yf.Ticker(symbol)
-        hist = ticker.history(period="2d")
+        hist = ticker.history(period="5d")
 
         if hist.empty or len(hist) < 2:
             return None

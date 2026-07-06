@@ -22,7 +22,10 @@ def get_trade_decision(quote):
     # WATCH
     if (
         tmqs >= 60
+        and rvol >= 0.75
         and breakout in ["BREAKOUT", "NEAR BREAKOUT", "INSIDE RANGE"]
+        and momentum in ["A", "B"]
+        and liquidity in ["A", "B"]
     ):
         return "WATCH"
 

@@ -121,3 +121,19 @@ Next Version (1.8)
 - Better workstation layout
 - Trade logging
 - Begin backtesting framework
+Version 1.8 – Quality Filter System
+
+Completed
+- Fixed VIX market data
+- Improved TMQS scoring
+- Added RVOL A–F grading
+- Added RVOL quality filtering in the Decision Engine
+- Reduced false WATCH signals
+- Added RVOL Grade column to the workstation
+
+Next Objectives (Version 1.9)
+- Confidence Score
+- Trade Checklist
+- Configurable trading thresholds
+- Enhanced market dashboard
+- Begin backtesting framework

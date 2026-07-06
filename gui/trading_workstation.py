@@ -13,47 +13,25 @@ class TradingWorkstation:
     def __init__(self, root):
         self.root = root
         self.root.title("TSX Momentum Pro")
-        self.root.geometry("1200x720")
+        self.root.geometry("1250x720")
 
         self.auto_refresh = True
         self.refresh_interval_seconds = 30
         self.countdown_seconds = self.refresh_interval_seconds
         self.is_refreshing = False
 
-        self.market_label = tk.Label(
-            root,
-            text="Market Health: Loading...",
-            font=("Arial", 16, "bold"),
-            anchor="w",
-        )
+        self.market_label = tk.Label(root, text="Market Health: Loading...", font=("Arial", 16, "bold"), anchor="w")
         self.market_label.pack(fill="x", padx=10, pady=5)
 
-        self.summary_label = tk.Label(
-            root,
-            text="Scanner Summary: Loading...",
-            font=("Arial", 12),
-            anchor="w",
-        )
+        self.summary_label = tk.Label(root, text="Scanner Summary: Loading...", font=("Arial", 12), anchor="w")
         self.summary_label.pack(fill="x", padx=10, pady=5)
 
-        self.refresh_button = tk.Button(
-            root,
-            text="Refresh Scanner",
-            command=self.refresh_data,
-            font=("Arial", 11, "bold"),
-        )
+        self.refresh_button = tk.Button(root, text="Refresh Scanner", command=self.refresh_data, font=("Arial", 11, "bold"))
         self.refresh_button.pack(padx=10, pady=5, anchor="w")
 
         columns = (
-            "rank",
-            "symbol",
-            "price",
-            "tmqs",
-            "rvol",
-            "breakout",
-            "momentum",
-            "liquidity",
-            "decision",
+            "rank", "symbol", "price", "tmqs", "rvol", "rvol_grade",
+            "breakout", "momentum", "liquidity", "decision"
         )
 
         self.tree = ttk.Treeview(root, columns=columns, show="headings")
@@ -64,6 +42,7 @@ class TradingWorkstation:
             "price": "Price",
             "tmqs": "TMQS",
             "rvol": "RVOL",
+            "rvol_grade": "RVOL Grade",
             "breakout": "Breakout",
             "momentum": "Momentum",
             "liquidity": "Liquidity",
@@ -78,6 +57,7 @@ class TradingWorkstation:
         self.tree.column("price", width=100, anchor="center")
         self.tree.column("tmqs", width=80, anchor="center")
         self.tree.column("rvol", width=80, anchor="center")
+        self.tree.column("rvol_grade", width=100, anchor="center")
         self.tree.column("breakout", width=160, anchor="center")
         self.tree.column("momentum", width=100, anchor="center")
         self.tree.column("liquidity", width=100, anchor="center")
@@ -90,12 +70,7 @@ class TradingWorkstation:
 
         self.tree.pack(fill="both", expand=True, padx=10, pady=10)
 
-        self.status_label = tk.Label(
-            root,
-            text="Starting...",
-            font=("Arial", 10),
-            anchor="w",
-        )
+        self.status_label = tk.Label(root, text="Starting...", font=("Arial", 10), anchor="w")
         self.status_label.pack(fill="x", padx=10, pady=5)
 
         self.refresh_data()
@@ -117,7 +92,6 @@ class TradingWorkstation:
         try:
             settings = load_settings()
             watchlist = load_watchlist(settings["watchlist_file"])
-
             market = score_market_context()
             quotes = get_quotes(watchlist)
 
@@ -153,7 +127,6 @@ class TradingWorkstation:
         ignore = sum(1 for q in quotes if q["decision"] == "IGNORE")
         average_tmqs = sum(q["tmqs"] for q in quotes) / total if total else 0
         best = max(quotes, key=lambda q: q["tmqs"]) if total else None
-
         best_text = best["symbol"] if best else "N/A"
 
         self.summary_label.config(
@@ -167,6 +140,7 @@ class TradingWorkstation:
 
         for rank, quote in enumerate(quotes, start=1):
             decision = quote["decision"]
+            rvol_grade = quote.get("grades", {}).get("RVOL", "N/A")
 
             self.tree.insert(
                 "",
@@ -177,6 +151,7 @@ class TradingWorkstation:
                     f"{quote['price']:.2f}",
                     quote["tmqs"],
                     f"{quote['relative_volume']:.2f}x",
+                    rvol_grade,
                     quote["breakout_status"],
                     quote["grades"]["Momentum"],
                     quote["grades"]["Liquidity"],
@@ -187,7 +162,6 @@ class TradingWorkstation:
 
         self.countdown_seconds = self.refresh_interval_seconds
         self.is_refreshing = False
-
         self.refresh_button.config(state="normal", text="Refresh Scanner")
 
     def show_error(self, error):

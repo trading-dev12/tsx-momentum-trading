@@ -137,3 +137,45 @@ Next Objectives (Version 1.9)
 - Configurable trading thresholds
 - Enhanced market dashboard
 - Begin backtesting framework
+# TSX Momentum Trading Project Status
+
+## Current Version
+Version 1.9 – Decision Engine & Trade Checklist
+
+## Completed
+
+✔ Market Health dashboard
+✔ Auto-refresh scanner
+✔ TMQS scoring system
+✔ Confidence Score
+✔ RVOL calculation
+✔ RVOL Grade (A–F)
+✔ Breakout detection
+✔ Momentum grading
+✔ Liquidity grading
+✔ Decision Engine (READY / WATCH / IGNORE)
+✔ Reason Engine
+✔ Interactive Trade Checklist panel
+✔ GitHub version control
+
+## Remaining Bugs
+
+- Trade Checklist still displays:
+  Decision: ('IGNORE', 'RVOL too low')
+  instead of
+
+  Decision: IGNORE
+  Reason: RVOL too low
+
+- Improve formatting of Trade Checklist panel.
+
+## Next Version (2.0)
+
+- Better UI styling
+- Color-coded decision badges
+- Market Breadth panel
+- Phone alerts
+- Trade Journal
+- Backtesting engine
+- Performance statistics
+- AI ranking improvements

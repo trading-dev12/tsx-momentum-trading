@@ -106,3 +106,18 @@ Version 2.0
 Last Updated
 
 July 6, 2026
+Version 1.7
+
+Completed
+- Fixed VIX market data
+- Improved TMQS scoring
+- Added RVOL quality filter to Decision Engine
+- Prevented weak-volume stocks from becoming WATCH
+- Improved overall scanner reliability
+
+Next Version (1.8)
+- Configurable trading thresholds
+- Quality Filter display panel
+- Better workstation layout
+- Trade logging
+- Begin backtesting framework

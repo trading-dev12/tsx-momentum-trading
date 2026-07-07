@@ -21,42 +21,52 @@ def evaluate_historical_setup(row, previous_row=None):
 
     rvol = volume / previous_volume if previous_volume > 0 else 0
 
+    score = 50
+
     if close > previous_high:
         breakout = "BREAKOUT"
+        score += 15
     elif close >= previous_high * 0.995:
         breakout = "NEAR BREAKOUT"
+        score += 5
     elif close >= previous_close:
         breakout = "INSIDE RANGE"
+        score -= 5
     else:
         breakout = "WEAK / BELOW CLOSE"
+        score -= 20
 
-    tmqs = 0
-
-    if breakout == "BREAKOUT":
-        tmqs += 40
-    elif breakout == "NEAR BREAKOUT":
-        tmqs += 25
-    elif breakout == "INSIDE RANGE":
-        tmqs += 10
-
-    if rvol >= 2:
-        tmqs += 40
+    if rvol >= 2.5:
+        score += 25
+    elif rvol >= 2.0:
+        score += 20
     elif rvol >= 1.5:
-        tmqs += 30
-    elif rvol >= 1:
-        tmqs += 15
-    elif rvol >= 0.75:
-        tmqs += 5
+        score += 12
+    elif rvol >= 1.0:
+        score += 5
+    elif rvol < 0.5:
+        score -= 30
+    else:
+        score -= 15
 
     if close > previous_close:
-        tmqs += 20
+        score += 5
+    else:
+        score -= 10
 
-    tmqs = min(tmqs, 100)
+    if rvol < 0.5:
+        score = min(score, 45)
+    elif rvol < 1.0:
+        score = min(score, 65)
+    elif rvol < 1.5:
+        score = min(score, 80)
 
-    if tmqs >= 70 and breakout == "BREAKOUT" and rvol >= 1.5:
+    tmqs = max(0, min(score, 100))
+
+    if tmqs >= 80 and breakout == "BREAKOUT" and rvol >= 1.5:
         decision = "READY"
-        reason = "Strong breakout with volume"
-    elif tmqs >= 50 and rvol >= 1:
+        reason = "Strong breakout with quality volume"
+    elif tmqs >= 60 and rvol >= 1.0:
         decision = "WATCH"
         reason = "Developing setup"
     else:

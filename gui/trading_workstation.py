@@ -198,11 +198,16 @@ class TradingWorkstation:
         )
 
         for rank, quote in enumerate(quotes, start=1):
-            decision = quote["decision"]
-            reason = quote.get("reason", "")
+            
+
             rvol_grade = quote.get("grades", {}).get("RVOL", "N/A")
             confidence = quote.get("confidence_score", 0)
+            decision = quote["decision"]
 
+            if isinstance(decision, tuple):
+                decision, reason = decision
+            else:
+                reason = quote.get("reason", "")
             self.tree.insert(
                 "",
                 "end",
@@ -257,8 +262,13 @@ class TradingWorkstation:
         breakout = quote["breakout_status"]
         momentum = quote["grades"]["Momentum"]
         liquidity = quote["grades"]["Liquidity"]
-        decision = quote["decision"]
-        reason = quote.get("reason", "")
+        decision_data = quote["decision"]
+
+        if isinstance(decision_data, tuple):
+            decision, reason = decision_data
+        else:
+            decision = decision_data
+            reason = quote.get("reason", "")
 
         rvol_check = "PASS" if rvol >= 0.75 else "FAIL"
         breakout_check = "PASS" if breakout in ["BREAKOUT", "NEAR BREAKOUT"] else "FAIL"

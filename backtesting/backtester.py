@@ -44,7 +44,7 @@ def run_backtest(file_path, min_tmqs=0, min_rvol=0, breakout_only=False):
     return trades
 
 
-def run_watchlist_backtest(folder_path="data/historical"):
+def run_watchlist_backtest(folder_path="data/historical", min_tmqs=0, min_rvol=0, breakout_only=False):
     folder = Path(folder_path)
     all_trades = []
 
@@ -58,9 +58,9 @@ def run_watchlist_backtest(folder_path="data/historical"):
 
         trades = run_backtest(
             file_path,
-            min_tmqs=95,
-            min_rvol=2.0,
-            breakout_only=True,
+            min_tmqs=min_tmqs,
+            min_rvol=min_rvol,
+            breakout_only=breakout_only,
         )
 
         print(f"Trades: {len(trades)}\n")

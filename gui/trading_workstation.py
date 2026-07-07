@@ -35,7 +35,16 @@ class TradingWorkstation:
             anchor="w",
         )
         self.summary_label.pack(fill="x", padx=10, pady=5)
-
+        self.best_trade_label = tk.Label(
+            root,
+            text="Best Trade Candidate: Loading...",
+            font=("Arial", 13, "bold"),
+            anchor="w",
+            bg="#e8f0fe",
+            padx=8,
+            pady=6,
+        )
+        self.best_trade_label.pack(fill="x", padx=10, pady=5)
         self.refresh_button = tk.Button(
             root,
             text="Refresh Scanner",
@@ -187,15 +196,40 @@ class TradingWorkstation:
         average_tmqs = sum(q["tmqs"] for q in quotes) / total if total else 0
         best = max(quotes, key=lambda q: q["tmqs"]) if total else None
         best_text = best["symbol"] if best else "N/A"
-
-        self.summary_label.config(
-            text=(
-                f"Stocks Scanned: {total} | "
-                f"READY: {ready} | WATCH: {watch} | IGNORE: {ignore} | "
-                f"Average TMQS: {average_tmqs:.1f} | "
-                f"Best Candidate: {best_text}"
+        if best:
+            best_confidence = best.get("confidence_score", 0)
+            best_decision = best["decision"]
+            best_reason = best.get("reason", "")
+            best_rvol = best["relative_volume"]
+            best_breakout = best["breakout_status"]
+        if best_decision == "READY":
+                banner_color = "#b6d7a8"
+        elif best_decision == "WATCH":
+                banner_color = "#fff2cc"
+        else:
+                banner_color = "#f4cccc"
+        self.best_trade_label.config(
+                text=(
+                    f"Best Trade Candidate: {best['symbol']} | "
+                    f"Decision: {best_decision} | "
+                    f"TMQS: {best['tmqs']} | "
+                    f"Confidence: {best_confidence}% | "
+                    f"RVOL: {best_rvol:.2f}x | "
+                    f"Breakout: {best_breakout} | "
+                    f"Reason: {best_reason}"
+                   ),
+                bg=banner_color,
             )
-        )
+            
+        
+        self.summary_label.config(
+                text=(
+                    f"Stocks Scanned: {total} | "
+                    f"READY: {ready} | WATCH: {watch} | IGNORE: {ignore} | "
+                    f"Average TMQS: {average_tmqs:.1f} | "
+                    f"Best Candidate: {best_text}"
+                   )
+            )
 
         for rank, quote in enumerate(quotes, start=1):
             

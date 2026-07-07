@@ -90,6 +90,7 @@ def simulate_trade(rows, entry_index, atr_multiplier=1.5, reward_multiplier=2.0,
         "atr": atr,
         "profit_loss": profit_loss,
         "profit_loss_percent": profit_loss_percent,
+        "return_pct": profit_loss_percent,
         "hold_days": final_index - entry_index,
         "exit_reason": exit_reason,
     }

@@ -2,6 +2,8 @@
 Main backtesting engine for the TSX Momentum Trading system.
 """
 
+from pathlib import Path
+
 from backtesting.historical_loader import load_historical_csv
 from backtesting.strategy import evaluate_historical_setup
 from backtesting.trade_simulator import simulate_trade
@@ -11,8 +13,9 @@ from backtesting.reports import print_performance_report
 
 def run_backtest(file_path):
     rows = load_historical_csv(file_path)
-
     trades = []
+
+    symbol = Path(file_path).stem.replace("_TO", ".TO")
 
     for index in range(1, len(rows)):
         row = rows[index]
@@ -22,15 +25,40 @@ def run_backtest(file_path):
 
         if signal["decision"] == "READY":
             trade = simulate_trade(rows, index)
-            trade["symbol"] = file_path
+
+            if trade is None:
+                continue
+
+            trade["symbol"] = symbol
             trade["reason"] = signal["reason"]
             trades.append(trade)
 
-    stats = calculate_performance(trades)
+    return trades
+
+
+def run_watchlist_backtest(folder_path="data/historical"):
+    folder = Path(folder_path)
+    all_trades = []
+
+    csv_files = sorted(folder.glob("*_TO.csv"))
+
+    print(f"Found {len(csv_files)} historical files.\n")
+
+    for file_path in csv_files:
+        symbol = file_path.stem.replace("_TO", ".TO")
+        print(f"Backtesting {symbol}...")
+
+        trades = run_backtest(file_path)
+        print(f"Trades: {len(trades)}\n")
+
+        all_trades.extend(trades)
+
+    stats = calculate_performance(all_trades)
+
     print_performance_report(stats)
 
-    return trades, stats
+    return all_trades, stats
 
 
 if __name__ == "__main__":
-    run_backtest("data/historical/RY_TO.csv")
+    run_watchlist_backtest()

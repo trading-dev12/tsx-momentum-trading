@@ -1,8 +1,5 @@
 """
 Historical data loader for the TSX Momentum Trading backtester.
-
-This module will eventually load real historical OHLCV data.
-For now, it provides the clean structure we need for Version 2.0.
 """
 
 from pathlib import Path
@@ -11,13 +8,7 @@ import csv
 
 def load_historical_csv(file_path):
     """
-    Load historical OHLCV data from a CSV file.
-
-    Expected columns:
-    date, open, high, low, close, volume
-
-    Returns:
-        list of dictionaries
+    Load Yahoo Finance CSV data and return clean OHLCV rows.
     """
 
     path = Path(file_path)
@@ -30,34 +21,35 @@ def load_historical_csv(file_path):
     with path.open("r", newline="", encoding="utf-8") as file:
         reader = csv.DictReader(file)
 
+        next(reader)
+        next(reader)
+
         for row in reader:
-            rows.append(
-                {
-                    "date": row["date"],
-                    "open": float(row["open"]),
-                    "high": float(row["high"]),
-                    "low": float(row["low"]),
-                    "close": float(row["close"]),
-                    "volume": int(float(row["volume"])),
-                }
-            )
+            clean_row = {
+                "date": row["Price"],
+                "open": float(row["Open"]),
+                "high": float(row["High"]),
+                "low": float(row["Low"]),
+                "close": float(row["Close"]),
+                "adj_close": float(row["Adj Close"]),
+                "volume": int(float(row["Volume"])),
+            }
+
+            rows.append(clean_row)
 
     return rows
 
 
-def validate_historical_data(rows):
-    """
-    Basic validation for historical OHLCV data.
-    """
+def test_load_ry():
+    file_path = "data/historical/RY_TO.csv"
+    rows = load_historical_csv(file_path)
 
-    required_fields = ["date", "open", "high", "low", "close", "volume"]
+    print(f"Loaded rows: {len(rows)}")
+    print("First row:")
+    print(rows[0])
+    print("Last row:")
+    print(rows[-1])
 
-    if not rows:
-        return False, "No historical data loaded."
 
-    for index, row in enumerate(rows):
-        for field in required_fields:
-            if field not in row:
-                return False, f"Missing field '{field}' in row {index + 1}"
-
-    return True, "Historical data is valid."
+if __name__ == "__main__":
+    test_load_ry()

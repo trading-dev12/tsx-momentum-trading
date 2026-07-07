@@ -128,6 +128,19 @@ def get_quotes(watchlist):
         if quote is not None:
             quotes.append(quote)
 
-    quotes.sort(key=lambda quote: quote["tmqs"], reverse=True)
+    decision_rank = {
+    "READY": 3,
+    "WATCH": 2,
+    "IGNORE": 1,
+}
+
+    quotes.sort(
+    key=lambda quote: (
+        decision_rank.get(quote["decision"], 0),
+        quote["tmqs"],
+        quote.get("confidence_score", 0),
+    ),
+    reverse=True,
+)    
 
     return quotes

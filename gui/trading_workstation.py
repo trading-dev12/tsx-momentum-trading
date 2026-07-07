@@ -20,7 +20,6 @@ class TradingWorkstation:
         self.is_refreshing = False
         self.latest_quotes = []
         self.previous_ready_symbols = set()
-        
 
         self.market_label = tk.Label(
             root,
@@ -37,6 +36,7 @@ class TradingWorkstation:
             anchor="w",
         )
         self.summary_label.pack(fill="x", padx=10, pady=5)
+
         self.best_trade_label = tk.Label(
             root,
             text="Best Trade Candidate: Loading...",
@@ -47,6 +47,7 @@ class TradingWorkstation:
             pady=6,
         )
         self.best_trade_label.pack(fill="x", padx=10, pady=5)
+
         self.refresh_button = tk.Button(
             root,
             text="Refresh Scanner",
@@ -107,7 +108,6 @@ class TradingWorkstation:
         self.tree.column("reason", width=180, anchor="w")
 
         self.tree.tag_configure("READY", background="#b6d7a8")
-        self.tree.tag_configure("BUY", background="#b6d7a8")
         self.tree.tag_configure("WATCH", background="#fff2cc")
         self.tree.tag_configure("IGNORE", background="#f4cccc")
 
@@ -166,10 +166,16 @@ class TradingWorkstation:
             market = score_market_context()
             quotes = get_quotes(watchlist)
 
-            self.root.after(0, lambda: self.update_dashboard(market, quotes))
+            self.root.after(
+                0,
+                lambda: self.update_dashboard(market, quotes),
+            )
 
         except Exception as error:
-            self.root.after(0, lambda: self.show_error(error))
+            self.root.after(
+                0,
+                lambda error=error: self.show_error(error),
+            )
 
     def update_dashboard(self, market, quotes):
         self.latest_quotes = quotes
@@ -197,6 +203,7 @@ class TradingWorkstation:
         watch = sum(1 for q in quotes if q["decision"] == "WATCH")
         ignore = sum(1 for q in quotes if q["decision"] == "IGNORE")
         average_tmqs = sum(q["tmqs"] for q in quotes) / total if total else 0
+
         ready_quotes = [q for q in quotes if q["decision"] == "READY"]
         watch_quotes = [q for q in quotes if q["decision"] == "WATCH"]
 
@@ -206,52 +213,26 @@ class TradingWorkstation:
             best = max(watch_quotes, key=lambda q: q["tmqs"])
         else:
             best = max(quotes, key=lambda q: q["tmqs"]) if total else None
-            best_text = best["symbol"] if best else "N/A"
-        if best:
-            best_confidence = best.get("confidence_score", 0)
-            best_decision = best["decision"]
-            best_reason = best.get("reason", "")
-            best_rvol = best["relative_volume"]
-            best_breakout = best["breakout_status"]
-        if best_decision == "READY":
-                banner_color = "#b6d7a8"
-        elif best_decision == "WATCH":
-                banner_color = "#fff2cc"
-        else:
-                banner_color = "#f4cccc"
-        self.best_trade_label.config(
-                text=(
-                    f"Best Trade Candidate: {best['symbol']} | "
-                    f"Decision: {best_decision} | "
-                    f"TMQS: {best['tmqs']} | "
-                    f"Confidence: {best_confidence}% | "
-                    f"RVOL: {best_rvol:.2f}x | "
-                    f"Breakout: {best_breakout} | "
-                    f"Reason: {best_reason}"
-                   ),
-                bg=banner_color,
-            )
-        
+
+        best_text = best["symbol"] if best else "N/A"
+
         self.summary_label.config(
-                text=(
-                    f"Stocks Scanned: {total} | "
-                    f"READY: {ready} | WATCH: {watch} | IGNORE: {ignore} | "
-                    f"Average TMQS: {average_tmqs:.1f} | "
-                    f"Best Candidate: {best_text}"
-                   )
+            text=(
+                f"Stocks Scanned: {total} | "
+                f"READY: {ready} | WATCH: {watch} | IGNORE: {ignore} | "
+                f"Average TMQS: {average_tmqs:.1f} | "
+                f"Best Candidate: {best_text}"
             )
+        )
+
+        self.update_best_trade_banner(best)
 
         for rank, quote in enumerate(quotes, start=1):
-            
-
+            decision = quote["decision"]
+            reason = quote.get("reason", "")
             rvol_grade = quote.get("grades", {}).get("RVOL", "N/A")
             confidence = quote.get("confidence_score", 0)
-            decision = quote["decision"]
 
-            if isinstance(decision, tuple):
-                decision, reason = decision
-            else:
-                reason = quote.get("reason", "")
             self.tree.insert(
                 "",
                 "end",
@@ -276,6 +257,48 @@ class TradingWorkstation:
         self.countdown_seconds = self.refresh_interval_seconds
         self.is_refreshing = False
         self.refresh_button.config(state="normal", text="Refresh Scanner")
+
+    def update_best_trade_banner(self, best):
+        if not best:
+            self.best_trade_label.config(
+                text="Best Trade Candidate: N/A",
+                bg="#e8f0fe",
+            )
+            return
+
+        decision = best["decision"]
+
+        if decision == "READY":
+            banner_color = "#b6d7a8"
+        elif decision == "WATCH":
+            banner_color = "#fff2cc"
+        else:
+            banner_color = "#f4cccc"
+
+        self.best_trade_label.config(
+            text=(
+                f"Best Trade Candidate: {best['symbol']} | "
+                f"Decision: {decision} | "
+                f"TMQS: {best['tmqs']} | "
+                f"Confidence: {best.get('confidence_score', 0)}% | "
+                f"RVOL: {best['relative_volume']:.2f}x | "
+                f"Breakout: {best['breakout_status']} | "
+                f"Reason: {best.get('reason', '')}"
+            ),
+            bg=banner_color,
+        )
+
+    def check_ready_alerts(self, quotes):
+        current_ready_symbols = {
+            q["symbol"] for q in quotes if q["decision"] == "READY"
+        }
+
+        new_ready_symbols = current_ready_symbols - self.previous_ready_symbols
+
+        if new_ready_symbols:
+            print("NEW READY ALERT:", ", ".join(new_ready_symbols))
+
+        self.previous_ready_symbols = current_ready_symbols
 
     def show_trade_checklist(self, event):
         selected = self.tree.selection()
@@ -306,13 +329,8 @@ class TradingWorkstation:
         breakout = quote["breakout_status"]
         momentum = quote["grades"]["Momentum"]
         liquidity = quote["grades"]["Liquidity"]
-        decision_data = quote["decision"]
-
-        if isinstance(decision_data, tuple):
-            decision, reason = decision_data
-        else:
-            decision = decision_data
-            reason = quote.get("reason", "")
+        decision = quote["decision"]
+        reason = quote.get("reason", "")
 
         rvol_check = "PASS" if rvol >= 0.75 else "FAIL"
         breakout_check = "PASS" if breakout in ["BREAKOUT", "NEAR BREAKOUT"] else "FAIL"
@@ -340,17 +358,7 @@ class TradingWorkstation:
             f"WATCH needs TMQS >= 60, RVOL >= 0.75,\n"
             f"and acceptable momentum/liquidity.\n"
         )
-    def check_ready_alerts(self, quotes):
-        current_ready_symbols = {
-            q["symbol"] for q in quotes if q["decision"] == "READY"
-        }
 
-        new_ready_symbols = current_ready_symbols - self.previous_ready_symbols
-
-        if new_ready_symbols:
-            print("NEW READY ALERT:", ", ".join(new_ready_symbols))
-
-        self.previous_ready_symbols = current_ready_symbols
     def show_error(self, error):
         self.is_refreshing = False
         self.status_label.config(text=f"Error: {error}")

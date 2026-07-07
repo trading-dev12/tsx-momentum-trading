@@ -10,7 +10,7 @@ def print_performance_report(stats):
     print(f"Starting Balance : ${stats['starting_balance']:,.2f}")
     print(f"Ending Balance   : ${stats['ending_balance']:,.2f}")
     print(f"Total Return     : {stats['total_return']:.2f}%")
-
+    print(f"Max Drawdown     : {stats['max_drawdown']:.2f}%")
     print("-" * 55)
 
     print(f"Total Trades     : {stats['total_trades']}")

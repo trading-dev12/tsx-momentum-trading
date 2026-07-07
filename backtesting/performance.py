@@ -15,6 +15,8 @@ def calculate_performance(trades, starting_balance=10000, risk_per_trade_percent
             "ending_balance": starting_balance,
             "total_return": 0,
             "max_drawdown": 0,
+            "best_stock": "N/A",
+            "worst_stock": "N/A",
         }
 
     wins = [t["return_pct"] for t in trades if t["return_pct"] > 0]
@@ -26,18 +28,21 @@ def calculate_performance(trades, starting_balance=10000, risk_per_trade_percent
 
     gross_profit = sum(wins)
     gross_loss = abs(sum(losses))
-
     profit_factor = gross_profit / gross_loss if gross_loss > 0 else 0
 
     balance = starting_balance
     peak_balance = starting_balance
     max_drawdown = 0
 
+    stock_returns = {}
+
     for trade in trades:
+        symbol = trade.get("symbol", "UNKNOWN")
         trade_return = trade["return_pct"]
 
-        position_impact = trade_return * (risk_per_trade_percent / 100)
+        stock_returns[symbol] = stock_returns.get(symbol, 0) + trade_return
 
+        position_impact = trade_return * (risk_per_trade_percent / 100)
         balance *= (1 + position_impact / 100)
 
         if balance > peak_balance:
@@ -50,6 +55,9 @@ def calculate_performance(trades, starting_balance=10000, risk_per_trade_percent
 
     total_return = ((balance - starting_balance) / starting_balance) * 100
 
+    best_stock = max(stock_returns, key=stock_returns.get)
+    worst_stock = min(stock_returns, key=stock_returns.get)
+
     return {
         "total_trades": len(trades),
         "win_rate": round(win_rate, 2),
@@ -60,4 +68,6 @@ def calculate_performance(trades, starting_balance=10000, risk_per_trade_percent
         "ending_balance": round(balance, 2),
         "total_return": round(total_return, 2),
         "max_drawdown": round(max_drawdown, 2),
+        "best_stock": best_stock,
+        "worst_stock": worst_stock,
     }

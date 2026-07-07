@@ -19,6 +19,8 @@ class TradingWorkstation:
         self.countdown_seconds = self.refresh_interval_seconds
         self.is_refreshing = False
         self.latest_quotes = []
+        self.previous_ready_symbols = set()
+        
 
         self.market_label = tk.Label(
             root,
@@ -171,6 +173,7 @@ class TradingWorkstation:
 
     def update_dashboard(self, market, quotes):
         self.latest_quotes = quotes
+        self.check_ready_alerts(quotes)
 
         for row in self.tree.get_children():
             self.tree.delete(row)
@@ -194,8 +197,16 @@ class TradingWorkstation:
         watch = sum(1 for q in quotes if q["decision"] == "WATCH")
         ignore = sum(1 for q in quotes if q["decision"] == "IGNORE")
         average_tmqs = sum(q["tmqs"] for q in quotes) / total if total else 0
-        best = max(quotes, key=lambda q: q["tmqs"]) if total else None
-        best_text = best["symbol"] if best else "N/A"
+        ready_quotes = [q for q in quotes if q["decision"] == "READY"]
+        watch_quotes = [q for q in quotes if q["decision"] == "WATCH"]
+
+        if ready_quotes:
+            best = max(ready_quotes, key=lambda q: q["tmqs"])
+        elif watch_quotes:
+            best = max(watch_quotes, key=lambda q: q["tmqs"])
+        else:
+            best = max(quotes, key=lambda q: q["tmqs"]) if total else None
+            best_text = best["symbol"] if best else "N/A"
         if best:
             best_confidence = best.get("confidence_score", 0)
             best_decision = best["decision"]
@@ -220,7 +231,6 @@ class TradingWorkstation:
                    ),
                 bg=banner_color,
             )
-            
         
         self.summary_label.config(
                 text=(
@@ -330,7 +340,17 @@ class TradingWorkstation:
             f"WATCH needs TMQS >= 60, RVOL >= 0.75,\n"
             f"and acceptable momentum/liquidity.\n"
         )
+    def check_ready_alerts(self, quotes):
+        current_ready_symbols = {
+            q["symbol"] for q in quotes if q["decision"] == "READY"
+        }
 
+        new_ready_symbols = current_ready_symbols - self.previous_ready_symbols
+
+        if new_ready_symbols:
+            print("NEW READY ALERT:", ", ".join(new_ready_symbols))
+
+        self.previous_ready_symbols = current_ready_symbols
     def show_error(self, error):
         self.is_refreshing = False
         self.status_label.config(text=f"Error: {error}")

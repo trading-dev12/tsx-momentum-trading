@@ -29,7 +29,8 @@ def get_breakout_status(quote):
 
 def get_average_volume(symbol, days=20):
     try:
-        ticker = yf.Ticker(symbol + ".TO")
+        yahoo_symbol = symbol if symbol.endswith(".TO") else symbol + ".TO"
+        ticker = yf.Ticker(yahoo_symbol)
         history = ticker.history(period="30d")
 
         if history.empty or "Volume" not in history:
@@ -54,7 +55,8 @@ def get_rvol_status(relative_volume):
 
 def get_live_quote(symbol):
     try:
-        ticker = yf.Ticker(symbol + ".TO")
+        yahoo_symbol = symbol if symbol.endswith(".TO") else symbol + ".TO"
+        ticker = yf.Ticker(yahoo_symbol)
         info = ticker.fast_info
 
         price = info.get("lastPrice", 0) or 0

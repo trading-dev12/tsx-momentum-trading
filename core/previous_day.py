@@ -3,7 +3,8 @@ import yfinance as yf
 
 def get_previous_day(symbol):
 
-    ticker = yf.Ticker(symbol + ".TO")
+    yahoo_symbol = symbol if symbol.endswith(".TO") else symbol + ".TO"
+    ticker = yf.Ticker(yahoo_symbol)
 
     history = ticker.history(period="5d")
 

@@ -136,14 +136,16 @@ def main():
     symbol_stats = {}
 
     for trade in trades:
-
         symbol = trade["symbol"]
+        result = trade["profit_loss_percent"]
 
         if symbol not in symbol_stats:
             symbol_stats[symbol] = {
                 "trades": 0,
                 "wins": 0,
                 "returns": [],
+                "winning_returns": [],
+                "losing_returns": [],
                 "best": -999,
                 "worst": 999,
             }
@@ -151,41 +153,71 @@ def main():
         s = symbol_stats[symbol]
 
         s["trades"] += 1
-        s["returns"].append(trade["profit_loss_percent"])
+        s["returns"].append(result)
 
-        if trade["profit_loss_percent"] > 0:
+        if result > 0:
             s["wins"] += 1
+            s["winning_returns"].append(result)
+        else:
+            s["losing_returns"].append(result)
 
-        s["best"] = max(s["best"], trade["profit_loss_percent"])
-        s["worst"] = min(s["worst"], trade["profit_loss_percent"])
+        s["best"] = max(s["best"], result)
+        s["worst"] = min(s["worst"], result)
 
     print(
         f"{'Symbol':<10}"
         f"{'Trades':>8}"
         f"{'Win %':>10}"
+        f"{'PF':>8}"
+        f"{'Expect':>10}"
         f"{'Avg %':>10}"
         f"{'Best %':>10}"
         f"{'Worst %':>10}"
+        f"{'Rating':>12}"
     )
 
-    print("-" * 60)
+    print("-" * 88)
 
     for symbol, s in sorted(
         symbol_stats.items(),
         key=lambda item: average(item[1]["returns"]),
         reverse=True,
     ):
-
         avg_return = average(s["returns"])
         win_rate = s["wins"] / s["trades"] * 100
+
+        total_wins = sum(s["winning_returns"])
+        total_losses = abs(sum(s["losing_returns"]))
+
+        profit_factor = (
+            total_wins / total_losses
+            if total_losses > 0
+            else 999
+        )
+
+        expectancy = avg_return
+
+        if s["trades"] < 5:
+            rating = "LOW SAMPLE"
+        elif profit_factor >= 2 and expectancy > 2:
+            rating = "STRONG"
+        elif profit_factor >= 1.3 and expectancy > 0:
+            rating = "GOOD"
+        elif expectancy > 0:
+            rating = "WEAK EDGE"
+        else:
+            rating = "AVOID"
 
         print(
             f"{symbol:<10}"
             f"{s['trades']:>8}"
-            f"{win_rate:>10.1f}"
-            f"{avg_return:>10.2f}"
-            f"{s['best']:>10.2f}"
-            f"{s['worst']:>10.2f}"
+            f"{win_rate:>9.1f}%"
+            f"{profit_factor:>8.2f}"
+            f"{expectancy:>9.2f}%"
+            f"{avg_return:>9.2f}%"
+            f"{s['best']:>9.2f}%"
+            f"{s['worst']:>9.2f}%"
+            f"{rating:>12}"
         )
 
 

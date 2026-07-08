@@ -298,3 +298,26 @@ Maintain compatibility with the planned Interactive Brokers integration through 
   - Trade qualification
   - Trade ranking
 - Continue building toward a professional research dashboard before moving to Interactive Brokers integration.
+Version 2.1 – Enhanced Trade Profile & Symbol Analytics
+
+Completed:
+- Upgraded Trade Profile reporting.
+- Added symbol-level Profit Factor calculations.
+- Added symbol-level Expectancy calculations.
+- Added symbol ratings (STRONG, GOOD, WEAK EDGE, LOW SAMPLE).
+- Added minimum sample-size awareness for symbol evaluation.
+- Improved Performance by Symbol report formatting.
+- Fixed duplicate symbol output caused by an extra print block.
+- Validated enhanced reporting with TMQS 95 historical backtest.
+
+Current Best Results:
+- Trades: 148
+- Win Rate: 58.78%
+- Profit Factor: 2.45
+- Expectancy: 3.80%
+- Max Drawdown: -0.52%
+
+Next Steps:
+- Add automated Research Summary section.
+- Improve symbol ranking methodology.
+- Continue TMQS Version 3 research and optimization.

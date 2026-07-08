@@ -321,3 +321,32 @@ Next Steps:
 - Add automated Research Summary section.
 - Improve symbol ranking methodology.
 - Continue TMQS Version 3 research and optimization.
+Version 2.2 Beta 1 – Research Dashboard Foundation
+
+Completed:
+- Created the new research module structure.
+- Standardized the backtester return interface.
+- Built the Symbol Analysis research tool.
+- Added automatic symbol rankings.
+- Added Profit Factor, Expectancy, Win Rate, and Rating analysis by symbol.
+- Added the first Research Summary section.
+- Fixed the UNKNOWN symbol reporting issue.
+- Improved project architecture for future research tools.
+
+Key Findings:
+- TMQS 95 continues to identify high-quality setups.
+- Strongest symbols:
+  - AC.TO
+  - HIVE.TO
+  - BTE.TO
+  - ATH.TO
+- SHOP.TO remains a good candidate.
+- Several symbols consistently underperform and may become future filter candidates.
+- Symbol-level research is proving valuable for identifying where the strategy's edge is strongest.
+
+Next Priorities:
+- Build the Research Dashboard.
+- Create a numerical Research Score (0–100) for every symbol.
+- Compare symbol performance across TMQS thresholds (80, 85, 90, 95).
+- Continue improving trade selection while maintaining sufficient trade frequency.
+- Keep all future enhancements validated through historical backtesting before integrating them into the live scanner.

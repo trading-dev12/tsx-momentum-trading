@@ -1,9 +1,8 @@
 """
-Main backtesting engine for the TSX Momentum Trading system.
+Backtesting engine for TSX Momentum Trading system.
 """
 
-from pathlib import Path
-from signal import signal
+import os
 
 from backtesting.historical_loader import load_historical_csv
 from backtesting.strategy import evaluate_historical_setup
@@ -14,16 +13,15 @@ from backtesting.reports import print_performance_report, save_trade_log
 
 def run_backtest(
     file_path,
-    min_tmqs=0,
-    min_rvol=0,
-    breakout_only=False,
-    atr_multiplier=1.5,
-    reward_multiplier=2.0,
-    max_hold_days=7,
+    min_tmqs=80,
+    min_rvol=1.0,
+    breakout_only=True,
+    atr_multiplier=2.0,
+    reward_multiplier=2.5,
+    max_hold_days=10,
 ):
     rows = load_historical_csv(file_path)
     trades = []
-    symbol = Path(file_path).stem.replace("_TO", ".TO")
 
     for index in range(1, len(rows)):
         row = rows[index]
@@ -31,17 +29,16 @@ def run_backtest(
 
         signal = evaluate_historical_setup(row, previous_row)
 
-        if signal.get("tmqs", 0) < min_tmqs:
+        if signal["tmqs"] < min_tmqs:
             continue
 
-        if signal.get("rvol", 0) < min_rvol:
+        if signal["rvol"] < min_rvol:
             continue
 
         if breakout_only and signal.get("breakout", "") not in [
             "BREAKOUT",
             "STRONG BREAKOUT",
         ]:
-            continue
             continue
 
         if signal["decision"] == "READY":
@@ -56,37 +53,43 @@ def run_backtest(
             if trade is None:
                 continue
 
-            trade["symbol"] = symbol
             trade["reason"] = signal["reason"]
             trade["tmqs"] = signal["tmqs"]
             trade["rvol"] = signal["rvol"]
             trade["breakout"] = signal["breakout"]
+
             trades.append(trade)
+
     return trades
 
 
 def run_watchlist_backtest(
-    folder_path="data/historical",
-    min_tmqs=0,
-    min_rvol=0,
-    breakout_only=False,
-    atr_multiplier=1.5,
-    reward_multiplier=2.0,
-    max_hold_days=7,
+    historical_folder="data/historical",
+    min_tmqs=80,
+    min_rvol=1.0,
+    breakout_only=True,
+    atr_multiplier=2.0,
+    reward_multiplier=2.5,
+    max_hold_days=10,
     show_report=True,
     save_log=True,
     verbose=True,
 ):
-    folder = Path(folder_path)
     all_trades = []
 
-    csv_files = sorted(folder.glob("*_TO.csv"))
+    files = [
+        file
+        for file in os.listdir(historical_folder)
+        if file.endswith(".csv")
+    ]
 
     if verbose:
-        print(f"Found {len(csv_files)} historical files.\n")
+        print(f"Found {len(files)} historical files.\n")
 
-    for file_path in csv_files:
-        symbol = file_path.stem.replace("_TO", ".TO")
+    for file in files:
+        file_path = os.path.join(historical_folder, file)
+
+        symbol = file.replace("_TO.csv", ".TO").replace(".csv", "")
 
         if verbose:
             print(f"Backtesting {symbol}...")
@@ -101,6 +104,9 @@ def run_watchlist_backtest(
             max_hold_days=max_hold_days,
         )
 
+        for trade in trades:
+            trade["symbol"] = symbol
+
         if verbose:
             print(f"Trades: {len(trades)}\n")
 
@@ -114,7 +120,10 @@ def run_watchlist_backtest(
     if save_log:
         save_trade_log(all_trades)
 
-    return all_trades, stats
+    return {
+        "trades": all_trades,
+        "summary": stats,
+    }
 
 
 if __name__ == "__main__":

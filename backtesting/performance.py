@@ -22,6 +22,7 @@ def calculate_performance(trades, starting_balance=10000, risk_per_trade_percent
             "max_drawdown": 0,
             "best_stock": "N/A",
             "worst_stock": "N/A",
+            "exit_reasons": {},
         }
 
     returns = [t["return_pct"] for t in trades]
@@ -53,12 +54,15 @@ def calculate_performance(trades, starting_balance=10000, risk_per_trade_percent
     max_drawdown = 0
 
     stock_returns = {}
+    exit_reasons = {}
 
     for trade in trades:
         symbol = trade.get("symbol", "UNKNOWN")
         trade_return = trade["return_pct"]
+        exit_reason = trade.get("exit_reason", "Unknown")
 
         stock_returns[symbol] = stock_returns.get(symbol, 0) + trade_return
+        exit_reasons[exit_reason] = exit_reasons.get(exit_reason, 0) + 1
 
         position_impact = trade_return * (risk_per_trade_percent / 100)
         balance *= (1 + position_impact / 100)
@@ -93,4 +97,5 @@ def calculate_performance(trades, starting_balance=10000, risk_per_trade_percent
         "max_drawdown": round(max_drawdown, 2),
         "best_stock": best_stock,
         "worst_stock": worst_stock,
+        "exit_reasons": exit_reasons,
     }

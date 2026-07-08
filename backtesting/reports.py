@@ -30,6 +30,12 @@ def print_performance_report(stats):
 
     print(f"Best Stock       : {stats['best_stock']}")
     print(f"Worst Stock      : {stats['worst_stock']}")
+    
+    print("-" * 60)
+    print("Exit Summary")
+
+    for reason, count in sorted(stats["exit_reasons"].items()):
+        print(f"{reason:<20} : {count}")
 
     print("=" * 60)
 

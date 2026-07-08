@@ -11,7 +11,15 @@ from backtesting.performance import calculate_performance
 from backtesting.reports import print_performance_report, save_trade_log
 
 
-def run_backtest(file_path, min_tmqs=0, min_rvol=0, breakout_only=False):
+def run_backtest(
+    file_path,
+    min_tmqs=0,
+    min_rvol=0,
+    breakout_only=False,
+    atr_multiplier=1.5,
+    reward_multiplier=2.0,
+    max_hold_days=7,
+):
     rows = load_historical_csv(file_path)
     trades = []
     symbol = Path(file_path).stem.replace("_TO", ".TO")
@@ -32,7 +40,13 @@ def run_backtest(file_path, min_tmqs=0, min_rvol=0, breakout_only=False):
             continue
 
         if signal["decision"] == "READY":
-            trade = simulate_trade(rows, index)
+            trade = simulate_trade(
+                rows,
+                index,
+                atr_multiplier=atr_multiplier,
+                reward_multiplier=reward_multiplier,
+                max_hold_days=max_hold_days,
+            )
 
             if trade is None:
                 continue
@@ -44,7 +58,15 @@ def run_backtest(file_path, min_tmqs=0, min_rvol=0, breakout_only=False):
     return trades
 
 
-def run_watchlist_backtest(folder_path="data/historical", min_tmqs=0, min_rvol=0, breakout_only=False):
+def run_watchlist_backtest(
+    folder_path="data/historical",
+    min_tmqs=0,
+    min_rvol=0,
+    breakout_only=False,
+    atr_multiplier=1.5,
+    reward_multiplier=2.0,
+    max_hold_days=7,
+):
     folder = Path(folder_path)
     all_trades = []
 
@@ -61,6 +83,9 @@ def run_watchlist_backtest(folder_path="data/historical", min_tmqs=0, min_rvol=0
             min_tmqs=min_tmqs,
             min_rvol=min_rvol,
             breakout_only=breakout_only,
+            atr_multiplier=atr_multiplier,
+            reward_multiplier=reward_multiplier,
+            max_hold_days=max_hold_days,
         )
 
         print(f"Trades: {len(trades)}\n")

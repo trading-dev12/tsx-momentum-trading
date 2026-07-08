@@ -66,17 +66,23 @@ def run_watchlist_backtest(
     atr_multiplier=1.5,
     reward_multiplier=2.0,
     max_hold_days=7,
+    show_report=True,
+    save_log=True,
+    verbose=True,
 ):
     folder = Path(folder_path)
     all_trades = []
 
     csv_files = sorted(folder.glob("*_TO.csv"))
 
-    print(f"Found {len(csv_files)} historical files.\n")
+    if verbose:
+        print(f"Found {len(csv_files)} historical files.\n")
 
     for file_path in csv_files:
         symbol = file_path.stem.replace("_TO", ".TO")
-        print(f"Backtesting {symbol}...")
+
+        if verbose:
+            print(f"Backtesting {symbol}...")
 
         trades = run_backtest(
             file_path,
@@ -88,12 +94,18 @@ def run_watchlist_backtest(
             max_hold_days=max_hold_days,
         )
 
-        print(f"Trades: {len(trades)}\n")
+        if verbose:
+            print(f"Trades: {len(trades)}\n")
+
         all_trades.extend(trades)
 
     stats = calculate_performance(all_trades)
-    print_performance_report(stats)
-    save_trade_log(all_trades)
+
+    if show_report:
+        print_performance_report(stats)
+
+    if save_log:
+        save_trade_log(all_trades)
 
     return all_trades, stats
 

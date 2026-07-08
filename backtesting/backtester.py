@@ -3,6 +3,7 @@ Main backtesting engine for the TSX Momentum Trading system.
 """
 
 from pathlib import Path
+from signal import signal
 
 from backtesting.historical_loader import load_historical_csv
 from backtesting.strategy import evaluate_historical_setup
@@ -57,8 +58,10 @@ def run_backtest(
 
             trade["symbol"] = symbol
             trade["reason"] = signal["reason"]
+            trade["tmqs"] = signal["tmqs"]
+            trade["rvol"] = signal["rvol"]
+            trade["breakout"] = signal["breakout"]
             trades.append(trade)
-
     return trades
 
 

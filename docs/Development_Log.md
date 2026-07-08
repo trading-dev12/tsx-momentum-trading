@@ -350,3 +350,92 @@ Next Priorities:
 - Compare symbol performance across TMQS thresholds (80, 85, 90, 95).
 - Continue improving trade selection while maintaining sufficient trade frequency.
 - Keep all future enhancements validated through historical backtesting before integrating them into the live scanner.
+## Version 2.2 Beta 1 – Research Foundation & Symbol Intelligence
+
+### Completed
+
+- Created a dedicated `research` module for quantitative analysis tools.
+- Standardized the backtester return format using a structured dictionary:
+  - `results["trades"]`
+  - `results["summary"]`
+- Improved project architecture to support future research tools without duplicate logic.
+- Eliminated the UNKNOWN symbol reporting issue caused by processing the performance summary as a trade.
+- Refactored Symbol Analysis to work with the new standardized backtester interface.
+- Built the Symbol Analysis research tool.
+- Added automatic symbol ranking using:
+  - Win Rate
+  - Profit Factor
+  - Expectancy
+  - Average Return
+  - Best/Worst Trade
+  - Sample Size
+- Added symbol quality ratings:
+  - STRONG
+  - GOOD
+  - WEAK EDGE
+  - LOW SAMPLE
+  - AVOID
+- Added the first Research Summary section to automatically identify:
+  - Top Performing Symbols
+  - Good Candidates
+  - Symbols Needing Improvement
+  - Low Sample Size Symbols
+- Improved overall research workflow and established the foundation for future quantitative research reports.
+
+### Key Findings
+
+Current TMQS 95 settings continue to identify high-quality momentum setups.
+
+Current strongest performing symbols:
+
+- AC.TO
+- HIVE.TO
+- BTE.TO
+- ATH.TO
+
+Additional observations:
+
+- SHOP.TO continues to perform well and remains a strong candidate.
+- BB.TO, CLS.TO, FM.TO and K.TO currently show weaker historical edges.
+- Symbol-level analysis is successfully identifying where the strategy performs best.
+- The strategy appears to have a measurable edge, but trade frequency at TMQS 95 is lower than desired for live trading.
+
+### Strategic Direction
+
+Project objective remains unchanged:
+
+Build a momentum trading decision engine capable of producing a statistically proven edge while maintaining enough quality trade opportunities for consistent trading.
+
+Future improvements will only be accepted if historical backtesting demonstrates measurable improvements in one or more of:
+
+- Expectancy
+- Profit Factor
+- Win Rate
+- Drawdown
+- Risk-adjusted returns
+- Trade frequency
+
+No new filters will be permanently added without historical evidence that they improve the overall system.
+
+### Next Priorities
+
+1. Build the Research Dashboard.
+2. Create a numerical Research Score (0–100) for every symbol.
+3. Compare strategy performance across TMQS thresholds (80, 85, 90 and 95).
+4. Determine the optimal balance between:
+   - Trade Frequency
+   - Win Rate
+   - Profit Factor
+   - Expectancy
+5. Continue developing the research platform before adding additional trading filters.
+6. Delay Portfolio Simulator development until the research platform and optimal strategy parameters are finalized.
+
+### Long-Term Vision
+
+Transform the project from a traditional momentum scanner into a quantitative momentum trading decision engine capable of:
+
+- Ranking every trading opportunity by historical probability.
+- Learning which symbols consistently produce the strongest edge.
+- Recommending optimal scanner settings using historical evidence.
+- Integrating sector strength, relative strength and market regime analysis after validation.
+- Supporting Interactive Brokers real-time execution once research and validation are complete.

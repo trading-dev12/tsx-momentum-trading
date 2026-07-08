@@ -21,54 +21,65 @@ def evaluate_historical_setup(row, previous_row=None):
 
     rvol = volume / previous_volume if previous_volume > 0 else 0
 
-    score = 0
+    breakout_score = 0
+    volume_score = 0
+    price_score = 0
 
-    # Breakout quality
-    if close > previous_high * 1.01:
+    # Breakout quality - max 35 points
+    breakout_percent = ((close - previous_high) / previous_high) * 100
+
+    if breakout_percent >= 2.0:
         breakout = "STRONG BREAKOUT"
-        score += 40
-    elif close > previous_high:
+        breakout_score = 35
+    elif breakout_percent >= 1.0:
+        breakout = "STRONG BREAKOUT"
+        breakout_score = 30
+    elif breakout_percent > 0:
         breakout = "BREAKOUT"
-        score += 30
-    elif close >= previous_high * 0.995:
+        breakout_score = 24 + min(breakout_percent * 6, 6)
+    elif breakout_percent >= -0.5:
         breakout = "NEAR BREAKOUT"
-        score += 18
+        breakout_score = 16
     elif close >= previous_close:
         breakout = "INSIDE RANGE"
-        score += 8
+        breakout_score = 8
     else:
         breakout = "WEAK / BELOW CLOSE"
-        score -= 20
+        breakout_score = 0
 
-    # Relative volume quality
+    # Relative volume quality - max 35 points
     if rvol >= 3.0:
-        score += 35
+        volume_score = 35
     elif rvol >= 2.5:
-        score += 30
+        volume_score = 30 + ((rvol - 2.5) / 0.5) * 5
     elif rvol >= 2.0:
-        score += 24
+        volume_score = 24 + ((rvol - 2.0) / 0.5) * 6
     elif rvol >= 1.5:
-        score += 16
+        volume_score = 16 + ((rvol - 1.5) / 0.5) * 8
     elif rvol >= 1.0:
-        score += 8
+        volume_score = 8 + ((rvol - 1.0) / 0.5) * 8
     elif rvol >= 0.75:
-        score -= 10
-    elif rvol >= 0.5:
-        score -= 20
+        volume_score = 4
     else:
-        score -= 35
+        volume_score = 0
 
-    # Daily direction confirmation
-    if close > previous_close * 1.02:
-        score += 20
-    elif close > previous_close:
-        score += 10
+    # Daily price strength - max 30 points
+    price_change_percent = ((close - previous_close) / previous_close) * 100
+
+    if price_change_percent >= 4.0:
+        price_score = 30
+    elif price_change_percent >= 2.0:
+        price_score = 20 + ((price_change_percent - 2.0) / 2.0) * 10
+    elif price_change_percent > 0:
+        price_score = 10 + (price_change_percent / 2.0) * 10
     else:
-        score -= 15
+        price_score = 0
+
+    score = breakout_score + volume_score + price_score
 
     # Quality caps
-    if rvol < 0.5:
-        score = min(score, 35)
+    if rvol < 0.75:
+        score = min(score, 45)
     elif rvol < 1.0:
         score = min(score, 55)
     elif rvol < 1.5:
@@ -80,7 +91,7 @@ def evaluate_historical_setup(row, previous_row=None):
     if breakout == "NEAR BREAKOUT":
         score = min(score, 75)
 
-    tmqs = max(0, min(score, 100))
+    tmqs = round(max(0, min(score, 100)), 2)
 
     if tmqs >= 80 and breakout in ["BREAKOUT", "STRONG BREAKOUT"] and rvol >= 1.5:
         decision = "READY"

@@ -151,3 +151,51 @@ Instead, the issue appears to be that READY trades occupy a narrow TMQS range. F
   - Trade qualification (READY/WATCH/IGNORE)
   - Trade ranking
 - Continue improving trade quality before adding additional indicators.
+
+Latest Session
+Completed
+Fixed the breakout filtering bug in the historical backtester.
+Updated the breakout filter to correctly recognize both BREAKOUT and STRONG BREAKOUT setups.
+Verified that Breakout=True and Breakout=False now produce identical results when expected.
+Improved optimizer reporting by renaming the Top 10 results to correctly display Robustness Score instead of Return.
+Added a minimum trade requirement of 100 trades before a parameter set can qualify for the Robustness Score rankings.
+Updated optimizer TMQS testing range from 60, 65, 70, 75, 80 to 80, 85, 90, 95.
+Re-ran the complete optimizer using the new TMQS thresholds.
+Validated that TMQS thresholds now meaningfully differentiate trade quality.
+Key Findings
+Best Overall Return
+TMQS: 80
+ATR Multiplier: 2.0
+Reward Multiplier: 2.5
+Maximum Hold Days: 10
+Trades: 819
+Return: 16.55%
+Win Rate: 52.63%
+Profit Factor: 1.64
+Expectancy: 1.88%
+Highest Quality Strategy
+TMQS: 95
+ATR Multiplier: 2.0
+Reward Multiplier: 2.5
+Maximum Hold Days: 10
+Trades: 148
+Return: 5.77%
+Win Rate: 58.78%
+Profit Factor: 2.45
+Expectancy: 3.80%
+Maximum Drawdown: -0.52%
+Important Discoveries
+The breakout filtering issue was confirmed to be a software bug rather than a strategy problem.
+The breakout filter now behaves correctly and consistently.
+TMQS is now functioning as a genuine quality ranking system.
+Lower TMQS thresholds produce more trades and higher total returns.
+Higher TMQS thresholds significantly improve trade quality, Profit Factor, and Expectancy while reducing the number of trades.
+The optimizer is now producing reliable and trustworthy comparisons between parameter combinations.
+Next Priorities
+Analyze the characteristics of TMQS 95 trades (RVOL, breakout strength, and price movement).
+Begin designing TMQS Version 3 by separating:
+TMQS scoring
+Trade qualification (READY / WATCH / IGNORE)
+Trade ranking
+Continue improving trade quality before adding new indicators such as sector strength and relative strength.
+Maintain compatibility with the planned Interactive Brokers integration through the standardized data provider interface.

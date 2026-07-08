@@ -36,7 +36,11 @@ def run_backtest(
         if signal.get("rvol", 0) < min_rvol:
             continue
 
-        if breakout_only and signal.get("breakout", "") != "BREAKOUT":
+        if breakout_only and signal.get("breakout", "") not in [
+            "BREAKOUT",
+            "STRONG BREAKOUT",
+        ]:
+            continue
             continue
 
         if signal["decision"] == "READY":

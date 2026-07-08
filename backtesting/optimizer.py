@@ -33,7 +33,7 @@ best_expectancy_settings = None
 
 results = []
 
-tmqs_values = [60, 65, 70, 75, 80]
+tmqs_values = [80, 85, 90, 95]
 rvol_values = [1.0, 1.5, 2.0]
 breakout_values = [True, False]
 atr_values = [1.0, 1.5, 2.0]
@@ -90,13 +90,17 @@ for tmqs in tmqs_values:
                             f"Expectancy: {stats['expectancy']:.2f}% | "
                             f"DD: {stats['max_drawdown']:.2f}%"
                         )
-                        robustness_score = (
-                            stats["profit_factor"] * 40
-                            + stats["expectancy"] * 25
-                            + stats["total_return"] * 1
-                            + min(stats["total_trades"] / 100, 20)
-                            + stats["max_drawdown"]
-                        )
+                        if stats["total_trades"] < 100:
+                            robustness_score = -999
+                        else:
+                            robustness_score = (
+                                stats["profit_factor"] * 40
+                                + stats["expectancy"] * 25
+                                + stats["total_return"] * 1
+                                + min(stats["total_trades"] / 100, 20)
+                                + stats["max_drawdown"]
+                            )
+    
                         row = {
                             "Robustness Score": round(robustness_score, 2),
                             "TMQS": tmqs,
@@ -202,7 +206,7 @@ print("backtesting/optimizer_results.csv")
 
 print("\n")
 print("=" * 90)
-print("TOP 10 PARAMETER COMBINATIONS BY RETURN")
+print("TOP 10 PARAMETER COMBINATIONS BY ROBUSTNESS SCORE")
 print("=" * 90)
 
 for rank, row in enumerate(results[:10], start=1):

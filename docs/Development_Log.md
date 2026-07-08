@@ -109,3 +109,45 @@
 - Audit breakout filtering logic.
 - Improve TMQS scoring so higher scores truly represent better setups.
 - Add standardized data provider interface later to support seamless IBKR integration.
+## Latest Session
+
+### Completed
+
+- Redesigned the TMQS scoring model with stronger weighting for:
+  - Breakout quality
+  - Relative volume
+  - Price strength
+  - Quality caps
+- Verified that the optimizer correctly applies the breakout filter.
+- Confirmed that allowing WATCH setups changes optimization results, then reverted to READY-only trading to match the intended strategy.
+- Created a TMQS Distribution Analysis tool.
+- Analyzed all historical setups (28,842 total) to understand TMQS score distribution.
+
+### Key Findings
+
+- New TMQS model reduced qualifying trades:
+  - From 2,019 to 495 READY trades.
+- Trade quality improved:
+  - Profit Factor increased from approximately 1.59 to approximately 1.74–1.76.
+  - Expectancy increased from approximately 1.33% to approximately 1.74–1.79%.
+- Overall returns decreased due to the much more selective strategy.
+- TMQS score distribution:
+  - Average TMQS: 18.76
+  - Median TMQS: 0
+  - Highest TMQS: 95
+- More than half of all historical setups scored between 0 and 9, confirming that the system is effectively rejecting poor-quality setups.
+
+### Important Discovery
+
+The optimizer's similar results for TMQS thresholds (60–75) are **not** caused by the overall TMQS distribution.
+
+Instead, the issue appears to be that READY trades occupy a narrow TMQS range. Future analysis should focus specifically on the TMQS distribution of READY trades rather than all setups.
+
+### Next Tasks
+
+- Extend the TMQS Analysis tool to analyze READY trades only.
+- Build a multi-factor TMQS engine that separates:
+  - Setup scoring
+  - Trade qualification (READY/WATCH/IGNORE)
+  - Trade ranking
+- Continue improving trade quality before adding additional indicators.

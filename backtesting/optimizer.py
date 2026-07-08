@@ -90,8 +90,15 @@ for tmqs in tmqs_values:
                             f"Expectancy: {stats['expectancy']:.2f}% | "
                             f"DD: {stats['max_drawdown']:.2f}%"
                         )
-
+                        robustness_score = (
+                            stats["profit_factor"] * 40
+                            + stats["expectancy"] * 25
+                            + stats["total_return"] * 1
+                            + min(stats["total_trades"] / 100, 20)
+                            + stats["max_drawdown"]
+                        )
                         row = {
+                            "Robustness Score": round(robustness_score, 2),
                             "TMQS": tmqs,
                             "RVOL": rvol,
                             "Breakout Only": breakout,
@@ -160,14 +167,16 @@ print_best_section("BEST EXPECTANCY SETTINGS", best_expectancy_settings, best_ex
 
 results = sorted(
     results,
-    key=lambda x: x["Return"],
-    reverse=True
+    key=lambda x: x["Robustness Score"],
+    reverse=True,
 )
 
 with open("backtesting/optimizer_results.csv", "w", newline="", encoding="utf-8") as file:
     writer = csv.DictWriter(
         file,
         fieldnames=[
+            
+        
             "TMQS",
             "RVOL",
             "Breakout Only",
@@ -180,6 +189,8 @@ with open("backtesting/optimizer_results.csv", "w", newline="", encoding="utf-8"
             "Profit Factor",
             "Expectancy",
             "Max Drawdown",
+            "Robustness Score",
+
         ],
     )
 

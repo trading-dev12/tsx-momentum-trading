@@ -199,3 +199,102 @@ Trade qualification (READY / WATCH / IGNORE)
 Trade ranking
 Continue improving trade quality before adding new indicators such as sector strength and relative strength.
 Maintain compatibility with the planned Interactive Brokers integration through the standardized data provider interface.
+## Latest Session
+
+### Completed
+
+- Built and validated the TMQS Edge Analysis tool.
+- Added TMQS threshold comparison for:
+  - TMQS >= 80
+  - TMQS >= 85
+  - TMQS >= 90
+  - TMQS >= 95
+- Added Edge Analysis metrics:
+  - Total trades
+  - Return
+  - Win rate
+  - Profit Factor
+  - Expectancy
+  - Max drawdown
+  - Average TMQS
+  - Average RVOL
+  - Median RVOL
+  - RVOL range
+  - Breakout type distribution
+- Confirmed that higher TMQS thresholds improve trade quality:
+  - TMQS 80: 819 trades, Profit Factor 1.64, Expectancy 1.88%
+  - TMQS 85: 493 trades, Profit Factor 1.78, Expectancy 2.14%
+  - TMQS 90: 261 trades, Profit Factor 1.92, Expectancy 2.55%
+  - TMQS 95: 148 trades, Profit Factor 2.45, Expectancy 3.80%
+- Confirmed that TMQS 95 trades are high-quality setups:
+  - Average TMQS: 98.60
+  - Average RVOL: 3.67
+  - Median RVOL: 3.20
+  - RVOL range: 2.50 to 8.87
+  - Breakout profile: 148 STRONG BREAKOUT trades, 0 normal BREAKOUT trades
+- Built and validated the Trade Profile analysis tool.
+- Added trade profile sections:
+  - Overall performance
+  - Exit reasons
+  - Holding period
+  - Winner / loser profile
+  - Setup quality profile
+  - Breakout profile
+  - Top 10 winners
+  - Top 10 losers
+  - Performance by symbol
+- Confirmed TMQS 95 trade profile:
+  - Trades analyzed: 148
+  - Winners: 87
+  - Losers: 61
+  - Win rate: 58.78%
+  - Profit Factor: 2.45
+  - Expectancy: 3.80%
+  - Average winner: 10.91%
+  - Average loser: -6.35%
+  - Exit reasons:
+    - Time exit: 84
+    - Target hit: 24
+    - Stop hit: 40
+- Added symbol-level performance analysis.
+- Found that HIVE.TO is high-impact but not the only source of edge.
+- Identified strong-performing symbols at TMQS 95:
+  - LUN.TO: 4 trades, 100% win rate, average +9.02%
+  - AC.TO: 7 trades, 100% win rate, average +8.64%
+  - HIVE.TO: 25 trades, 60% win rate, average +8.55%
+  - BTE.TO: 8 trades, 75% win rate, average +7.86%
+  - ATH.TO: 12 trades, 75% win rate, average +6.50%
+- Identified weaker or lower-quality symbols at TMQS 95:
+  - TD.TO: 1 trade, average -0.85%
+  - WPM.TO: 3 trades, average -1.31%
+  - CLS.TO: 14 trades, average +0.35%
+  - BB.TO: 24 trades, 41.7% win rate, average +1.44%
+- Confirmed that symbol-level filtering or symbol-level ranking may become an important future strategy improvement.
+
+### Key Findings
+
+- TMQS is now functioning as a true quality-ranking system.
+- Higher TMQS thresholds reduce trade count but improve trade quality.
+- TMQS 95 is the current highest-quality setup group.
+- TMQS 95 trades are characterized by:
+  - Very strong relative volume
+  - Strong breakout quality
+  - Better expectancy
+  - Better Profit Factor
+  - Lower drawdown
+- Most TMQS 95 trades still exit by time stop rather than profit target.
+- HIVE.TO creates both large winners and large losers, making it a high-impact/high-volatility symbol.
+- The strategy’s edge is not entirely dependent on HIVE.TO, which is encouraging.
+- Symbol-level analysis is now a logical next step before TMQS v3.
+
+### Next Tasks
+
+- Create a dedicated Symbol Analysis tool.
+- Compare symbol performance across TMQS thresholds 80, 85, 90, and 95.
+- Identify which symbols are consistently strong across thresholds.
+- Identify symbols that should potentially be filtered, downgraded, or ranked lower.
+- Begin planning TMQS v3 architecture:
+  - Separate setup scoring
+  - Trade qualification
+  - Trade ranking
+- Continue building toward a professional research dashboard before moving to Interactive Brokers integration.

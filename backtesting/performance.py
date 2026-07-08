@@ -7,10 +7,15 @@ def calculate_performance(trades, starting_balance=10000, risk_per_trade_percent
     if not trades:
         return {
             "total_trades": 0,
+            "winning_trades": 0,
+            "losing_trades": 0,
             "win_rate": 0,
             "average_gain": 0,
             "average_loss": 0,
             "profit_factor": 0,
+            "expectancy": 0,
+            "best_trade": 0,
+            "worst_trade": 0,
             "starting_balance": starting_balance,
             "ending_balance": starting_balance,
             "total_return": 0,
@@ -19,16 +24,29 @@ def calculate_performance(trades, starting_balance=10000, risk_per_trade_percent
             "worst_stock": "N/A",
         }
 
-    wins = [t["return_pct"] for t in trades if t["return_pct"] > 0]
-    losses = [t["return_pct"] for t in trades if t["return_pct"] <= 0]
+    returns = [t["return_pct"] for t in trades]
 
-    win_rate = len(wins) / len(trades) * 100
-    average_gain = sum(wins) / len(wins) if wins else 0
-    average_loss = sum(losses) / len(losses) if losses else 0
+    wins = [r for r in returns if r > 0]
+    losses = [r for r in returns if r <= 0]
+
+    total_trades = len(trades)
+    winning_trades = len(wins)
+    losing_trades = len(losses)
+
+    win_rate = winning_trades / total_trades * 100
+    loss_rate = losing_trades / total_trades * 100
+
+    average_gain = sum(wins) / winning_trades if winning_trades else 0
+    average_loss = sum(losses) / losing_trades if losing_trades else 0
 
     gross_profit = sum(wins)
     gross_loss = abs(sum(losses))
     profit_factor = gross_profit / gross_loss if gross_loss > 0 else 0
+
+    expectancy = (win_rate / 100 * average_gain) + (loss_rate / 100 * average_loss)
+
+    best_trade = max(returns)
+    worst_trade = min(returns)
 
     balance = starting_balance
     peak_balance = starting_balance
@@ -59,11 +77,16 @@ def calculate_performance(trades, starting_balance=10000, risk_per_trade_percent
     worst_stock = min(stock_returns, key=stock_returns.get)
 
     return {
-        "total_trades": len(trades),
+        "total_trades": total_trades,
+        "winning_trades": winning_trades,
+        "losing_trades": losing_trades,
         "win_rate": round(win_rate, 2),
         "average_gain": round(average_gain, 2),
         "average_loss": round(average_loss, 2),
         "profit_factor": round(profit_factor, 2),
+        "expectancy": round(expectancy, 2),
+        "best_trade": round(best_trade, 2),
+        "worst_trade": round(worst_trade, 2),
         "starting_balance": round(starting_balance, 2),
         "ending_balance": round(balance, 2),
         "total_return": round(total_return, 2),

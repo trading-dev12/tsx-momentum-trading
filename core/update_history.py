@@ -1,0 +1,3 @@
+from core.historical_data_manager import update_historical_database
+
+update_historical_database()

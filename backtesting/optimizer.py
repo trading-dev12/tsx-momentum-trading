@@ -34,11 +34,11 @@ best_expectancy_settings = None
 results = []
 
 tmqs_values = [80, 85, 90, 95]
-rvol_values = [1.0, 1.5, 2.0]
-breakout_values = [True, False]
-atr_values = [1.0, 1.5, 2.0]
-reward_values = [1.5, 2.0, 2.5]
-hold_values = [5, 7, 10]
+rvol_values = [1.0, 1.5, 2.0, 2.5]
+breakout_values = [True]
+atr_values = [1.5, 2.0, 2.5]
+reward_values = [2.0, 2.5, 3.0]
+hold_values = [5, 10, 15]
 
 total_tests = (
     len(tmqs_values)
@@ -70,7 +70,7 @@ for tmqs in tmqs_values:
                             f"Hold={max_hold_days}"
                         )
 
-                        trades, stats = run_watchlist_backtest(
+                        results_data = run_watchlist_backtest(
                             min_tmqs=tmqs,
                             min_rvol=rvol,
                             breakout_only=breakout,
@@ -81,6 +81,9 @@ for tmqs in tmqs_values:
                             save_log=False,
                             verbose=False,
                         )
+                 
+                        trades = results_data["trades"]
+                        stats = results_data["summary"]
 
                         print(
                             f"Return: {stats['total_return']:.2f}% | "
@@ -90,6 +93,7 @@ for tmqs in tmqs_values:
                             f"Expectancy: {stats['expectancy']:.2f}% | "
                             f"DD: {stats['max_drawdown']:.2f}%"
                         )
+
                         if stats["total_trades"] < 100:
                             robustness_score = -999
                         else:

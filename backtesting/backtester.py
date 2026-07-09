@@ -40,7 +40,13 @@ def run_backtest(
             "STRONG BREAKOUT",
         ]:
             continue
-
+        if signal["decision"] == "READY":
+            print(
+                f"READY RVOL CHECK | "
+                f"TMQS={signal['tmqs']} | "
+                f"RVOL={signal['rvol']:.2f} | "
+                f"Breakout={signal['breakout']}"
+        )
         if signal["decision"] == "READY":
             trade = simulate_trade(
                 rows,

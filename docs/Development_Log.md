@@ -728,3 +728,25 @@ Manage software-based exits.
 Maintain live trade journal.
 Build equity curve and performance tracking.
 Prepare architecture for future IBKR integration.
+## Version 3.1 – Strategy Comparison Engine
+
+Completed the first automated strategy comparison framework.
+
+Highlights:
+- Added strategy_comparison.py to evaluate multiple strategy configurations.
+- Added compare_strategies.py launcher.
+- Integrated the research universe backtester with automated strategy execution.
+- Compared Baseline, High Quality, Aggressive, and Loose strategy configurations.
+- Automatically summarized trades, win rate, profit factor, expectancy, total return, and drawdown for each strategy.
+- Identified that Aggressive and Loose configurations currently produce identical results, indicating an opportunity to refine breakout filtering logic.
+- Confirmed High Quality strategy produces fewer trades with improved expectancy, profit factor, and reduced drawdown.
+
+Project Status:
+The research framework has evolved from validating individual strategies to automatically comparing multiple strategy configurations. This establishes the foundation for automated strategy optimization and objective selection of paper trading candidates.
+
+Next Development Phase:
+- Build a ranked strategy comparison dashboard.
+- Automatically score and sort strategies.
+- Reduce research output into concise summary tables.
+- Validate breakout filtering differences.
+- Prepare for Version 3.2 automated optimization enhancements.

@@ -1,0 +1,3 @@
+from research.strategy_comparison import compare_strategies
+
+compare_strategies()

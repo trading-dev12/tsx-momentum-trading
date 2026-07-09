@@ -449,3 +449,42 @@ Completed:
 
 Next Task:
 - Build a Trade Profile Analyzer to report performance by stock and sector before expanding the historical database with the larger research universe.
+### Completed
+
+- Added Historical Data Manager.
+- Automated downloading of historical CSV data for the full research universe.
+- Updated historical database for 53 valid TSX symbols.
+- Removed MEG.TO from the energy watchlist because it was officially delisted.
+- Added Research Universe Validator.
+- Validated that all 53 watchlist symbols have usable historical data.
+- Confirmed:
+  - Symbols checked: 53
+  - Valid files: 53
+  - Missing files: 0
+  - Too short files: 0
+
+### Key Finding
+
+The expanded research universe is now clean and ready for full-universe backtesting.
+
+### Next Step
+
+Build the full-universe backtest runner and compare the expanded 53-symbol results against the previous smaller universe.
+### Version 2.2 Beta 2
+
+#### Completed
+
+- Built the Research Universe Backtesting engine.
+- Successfully executed historical backtests across the full 53-stock research universe.
+- Fixed the universe runner to correctly process trade lists from the backtester.
+- Added per-symbol trade counting during research runs.
+- Verified strict TMQS (95) and RVOL (2.0) filtering across the entire universe.
+- Successfully collected 254 qualifying historical trades from the expanded research universe.
+
+#### Key Finding
+
+The research engine is now capable of evaluating every stock in the research universe, providing the foundation for stock ranking, sector analysis, and long-term universe optimization.
+
+#### Next Step
+
+Expand the research engine to calculate performance statistics for every symbol (win rate, expectancy, profit factor, average return) and automatically rank the strongest and weakest stocks.

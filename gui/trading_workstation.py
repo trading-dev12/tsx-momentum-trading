@@ -4,7 +4,7 @@ from datetime import datetime
 import threading
 
 from core.config_loader import load_settings
-from core.watchlist_loader import load_watchlist
+from core.watchlist_loader import load_all_watchlists
 from core.market_data import get_quotes
 from core.market_context import score_market_context
 
@@ -162,7 +162,7 @@ class TradingWorkstation:
     def load_data(self):
         try:
             settings = load_settings()
-            watchlist = load_watchlist(settings["watchlist_file"])
+            watchlist = load_all_watchlists()
             market = score_market_context()
             quotes = get_quotes(watchlist)
 

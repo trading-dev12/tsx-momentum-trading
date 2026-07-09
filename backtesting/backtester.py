@@ -11,7 +11,6 @@ from backtesting.performance import calculate_performance
 from backtesting.reports import print_performance_report, save_trade_log
 
 
-
 def run_backtest(
     file_path,
     min_tmqs=80,
@@ -41,13 +40,7 @@ def run_backtest(
             "STRONG BREAKOUT",
         ]:
             continue
-        if signal["decision"] == "READY":
-            print(
-                f"READY RVOL CHECK | "
-                f"TMQS={signal['tmqs']} | "
-                f"RVOL={signal['rvol']:.2f} | "
-                f"Breakout={signal['breakout']}"
-        )
+
         if signal["decision"] == "READY":
             trade = simulate_trade(
                 rows,

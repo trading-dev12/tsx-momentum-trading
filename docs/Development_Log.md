@@ -651,4 +651,80 @@ Identify stocks that should be permanently excluded from the trading universe.
 Continue refining the live scanner using statistically validated historical results.
 Project Status
 
-The project has now progressed beyond simple backtesting and into quantitative strategy research. Future improvements will be driven by historical evidence rather than intuition, allowing every enhancement to be validated before being incorporated into the live trading system.
+The project has now progressed beyond simple backtesting and into quantitative strategy research. Future improvements will be driven by historical evidence rather than intuition, allowing every enhancement to be validated before being incorporated into the live trading system.Version 3.0 – Automated Strategy Validation Engine
+Overview
+
+Completed the Version 3.0 research framework by building an automated strategy validation engine capable of testing multiple strategy configurations across the full TSX research universe. The software now performs objective comparisons of strategy settings and recommends the strongest configuration for paper trading.
+
+Major Features Added
+Multi-Watchlist Scanner
+Added support for loading all watchlists automatically.
+Scanner and workstation now operate across the complete research universe (53 TSX stocks).
+Research Universe Backtester
+Backtests every historical CSV automatically.
+Combines all trades into a unified dataset.
+Calculates full-universe performance metrics.
+Professional Research Modules
+
+Integrated the following research tools into a single automated workflow:
+
+Stock Rankings
+Edge Analyzer
+Professional Research Dashboard
+Strategy Recommendation Engine
+Strategy Validator
+
+Created an automated validation engine that:
+
+Tests multiple TMQS thresholds.
+Tests multiple RVOL thresholds.
+Scores every strategy objectively.
+Compares all results in a ranked table.
+Automatically recommends the highest-quality configuration.
+Validation Results
+
+Best-performing configuration:
+
+Strategy: T100_R1.5
+Minimum TMQS: 100
+Minimum RVOL: 1.5
+Breakout Only: True
+Trades: 123
+Win Rate: 58.54%
+Profit Factor: 2.27
+Expectancy: 2.83%
+Max Drawdown: -0.46%
+Validation Score: 82.75
+Key Findings
+Increasing TMQS significantly improves strategy quality.
+TMQS 100 consistently produced the strongest statistical edge.
+TMQS 90 generated more trades but materially reduced profitability.
+RVOL filtering above TMQS 100 had little additional impact, indicating TMQS already captures high-volume momentum characteristics.
+The system can now determine optimal strategy settings automatically instead of relying on manual interpretation.
+Project Milestone
+
+Version 3.0 completes the research and validation phase.
+
+The software is now capable of:
+
+Scanning the full research universe.
+Backtesting every stock automatically.
+Ranking stock performance.
+Measuring statistical edge.
+Generating research dashboards.
+Producing automated strategy recommendations.
+Comparing strategy configurations.
+Selecting the best configuration for paper trading.
+Next Development Phase
+
+Version 3.1 – Paper Trading Engine
+
+Planned objectives:
+
+Connect validated strategy directly to the live scanner.
+Generate paper trades automatically.
+Track open positions.
+Manage software-based exits.
+Maintain live trade journal.
+Build equity curve and performance tracking.
+Prepare architecture for future IBKR integration.

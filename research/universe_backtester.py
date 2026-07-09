@@ -4,6 +4,8 @@ Research Universe Backtester
 Runs the existing backtester across every historical CSV
 in the research universe and combines the results.
 """
+from research.recommendation_engine import run_recommendation_engine
+from research.dashboard import run_dashboard
 from research.edge_analyzer import analyze_edge
 from research.stock_rankings import rank_stocks
 import os
@@ -19,6 +21,8 @@ def run_research_universe_backtest(
     min_tmqs=95,
     min_rvol=2.0,
     breakout_only=True,
+    return_summary=False,
+    quiet=False,
 ):
     all_trades = []
     files = glob.glob(os.path.join(HISTORICAL_FOLDER, "*.csv"))
@@ -62,10 +66,17 @@ def run_research_universe_backtest(
 
     if all_trades:
         rank_stocks(all_trades)
-        analyze_edge(all_trades)
-        
-        performance = calculate_performance(all_trades)
 
+        analyze_edge(all_trades)
+
+        run_dashboard(all_trades)
+
+        run_recommendation_engine(all_trades)
+
+        performance = calculate_performance(all_trades)    
+        if return_summary:
+            return all_trades, performance
+        
         print("\n" + "=" * 60)
         print("FULL UNIVERSE PERFORMANCE")
         print("=" * 60)
@@ -74,5 +85,8 @@ def run_research_universe_backtest(
             print(f"{key}: {value}")
 
     print("\nUniverse backtest complete.")
+
+    if return_summary:
+        return all_trades, performance
 
     return all_trades

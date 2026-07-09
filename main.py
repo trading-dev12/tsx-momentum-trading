@@ -1,5 +1,5 @@
 from core.config_loader import load_settings
-from core.watchlist_loader import load_watchlist
+from core.watchlist_loader import load_all_watchlists
 from core.market_data import get_quotes
 from core.market_context import score_market_context
 from scanner.market_scanner import display_market_data
@@ -39,8 +39,10 @@ def display_market_summary(market):
 
 
 def main():
-    settings = load_settings()
-    watchlist = load_watchlist(settings["watchlist_file"])
+    load_settings()
+    watchlist = load_all_watchlists()
+
+    print(f"Loaded {len(watchlist)} symbols from all watchlists.")
 
     quotes = get_quotes(watchlist)
     market = score_market_context()

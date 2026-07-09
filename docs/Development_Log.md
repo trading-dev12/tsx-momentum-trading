@@ -860,3 +860,28 @@ Display open positions inside the dashboard.
 Add live portfolio statistics.
 Add equity curve.
 Prepare for IBKR paper account integration.
+Development Log
+
+Version: 3.0.0-beta6 – Paper Trading Integrated
+
+Completed
+
+Integrated Paper Trading Engine into the Trading Workstation.
+Added Open Paper Trade button to GUI.
+Added confirmation dialog before opening paper trades.
+Integrated virtual portfolio with workstation.
+Added live Paper Portfolio panel.
+Displayed portfolio summary, cash, portfolio value, returns, open positions, and closed trades.
+Connected paper trade execution directly from scanner READY signals.
+Improved paper dashboard layout and GUI integration.
+Refactored workstation to support future Trader Control Center enhancements.
+
+Next Tasks
+
+Redesign right-side Trader Control Center.
+Add Close Paper Trade functionality.
+Add automatic stop-loss and target monitoring.
+Add live unrealized/realized P&L updates.
+Add equity curve and performance statistics.
+Complete live paper trading workflow before IBKR integration.
+Suggested Commit Message

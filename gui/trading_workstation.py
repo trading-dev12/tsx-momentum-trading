@@ -1,13 +1,14 @@
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, messagebox
 from datetime import datetime
 import threading
 
+from paper_trading.dashboard import build_paper_dashboard_text
 from core.config_loader import load_settings
 from core.watchlist_loader import load_all_watchlists
 from core.market_data import get_quotes
 from core.market_context import score_market_context
-
+from paper_trading.paper_engine import PaperTradingEngine
 
 class TradingWorkstation:
     def __init__(self, root):
@@ -20,7 +21,7 @@ class TradingWorkstation:
         self.is_refreshing = False
         self.latest_quotes = []
         self.previous_ready_symbols = set()
-
+        self.paper_engine = PaperTradingEngine(starting_cash=10000)
         self.market_label = tk.Label(
             root,
             text="Market Health: Loading...",
@@ -114,7 +115,7 @@ class TradingWorkstation:
         self.tree.pack(side="left", fill="both", expand=True)
         self.tree.bind("<<TreeviewSelect>>", self.show_trade_checklist)
 
-        checklist_frame = tk.Frame(main_frame, width=320)
+        checklist_frame = tk.Frame(main_frame, width=420)
         checklist_frame.pack(side="right", fill="y", padx=(10, 0))
 
         checklist_title = tk.Label(
@@ -127,15 +128,40 @@ class TradingWorkstation:
 
         self.checklist_text = tk.Text(
             checklist_frame,
-            width=38,
-            height=28,
+            width=48,
+            height=16,
             font=("Consolas", 10),
             wrap="word",
         )
-        self.checklist_text.pack(fill="both", expand=True)
+        self.checklist_text.pack(fill="x")
         self.checklist_text.insert("1.0", "Click a stock to view details.")
         self.checklist_text.config(state="disabled")
 
+        self.open_paper_trade_button = tk.Button(
+            checklist_frame,
+            text="Open Paper Trade",
+            command=self.open_selected_paper_trade,
+            font=("Arial", 11, "bold"),
+        )
+        self.open_paper_trade_button.pack(fill="x", pady=(10, 8))
+
+        portfolio_title = tk.Label(
+            checklist_frame,
+            text="Paper Portfolio",
+            font=("Arial", 14, "bold"),
+            anchor="w",
+        )
+        portfolio_title.pack(fill="x", pady=(8, 5))
+
+        self.paper_portfolio_text = tk.Text(
+            checklist_frame,
+            width=48,
+            height=22,
+            font=("Consolas", 10),
+            wrap="word",
+        )
+        self.paper_portfolio_text.pack(fill="both", expand=True)
+        self.paper_portfolio_text.config(state="disabled")
         self.status_label = tk.Label(
             root,
             text="Starting...",
@@ -364,6 +390,76 @@ class TradingWorkstation:
         self.status_label.config(text=f"Error: {error}")
         self.refresh_button.config(state="normal", text="Refresh Scanner")
 
+    def open_selected_paper_trade(self):
+        selected = self.tree.selection()
+
+        if not selected:
+            messagebox.showinfo("No Stock Selected", "Please select a stock first.")
+            return
+
+        index = int(selected[0])
+
+        if index >= len(self.latest_quotes):
+            messagebox.showerror("Error", "Selected stock could not be found.")
+            return
+
+        quote = self.latest_quotes[index]
+
+        if quote["decision"] != "READY":
+            messagebox.showinfo(
+                "Not Ready",
+                f"{quote['symbol']} is not a READY trade."
+            )
+            return
+
+        signal = {
+            "symbol": quote["symbol"],
+            "price": quote["price"],
+            "decision": quote["decision"],
+            "tmqs": quote["tmqs"],
+            "rvol": quote["relative_volume"],
+            "reason": quote.get("reason", ""),
+        }
+
+        confirm = messagebox.askyesno(
+            "Open Paper Trade",
+            (
+                f"Open paper trade for {signal['symbol']}?\n\n"
+                f"Price: ${signal['price']:.2f}\n"
+                f"TMQS: {signal['tmqs']}\n"
+                f"RVOL: {signal['rvol']:.2f}x"
+            )
+        )
+
+        if not confirm:
+            return
+
+        result = self.paper_engine.process_signal(signal)
+
+        if result is None:
+            messagebox.showinfo("No Trade Opened", "No paper trade was opened.")
+        elif result["success"]:
+            messagebox.showinfo("Paper Trade Opened", result["message"])
+        else:
+            messagebox.showwarning("Trade Failed", result["message"])
+
+        self.update_paper_portfolio_panel()
+
+    def update_paper_portfolio_panel(self):
+        current_prices = {}
+
+        for quote in self.latest_quotes:
+            current_prices[quote["symbol"]] = quote["price"]
+
+        text = build_paper_dashboard_text(
+            self.paper_engine,
+            current_prices,
+        )
+
+        self.paper_portfolio_text.config(state="normal")
+        self.paper_portfolio_text.delete("1.0", tk.END)
+        self.paper_portfolio_text.insert("1.0", text)
+        self.paper_portfolio_text.config(state="disabled")
     def update_countdown(self):
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 

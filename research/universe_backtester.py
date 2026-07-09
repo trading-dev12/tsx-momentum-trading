@@ -4,6 +4,7 @@ Research Universe Backtester
 Runs the existing backtester across every historical CSV
 in the research universe and combines the results.
 """
+from research.edge_analyzer import analyze_edge
 from research.stock_rankings import rank_stocks
 import os
 import glob
@@ -61,7 +62,8 @@ def run_research_universe_backtest(
 
     if all_trades:
         rank_stocks(all_trades)
-
+        analyze_edge(all_trades)
+        
         performance = calculate_performance(all_trades)
 
         print("\n" + "=" * 60)

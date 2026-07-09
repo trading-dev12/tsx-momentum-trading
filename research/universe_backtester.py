@@ -7,7 +7,7 @@ in the research universe and combines the results.
 
 import os
 import glob
-
+from backtesting.performance import calculate_performance
 from backtesting.backtester import run_backtest
 
 
@@ -58,6 +58,17 @@ def run_research_universe_backtest(
 
     print("-" * 60)
     print(f"Total trades collected: {len(all_trades)}")
-    print("Universe backtest complete.")
+
+    if all_trades:
+        performance = calculate_performance(all_trades)
+
+        print("\n" + "=" * 60)
+        print("FULL UNIVERSE PERFORMANCE")
+        print("=" * 60)
+
+        for key, value in performance.items():
+            print(f"{key}: {value}")
+
+    print("\nUniverse backtest complete.")
 
     return all_trades

@@ -1,0 +1,3 @@
+from research.slippage_validator import run_slippage_validation
+
+run_slippage_validation()

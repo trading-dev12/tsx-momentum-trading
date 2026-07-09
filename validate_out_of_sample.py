@@ -1,0 +1,3 @@
+from research.out_of_sample_validator import run_out_of_sample_validation
+
+run_out_of_sample_validation()

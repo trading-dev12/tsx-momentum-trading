@@ -750,3 +750,36 @@ Next Development Phase:
 - Reduce research output into concise summary tables.
 - Validate breakout filtering differences.
 - Prepare for Version 3.2 automated optimization enhancements.
+Version 3.2 – Completed Strategy Validation Framework
+Completed
+Added Out-of-Sample Validation using training and validation datasets.
+Added Slippage Validation to simulate realistic execution costs.
+Verified strategy robustness across multiple slippage levels (0.00%, 0.05%, 0.10%, 0.20%).
+Confirmed strategy remained profitable under all tested slippage scenarios.
+Audited and corrected performance calculations after slippage integration.
+Removed temporary debugging and troubleshooting code.
+Stabilized research framework in preparation for paper trading.
+Key Findings
+Strategy passed out-of-sample validation.
+Strategy remained profitable under increasing slippage.
+Profit Factor declined gradually as expected while remaining well above acceptable levels.
+Expectancy remained positive across all robustness tests.
+The current strategy demonstrates resilience to realistic trading friction.
+Official Paper Trading Baseline
+TMQS ≥ 100
+RVOL ≥ 1.5
+Breakout Required
+ATR Multiplier = 2.0
+Reward Multiplier = 2.5
+Maximum Hold = 10 Days
+Next Phase
+
+Version 3.3 – Paper Trading Engine
+
+Virtual portfolio
+Position sizing
+Trade journal
+Open position management
+Software-managed stop updates
+Performance dashboard
+Daily paper trading workflow

@@ -1,51 +1,42 @@
 """
-Trade simulator for the TSX Momentum Trading backtester.
+Trade simulator for historical backtesting.
 """
 
 
-def calculate_atr(rows, current_index, period=14):
-    """
-    Calculate Average True Range using the previous candles.
-    """
-
-    if current_index < period:
+def calculate_atr(rows, index, period=14):
+    if index < period:
         return None
 
     true_ranges = []
 
-    for index in range(current_index - period + 1, current_index + 1):
-        current = rows[index]
-        previous = rows[index - 1]
+    for i in range(index - period + 1, index + 1):
+        high = rows[i]["high"]
+        low = rows[i]["low"]
+        previous_close = rows[i - 1]["close"]
 
-        high_low = current["high"] - current["low"]
-        high_close = abs(current["high"] - previous["close"])
-        low_close = abs(current["low"] - previous["close"])
+        true_range = max(
+            high - low,
+            abs(high - previous_close),
+            abs(low - previous_close),
+        )
 
-        true_range = max(high_low, high_close, low_close)
         true_ranges.append(true_range)
 
     return sum(true_ranges) / len(true_ranges)
 
 
-def simulate_trade(rows, entry_index, atr_multiplier=1.5, reward_multiplier=2.0, max_hold_days=5):
-    """
-    Simulate a trade using ATR-based stop-loss and profit target.
-
-    Entry:
-        Buy at the close of the signal day.
-
-    Stop:
-        Entry price minus ATR x atr_multiplier.
-
-    Target:
-        Entry price plus risk x reward_multiplier.
-
-    Exit:
-        Stop hit, target hit, or max hold days.
-    """
-
+def simulate_trade(
+    rows,
+    entry_index,
+    atr_multiplier=2.0,
+    reward_multiplier=2.5,
+    max_hold_days=10,
+    slippage_percent=0.0,
+):
     entry_row = rows[entry_index]
-    entry_price = entry_row["close"]
+
+    raw_entry_price = entry_row["close"]
+    entry_price = raw_entry_price * (1 + slippage_percent)
 
     atr = calculate_atr(rows, entry_index)
 
@@ -77,8 +68,14 @@ def simulate_trade(rows, entry_index, atr_multiplier=1.5, reward_multiplier=2.0,
             exit_reason = "Target hit"
             break
 
+    exit_price = exit_price * (1 - slippage_percent)
+
     profit_loss = exit_price - entry_price
-    profit_loss_percent = (profit_loss / entry_price) * 100 if entry_price > 0 else 0
+
+    if entry_price > 0:
+        profit_loss_percent = (profit_loss / entry_price) * 100
+    else:
+        profit_loss_percent = 0
 
     return {
         "entry_date": entry_row["date"],

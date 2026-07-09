@@ -1,9 +1,9 @@
 """
-Performance calculations for the TSX Momentum Backtester.
+Performance calculations for backtesting results.
 """
 
 
-def calculate_performance(trades, starting_balance=10000, risk_per_trade_percent=1):
+def calculate_performance(trades, starting_balance=10000):
     if not trades:
         return {
             "total_trades": 0,
@@ -20,65 +20,99 @@ def calculate_performance(trades, starting_balance=10000, risk_per_trade_percent
             "ending_balance": starting_balance,
             "total_return": 0,
             "max_drawdown": 0,
-            "best_stock": "N/A",
-            "worst_stock": "N/A",
+            "best_stock": None,
+            "worst_stock": None,
             "exit_reasons": {},
         }
 
-    returns = [t["return_pct"] for t in trades]
+    returns = [trade.get("return_pct", trade.get("profit_loss_percent", 0)) for trade in trades]
 
-    wins = [r for r in returns if r > 0]
-    losses = [r for r in returns if r <= 0]
+    winning_returns = [r for r in returns if r > 0]
+    losing_returns = [r for r in returns if r <= 0]
 
     total_trades = len(trades)
-    winning_trades = len(wins)
-    losing_trades = len(losses)
+    winning_trades = len(winning_returns)
+    losing_trades = len(losing_returns)
 
-    win_rate = winning_trades / total_trades * 100
-    loss_rate = losing_trades / total_trades * 100
+    win_rate = (winning_trades / total_trades) * 100 if total_trades > 0 else 0
 
-    average_gain = sum(wins) / winning_trades if winning_trades else 0
-    average_loss = sum(losses) / losing_trades if losing_trades else 0
+    average_gain = (
+        sum(winning_returns) / len(winning_returns)
+        if winning_returns
+        else 0
+    )
 
-    gross_profit = sum(wins)
-    gross_loss = abs(sum(losses))
-    profit_factor = gross_profit / gross_loss if gross_loss > 0 else 0
+    average_loss = (
+        sum(losing_returns) / len(losing_returns)
+        if losing_returns
+        else 0
+    )
 
-    expectancy = (win_rate / 100 * average_gain) + (loss_rate / 100 * average_loss)
+    total_wins = sum(winning_returns)
+    total_losses = abs(sum(losing_returns))
 
-    best_trade = max(returns)
-    worst_trade = min(returns)
+    profit_factor = (
+        total_wins / total_losses
+        if total_losses > 0
+        else 999
+    )
+
+    expectancy = sum(returns) / len(returns) if returns else 0
+
+    best_trade = max(returns) if returns else 0
+    worst_trade = min(returns) if returns else 0
 
     balance = starting_balance
     peak_balance = starting_balance
     max_drawdown = 0
 
-    stock_returns = {}
-    exit_reasons = {}
-
-    for trade in trades:
-        symbol = trade.get("symbol", "UNKNOWN")
-        trade_return = trade["return_pct"]
-        exit_reason = trade.get("exit_reason", "Unknown")
-
-        stock_returns[symbol] = stock_returns.get(symbol, 0) + trade_return
-        exit_reasons[exit_reason] = exit_reasons.get(exit_reason, 0) + 1
-
-        position_impact = trade_return * (risk_per_trade_percent / 100)
-        balance *= (1 + position_impact / 100)
-
-        if balance > peak_balance:
-            peak_balance = balance
+    for trade_return in returns:
+        balance = balance + (starting_balance * 0.01 * trade_return)
+        peak_balance = max(peak_balance, balance)
 
         drawdown = ((balance - peak_balance) / peak_balance) * 100
 
         if drawdown < max_drawdown:
             max_drawdown = drawdown
 
-    total_return = ((balance - starting_balance) / starting_balance) * 100
+    symbol_returns = {}
 
-    best_stock = max(stock_returns, key=stock_returns.get)
-    worst_stock = min(stock_returns, key=stock_returns.get)
+    for trade in trades:
+        symbol = trade.get("symbol", "UNKNOWN")
+        trade_return = trade.get("return_pct", trade.get("profit_loss_percent", 0))
+
+        if symbol not in symbol_returns:
+            symbol_returns[symbol] = []
+
+        symbol_returns[symbol].append(trade_return)
+
+    avg_symbol_returns = {
+        symbol: sum(values) / len(values)
+        for symbol, values in symbol_returns.items()
+        if values
+    }
+
+    best_stock = (
+        max(avg_symbol_returns, key=avg_symbol_returns.get)
+        if avg_symbol_returns
+        else None
+    )
+
+    worst_stock = (
+        min(avg_symbol_returns, key=avg_symbol_returns.get)
+        if avg_symbol_returns
+        else None
+    )
+
+    exit_reasons = {}
+
+    for trade in trades:
+        reason = trade.get("exit_reason", "UNKNOWN")
+
+        if reason not in exit_reasons:
+            exit_reasons[reason] = 0
+
+        exit_reasons[reason] += 1
 
     return {
         "total_trades": total_trades,
@@ -91,9 +125,9 @@ def calculate_performance(trades, starting_balance=10000, risk_per_trade_percent
         "expectancy": round(expectancy, 2),
         "best_trade": round(best_trade, 2),
         "worst_trade": round(worst_trade, 2),
-        "starting_balance": round(starting_balance, 2),
+        "starting_balance": starting_balance,
         "ending_balance": round(balance, 2),
-        "total_return": round(total_return, 2),
+        "total_return": round(((balance - starting_balance) / starting_balance) * 100, 2),
         "max_drawdown": round(max_drawdown, 2),
         "best_stock": best_stock,
         "worst_stock": worst_stock,

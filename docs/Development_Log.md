@@ -929,3 +929,19 @@ Next Planned Tasks:
 - Add trade journal viewer.
 - Build equity curve and performance dashboard.
 - Continue extended paper trading validation before IBKR integration.
+Version 3.2 Beta 1 – Paper Trading Workstation
+
+Completed:
+- Added manual paper trade entry from READY signals.
+- Added user-controlled position sizing.
+- Added manual paper trade closing.
+- Integrated automatic portfolio updates into the GUI.
+- Expanded the Paper Portfolio panel with portfolio summary, open positions, and recent closed trades.
+- Implemented automatic trade journal saving for closed paper trades.
+- Added TSX market session detection (PRE-MARKET, OPEN, CLOSED).
+- Disabled paper trade entry outside TSX market hours.
+- Added dynamic market session status messages including next market open information.
+- Improved overall paper trading workflow and GUI usability.
+
+Project Status:
+The scanner, research engine, optimizer, strategy validation, and paper trading workstation are now integrated into a complete end-to-end workflow. The system is ready to begin live paper trading and real-world validation during market hours.

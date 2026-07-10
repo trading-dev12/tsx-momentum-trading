@@ -1,4 +1,5 @@
 import tkinter as tk
+from core.market_hours import get_tsx_market_status
 from tkinter import ttk, messagebox, simpledialog
 from datetime import datetime
 import threading
@@ -152,6 +153,13 @@ class TradingWorkstation:
             font=("Arial", 11, "bold"),
         )
         self.close_paper_trade_button.pack(fill="x", pady=(0, 10))
+        self.market_session_label = tk.Label(
+            root,
+            text="TSX Session: Checking...",
+            font=("Arial", 11, "bold"),
+            anchor="w",
+        )
+        self.market_session_label.pack(fill="x", padx=10, pady=(0, 5))
 
         portfolio_title = tk.Label(
             checklist_frame,
@@ -666,8 +674,30 @@ class TradingWorkstation:
         self.paper_portfolio_text.delete("1.0", tk.END)
         self.paper_portfolio_text.insert("1.0", text)
         self.paper_portfolio_text.config(state="disabled")
+    def update_market_session_status(self):
+        session = get_tsx_market_status()
+
+        status = session["status"]
+        message = session["message"]
+
+        if status == "OPEN":
+            color = "#b6d7a8"
+            self.open_paper_trade_button.config(state="normal")
+        elif status == "PRE_MARKET":
+            color = "#fff2cc"
+            self.open_paper_trade_button.config(state="disabled")
+        else:
+            color = "#f4cccc"
+            self.open_paper_trade_button.config(state="disabled")
+
+        self.market_session_label.config(
+            text=f"TSX Session: {status} | {message}",
+            bg=color,
+        )
     def update_countdown(self):
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        self.update_market_session_status()
 
         if self.is_refreshing:
             status = f"Refreshing data... | Time: {now}"

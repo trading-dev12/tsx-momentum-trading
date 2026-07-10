@@ -7,17 +7,28 @@ from historical research.
 
 
 def recommend_tmqs(trades):
-    high = [t for t in trades if t.get("tmqs", 0) >= 100]
-    low = [t for t in trades if t.get("tmqs", 0) < 100]
+    high = [
+        trade
+        for trade in trades
+        if trade.get("tmqs", 0) >= 100
+    ]
+
+    low = [
+        trade
+        for trade in trades
+        if trade.get("tmqs", 0) < 100
+    ]
 
     high_avg = (
-        sum(t["return_pct"] for t in high) / len(high)
-        if high else 0
+        sum(trade["return_pct"] for trade in high) / len(high)
+        if high
+        else 0
     )
 
     low_avg = (
-        sum(t["return_pct"] for t in low) / len(low)
-        if low else 0
+        sum(trade["return_pct"] for trade in low) / len(low)
+        if low
+        else 0
     )
 
     print("\nTMQS Recommendation")
@@ -37,6 +48,7 @@ def recommend_rvol(trades):
 
     for trade in trades:
         bucket = round(trade.get("rvol", 0))
+
         buckets.setdefault(bucket, [])
         buckets[bucket].append(trade["return_pct"])
 
@@ -47,28 +59,31 @@ def recommend_rvol(trades):
     best_avg = -999
 
     for bucket in sorted(buckets):
-
-        avg = sum(buckets[bucket]) / len(buckets[bucket])
+        returns = buckets[bucket]
+        average_return = sum(returns) / len(returns)
 
         print(
             f"RVOL {bucket:<3}"
-            f"{len(buckets[bucket]):>6} trades"
-            f"{avg:>10.2f}%"
+            f"{len(returns):>6} trades"
+            f"{average_return:>10.2f}%"
         )
 
-        if len(buckets[bucket]) >= 5 and avg > best_avg:
-            best_avg = avg
+        if (
+            len(returns) >= 5
+            and average_return > best_avg
+        ):
+            best_avg = average_return
             best_bucket = bucket
 
     if best_bucket is not None:
         print()
         print(
-            f"✓ Recommendation: Prefer RVOL around {best_bucket}"
+            f"✓ Recommendation: Prefer RVOL around "
+            f"{best_bucket}"
         )
 
 
 def recommend_stocks(trades):
-
     groups = {}
 
     for trade in trades:
@@ -80,35 +95,80 @@ def recommend_stocks(trades):
     averages = []
 
     for symbol, returns in groups.items():
-
         if len(returns) < 5:
             continue
+
+        average_return = sum(returns) / len(returns)
 
         averages.append(
             (
                 symbol,
                 len(returns),
-                sum(returns) / len(returns),
+                average_return,
             )
         )
 
-    averages.sort(key=lambda x: x[2], reverse=True)
+    preferred_stocks = sorted(
+        [
+            result
+            for result in averages
+            if result[2] > 0
+        ],
+        key=lambda result: result[2],
+        reverse=True,
+    )
+
+    avoid_stocks = sorted(
+        [
+            result
+            for result in averages
+            if result[2] < 0
+        ],
+        key=lambda result: result[2],
+    )
 
     print("\nPreferred Stocks")
     print("-" * 60)
 
-    for symbol, trades, avg in averages[:10]:
-        print(f"{symbol:<10}{trades:>5} trades{avg:>10.2f}%")
+    if preferred_stocks:
+        for (
+            symbol,
+            trade_count,
+            average_return,
+        ) in preferred_stocks[:10]:
+            print(
+                f"{symbol:<10}"
+                f"{trade_count:>5} trades"
+                f"{average_return:>10.2f}%"
+            )
+    else:
+        print(
+            "No stocks currently meet "
+            "the preferred criteria."
+        )
 
     print("\nAvoid Stocks")
     print("-" * 60)
 
-    for symbol, trades, avg in averages[-10:]:
-        print(f"{symbol:<10}{trades:>5} trades{avg:>10.2f}%")
+    if avoid_stocks:
+        for (
+            symbol,
+            trade_count,
+            average_return,
+        ) in avoid_stocks[:10]:
+            print(
+                f"{symbol:<10}"
+                f"{trade_count:>5} trades"
+                f"{average_return:>10.2f}%"
+            )
+    else:
+        print(
+            "No stocks with at least 5 trades "
+            "currently have a negative average return."
+        )
 
 
 def run_recommendation_engine(trades):
-
     print("\n")
     print("#" * 70)
     print("STRATEGY RECOMMENDATION ENGINE")

@@ -377,6 +377,13 @@ class TradingWorkstation:
         decision = quote["decision"]
         reason = quote.get("reason", "")
         atr = quote.get("atr", 0)
+        stop_price = price - (atr * 2.0) if atr > 0 else 0
+        risk_per_share = price - stop_price if stop_price > 0 else 0
+        target_price = (
+        price + (risk_per_share * 2.5)
+        if risk_per_share > 0
+        else 0
+    )
 
         rvol_check = "PASS" if rvol >= 0.75 else "FAIL"
         breakout_check = "PASS" if breakout in ["BREAKOUT", "NEAR BREAKOUT"] else "FAIL"
@@ -386,8 +393,10 @@ class TradingWorkstation:
         return (
             f"{symbol}\n"
             f"{'-' * 32}\n"
-            f"Price:        {price:.2f}\n"
-            f"ATR:          {atr:.2f}\n"
+            f"Price:        ${price:.2f}\n"
+            f"ATR:          ${atr:.2f}\n"
+            f"Stop:         ${stop_price:.2f}\n"
+            f"Target:       ${target_price:.2f}\n"
             f"TMQS:         {tmqs}\n"
             f"Confidence:   {confidence}%\n"
             f"Decision:     {decision}\n"
@@ -503,9 +512,14 @@ class TradingWorkstation:
             "Open Paper Trade",
             (
                 f"Open paper trade for {symbol}?\n\n"
-                f"Price: ${price:.2f}\n"
+                f"Entry Price: ${price:.2f}\n"
                 f"Shares: {shares}\n"
-                f"Position Cost: ${actual_cost:,.2f}\n"
+                f"Position Cost: ${actual_cost:,.2f}\n\n"
+                f"ATR: ${atr:.2f}\n"
+                f"Stop Price: ${stop_price:.2f}\n"
+                f"Target Price: ${target_price:.2f}\n"
+                f"Risk Per Share: ${risk_per_share:.2f}\n"
+                f"Total Position Risk: ${(shares * risk_per_share):,.2f}\n\n"
                 f"TMQS: {signal['tmqs']}\n"
                 f"RVOL: {signal['rvol']:.2f}x"
             ),

@@ -1014,3 +1014,44 @@ Next Priorities:
 6. Compare strategy performance against XIC/XIU ETF benchmarks.
 
 Overall Project Progress:
+Version 3.3 Beta 1 – Backtest Validation & Strategy Alignment
+Date: July 10, 2026
+============================================================
+
+Completed:
+- Eliminated same-bar look-ahead bias from the historical backtester.
+- Updated trade simulator to generate signals on the completed daily candle and enter trades at the next trading day's opening price.
+- Verified next-day entry logic with live debugging output.
+- Confirmed strategy performance remains stable after realistic entry timing.
+- Fixed holding period reporting to correctly reflect actual exit dates rather than always reporting the maximum holding period.
+- Validated that optimizer results are behaving correctly and determined that TMQS 100 naturally implies RVOL >= 3.0 due to the scoring model.
+- Improved the Strategy Recommendation Engine to prevent the same stocks from appearing in both the Preferred and Avoid lists.
+- Recommendation engine now correctly reports when no qualifying stocks have negative average returns.
+
+Validation Results:
+✓ Next-day entry logic verified
+✓ Look-ahead bias removed
+✓ Holding period calculations verified
+✓ Recommendation engine verified
+✓ Optimizer behaviour explained and validated
+
+Current Recommended Paper Trading Strategy:
+- TMQS: 100
+- Minimum RVOL: 1.5
+- Breakout Only: True
+- Trades: 123
+- Win Rate: 56.91%
+- Profit Factor: 1.83
+- Expectancy: 2.20%
+- Max Drawdown: -24.15%
+
+Key Discovery:
+The strategy remained statistically stable after removing same-bar entry bias, increasing confidence that the historical edge is based on executable trade logic rather than unrealistic backtesting assumptions.
+
+Next Priorities:
+1. Decide on the live trading workflow (end-of-day strategy vs. intraday strategy).
+2. Align the live scanner with the validated backtesting methodology.
+3. Execute the first complete paper trade using the validated workflow.
+4. Add paper portfolio persistence (save/restore).
+5. Add TSX holiday calendar support.
+6. Begin multi-week paper trading validation against ETF benchmarks.

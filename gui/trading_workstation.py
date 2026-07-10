@@ -143,7 +143,15 @@ class TradingWorkstation:
             command=self.open_selected_paper_trade,
             font=("Arial", 11, "bold"),
         )
-        self.open_paper_trade_button.pack(fill="x", pady=(10, 8))
+        self.open_paper_trade_button.pack(fill="x", pady=(10, 5))
+
+        self.close_paper_trade_button = tk.Button(
+            checklist_frame,
+            text="Close Selected Paper Trade",
+            command=self.close_selected_paper_trade,
+            font=("Arial", 11, "bold"),
+        )
+        self.close_paper_trade_button.pack(fill="x", pady=(0, 10))
 
         portfolio_title = tk.Label(
             checklist_frame,
@@ -206,6 +214,7 @@ class TradingWorkstation:
     def update_dashboard(self, market, quotes):
         self.latest_quotes = quotes
         self.check_ready_alerts(quotes)
+        self.monitor_paper_positions()
 
         for row in self.tree.get_children():
             self.tree.delete(row)
@@ -279,6 +288,7 @@ class TradingWorkstation:
                 ),
                 tags=(decision,),
             )
+        self.update_paper_portfolio_panel()
 
         self.countdown_seconds = self.refresh_interval_seconds
         self.is_refreshing = False
@@ -444,7 +454,161 @@ class TradingWorkstation:
             messagebox.showwarning("Trade Failed", result["message"])
 
         self.update_paper_portfolio_panel()
+       
+        self.countdown_seconds = self.refresh_interval_seconds
+        self.is_refreshing = False
+        self.refresh_button.config(state="normal", text="Refresh Scanner")
+    def close_selected_paper_trade(self):
+        selected = self.tree.selection()
 
+        if not selected:
+            messagebox.showinfo(
+                "No Stock Selected",
+                "Please select a stock first."
+            )
+            return
+
+        index = int(selected[0])
+
+        if index >= len(self.latest_quotes):
+            messagebox.showerror(
+                "Error",
+                "Selected stock could not be found."
+            )
+            return
+
+        quote = self.latest_quotes[index]
+        symbol = quote["symbol"]
+
+        current_price = quote["price"]
+
+        confirm = messagebox.askyesno(
+            "Close Paper Trade",
+            f"Close paper trade for {symbol} at ${current_price:.2f}?"
+        )
+
+        if not confirm:
+            return
+
+        result = self.paper_engine.close_position(
+            symbol=symbol,
+            exit_price=current_price,
+            current_date=datetime.now().strftime("%Y-%m-%d"),
+        )
+
+        if result.get("success"):
+            messagebox.showinfo(
+                "Trade Closed",
+                result["message"]
+            )
+        else:
+            messagebox.showwarning(
+                "Unable to Close",
+                result["message"]
+            )
+
+        self.update_paper_portfolio_panel()
+        selected = self.tree.selection()
+
+        if not selected:
+            messagebox.showinfo(
+                "No Stock Selected",
+                "Select the stock position you want to close.",
+            )
+            return
+
+        index = int(selected[0])
+
+        if index >= len(self.latest_quotes):
+            messagebox.showerror(
+                "Error",
+                "The selected stock could not be found.",
+            )
+            return
+
+        quote = self.latest_quotes[index]
+        symbol = quote["symbol"]
+        current_price = float(quote["price"])
+
+        open_symbols = {
+            position["symbol"]
+            for position in self.paper_engine.portfolio.open_positions
+        }
+
+        if symbol not in open_symbols:
+            messagebox.showinfo(
+                "No Open Position",
+                f"There is no open paper position for {symbol}.",
+            )
+            return
+
+        confirm = messagebox.askyesno(
+            "Close Paper Trade",
+            (
+                f"Close the open paper position for {symbol}?\n\n"
+                f"Current Price: ${current_price:.2f}"
+            ),
+        )
+
+        if not confirm:
+            return
+
+        current_date = datetime.now().strftime("%Y-%m-%d")
+
+        result = self.paper_engine.close_position(
+            symbol=symbol,
+            exit_price=current_price,
+            current_date=current_date,
+            exit_reason="Manual exit",
+        )
+
+        if result.get("success"):
+            trade = result["trade"]
+
+            messagebox.showinfo(
+                "Paper Trade Closed",
+                (
+                    f"{symbol} was closed successfully.\n\n"
+                    f"Exit Price: ${trade['exit_price']:.2f}\n"
+                    f"Profit/Loss: ${trade['profit_loss']:.2f}\n"
+                    f"Return: {trade['profit_loss_percent']:.2f}%"
+                ),
+            )
+        else:
+            messagebox.showwarning(
+                "Close Failed",
+                result.get("message", "The position could not be closed."),
+            )
+
+        self.update_paper_portfolio_panel()
+
+    def monitor_paper_positions(self):
+        if not self.paper_engine.portfolio.open_positions:
+            return
+
+        current_prices = {
+            quote["symbol"]: quote["price"]
+            for quote in self.latest_quotes
+        }
+
+        current_date = datetime.now().strftime("%Y-%m-%d")
+
+        closed_trades = self.paper_engine.update_positions(
+            latest_prices=current_prices,
+            current_date=current_date,
+        )
+
+        for trade in closed_trades:
+            messagebox.showinfo(
+                "Paper Trade Closed",
+                (
+                    f"{trade['symbol']} was closed automatically.\n\n"
+                    f"Exit Price: ${trade['exit_price']:.2f}\n"
+                    f"Reason: {trade['exit_reason']}\n"
+                    f"Profit/Loss: ${trade['profit_loss']:.2f}\n"
+                    f"Return: {trade['profit_loss_percent']:.2f}%"
+                ),
+            )
     def update_paper_portfolio_panel(self):
         current_prices = {}
 

@@ -885,3 +885,26 @@ Add live unrealized/realized P&L updates.
 Add equity curve and performance statistics.
 Complete live paper trading workflow before IBKR integration.
 Suggested Commit Message
+Version 3.1 Beta 1 – Interactive Paper Trading Workstation
+
+Completed the first fully interactive paper trading workflow.
+
+New Features:
+- Added "Close Selected Paper Trade" button to the workstation GUI.
+- Implemented manual paper trade closing from the scanner.
+- Connected GUI to the PaperTradingEngine close_position() method.
+- Portfolio updates immediately after opening or closing trades.
+- Closed trades are automatically written to the paper trade journal.
+- Improved Paper Portfolio panel integration and automatic refresh.
+- Continued refinement of the trading workstation interface.
+
+Project Status:
+The workstation now supports the complete paper trading lifecycle:
+Scan → Open Trade → Monitor Position → Manual or Automatic Exit → Journal → Portfolio Update.
+
+Next Planned Tasks:
+- Improve Paper Portfolio display.
+- Add live trade status metrics.
+- Build Trade Journal viewer.
+- Add equity curve and portfolio statistics.
+- Begin extended paper trading validation using live market data.

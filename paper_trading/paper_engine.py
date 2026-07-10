@@ -58,6 +58,41 @@ class PaperTradingEngine:
             save_trade(trade)
 
         return closed_trades
+    def close_position(
+        self,
+        symbol,
+        exit_price,
+        current_date,
+        exit_reason="Manual exit",
+    ):
+        result = self.portfolio.close_position(
+            symbol=symbol,
+            exit_price=exit_price,
+            exit_date=current_date,
+            exit_reason=exit_reason,
+        )
 
+        if result.get("success"):
+            save_trade(result["trade"])
+
+        return result
+    def close_position(
+        self,
+        symbol,
+        exit_price,
+        current_date,
+        exit_reason="Manual exit",
+    ):
+        result = self.portfolio.close_position(
+            symbol=symbol,
+            exit_price=exit_price,
+            exit_date=current_date,
+            exit_reason=exit_reason,
+        )
+
+        if result.get("success"):
+            save_trade(result["trade"])
+
+        return result
     def summary(self):
         return self.portfolio.summary()

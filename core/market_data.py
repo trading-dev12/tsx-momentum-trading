@@ -52,7 +52,56 @@ def get_rvol_status(relative_volume):
 
     return "LOW"
 
+def calculate_live_atr(symbol, period=14):
+    """
+    Calculate the current Average True Range using daily price history.
+    """
 
+    try:
+        yahoo_symbol = symbol if symbol.endswith(".TO") else symbol + ".TO"
+
+        history = yf.Ticker(yahoo_symbol).history(
+            period="2mo",
+            interval="1d",
+            auto_adjust=False,
+        )
+
+        if history is None or len(history) < period + 1:
+            return 0.0
+
+        previous_close = history["Close"].shift(1)
+
+        history["high_low_range"] = (
+            history["High"] - history["Low"]
+        )
+
+        history["high_previous_close_range"] = (
+            history["High"] - previous_close
+        ).abs()
+
+        history["low_previous_close_range"] = (
+            history["Low"] - previous_close
+        ).abs()
+
+        true_range = history[
+            [
+                "high_low_range",
+                "high_previous_close_range",
+                "low_previous_close_range",
+            ]
+        ].max(axis=1)
+
+        atr = true_range.rolling(window=period).mean().iloc[-1]
+
+        if atr != atr:
+            return 0.0
+
+        return round(float(atr), 2)
+
+    except Exception as error:
+        print(f"ATR unavailable for {symbol}: {error}")
+        return 0.0
+    
 def get_live_quote(symbol):
     try:
         yahoo_symbol = symbol if symbol.endswith(".TO") else symbol + ".TO"
@@ -81,6 +130,7 @@ def get_live_quote(symbol):
             gap_percent = 0
 
         average_volume = get_average_volume(symbol)
+        atr = calculate_live_atr(symbol)
 
         if average_volume > 0:
             relative_volume = round(volume / average_volume, 2)
@@ -98,6 +148,7 @@ def get_live_quote(symbol):
             "volume": volume,
             "average_volume": average_volume,
             "relative_volume": relative_volume,
+            "atr": atr,
             "rvol_status": get_rvol_status(relative_volume),
             "status": "Live Data",
         }

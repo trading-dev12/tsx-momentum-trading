@@ -1,3 +1,4 @@
+from shlex import quote
 import tkinter as tk
 from core.market_hours import get_tsx_market_status
 from tkinter import ttk, messagebox, simpledialog
@@ -163,7 +164,7 @@ class TradingWorkstation:
 
         portfolio_title = tk.Label(
             checklist_frame,
-            text="Paper Portfolio",
+            text="Trader Control Center",
             font=("Arial", 14, "bold"),
             anchor="w",
         )
@@ -375,6 +376,7 @@ class TradingWorkstation:
         liquidity = quote["grades"]["Liquidity"]
         decision = quote["decision"]
         reason = quote.get("reason", "")
+        atr = quote.get("atr", 0)
 
         rvol_check = "PASS" if rvol >= 0.75 else "FAIL"
         breakout_check = "PASS" if breakout in ["BREAKOUT", "NEAR BREAKOUT"] else "FAIL"
@@ -385,6 +387,7 @@ class TradingWorkstation:
             f"{symbol}\n"
             f"{'-' * 32}\n"
             f"Price:        {price:.2f}\n"
+            f"ATR:          {atr:.2f}\n"
             f"TMQS:         {tmqs}\n"
             f"Confidence:   {confidence}%\n"
             f"Decision:     {decision}\n"
@@ -438,6 +441,18 @@ class TradingWorkstation:
 
         symbol = quote["symbol"]
         price = float(quote["price"])
+        atr = float(quote.get("atr", 0))
+
+        if atr <= 0:
+            messagebox.showwarning(
+                "ATR Unavailable",
+                (
+                    f"ATR data is unavailable for {symbol}.\n\n"
+                    "The paper trade cannot be opened safely."
+                ),
+            )
+            return
+    
 
         investment_amount = simpledialog.askfloat(
             "Paper Trade Position Size",
@@ -464,14 +479,24 @@ class TradingWorkstation:
 
         actual_cost = shares * price
 
+        atr_multiplier = 2.0
+        reward_multiplier = 2.5
+
+        stop_price = price - (atr * atr_multiplier)
+        risk_per_share = price - stop_price
+        target_price = price + (risk_per_share * reward_multiplier)
         signal = {
             "symbol": symbol,
             "price": price,
+            "date": datetime.now().strftime("%Y-%m-%d"),
             "decision": quote["decision"],
             "tmqs": quote["tmqs"],
             "rvol": quote["relative_volume"],
             "reason": quote.get("reason", ""),
             "shares": shares,
+            "atr": atr,
+            "stop_price": stop_price,
+            "target_price": target_price,
         }
 
         confirm = messagebox.askyesno(

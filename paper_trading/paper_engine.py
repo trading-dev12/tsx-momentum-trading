@@ -52,6 +52,7 @@ class PaperTradingEngine:
             ),
             "tmqs": signal.get("tmqs", 100),
             "rvol": signal.get("rvol", 2.5),
+            "max_hold_days": signal.get("max_hold_days", 10),
         }
 
         return self.portfolio.open_position(position)

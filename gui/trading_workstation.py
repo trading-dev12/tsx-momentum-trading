@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, simpledialog
 from datetime import datetime
 import threading
 
@@ -404,13 +404,19 @@ class TradingWorkstation:
         selected = self.tree.selection()
 
         if not selected:
-            messagebox.showinfo("No Stock Selected", "Please select a stock first.")
+            messagebox.showinfo(
+                "No Stock Selected",
+                "Please select a stock first.",
+            )
             return
 
         index = int(selected[0])
 
         if index >= len(self.latest_quotes):
-            messagebox.showerror("Error", "Selected stock could not be found.")
+            messagebox.showerror(
+                "Error",
+                "Selected stock could not be found.",
+            )
             return
 
         quote = self.latest_quotes[index]
@@ -418,27 +424,58 @@ class TradingWorkstation:
         if quote["decision"] != "READY":
             messagebox.showinfo(
                 "Not Ready",
-                f"{quote['symbol']} is not a READY trade."
+                f"{quote['symbol']} is not a READY trade.",
             )
             return
 
+        symbol = quote["symbol"]
+        price = float(quote["price"])
+
+        investment_amount = simpledialog.askfloat(
+            "Paper Trade Position Size",
+            (
+                f"How much would you like to invest in {symbol}?\n\n"
+                f"Current Price: ${price:.2f}\n"
+                f"Available Cash: ${self.paper_engine.portfolio.cash:,.2f}"
+            ),
+            minvalue=price,
+            maxvalue=self.paper_engine.portfolio.cash,
+        )
+
+        if investment_amount is None:
+            return
+
+        shares = int(investment_amount // price)
+
+        if shares <= 0:
+            messagebox.showwarning(
+                "Invalid Position Size",
+                "The investment amount is too small to purchase one share.",
+            )
+            return
+
+        actual_cost = shares * price
+
         signal = {
-            "symbol": quote["symbol"],
-            "price": quote["price"],
+            "symbol": symbol,
+            "price": price,
             "decision": quote["decision"],
             "tmqs": quote["tmqs"],
             "rvol": quote["relative_volume"],
             "reason": quote.get("reason", ""),
+            "shares": shares,
         }
 
         confirm = messagebox.askyesno(
             "Open Paper Trade",
             (
-                f"Open paper trade for {signal['symbol']}?\n\n"
-                f"Price: ${signal['price']:.2f}\n"
+                f"Open paper trade for {symbol}?\n\n"
+                f"Price: ${price:.2f}\n"
+                f"Shares: {shares}\n"
+                f"Position Cost: ${actual_cost:,.2f}\n"
                 f"TMQS: {signal['tmqs']}\n"
                 f"RVOL: {signal['rvol']:.2f}x"
-            )
+            ),
         )
 
         if not confirm:
@@ -447,17 +484,22 @@ class TradingWorkstation:
         result = self.paper_engine.process_signal(signal)
 
         if result is None:
-            messagebox.showinfo("No Trade Opened", "No paper trade was opened.")
+            messagebox.showinfo(
+                "No Trade Opened",
+                "No paper trade was opened.",
+            )
         elif result["success"]:
-            messagebox.showinfo("Paper Trade Opened", result["message"])
+            messagebox.showinfo(
+                "Paper Trade Opened",
+                result["message"],
+            )
         else:
-            messagebox.showwarning("Trade Failed", result["message"])
+            messagebox.showwarning(
+                "Trade Failed",
+                result["message"],
+            )
 
         self.update_paper_portfolio_panel()
-       
-        self.countdown_seconds = self.refresh_interval_seconds
-        self.is_refreshing = False
-        self.refresh_button.config(state="normal", text="Refresh Scanner")
     def close_selected_paper_trade(self):
         selected = self.tree.selection()
 

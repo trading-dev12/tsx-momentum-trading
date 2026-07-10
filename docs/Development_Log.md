@@ -908,3 +908,24 @@ Next Planned Tasks:
 - Build Trade Journal viewer.
 - Add equity curve and portfolio statistics.
 - Begin extended paper trading validation using live market data.
+Version 3.1 Beta 2 – User-Controlled Position Sizing
+
+Completed another major enhancement to the paper trading workstation.
+
+New Features:
+- Added user-controlled position sizing during paper trade entry.
+- Paper trading engine now accepts explicit share quantities from the GUI.
+- Added manual close functionality integrated with the paper trading engine.
+- Portfolio, cash balance, and trade journal update correctly after manual exits.
+- Improved paper portfolio display and workflow integration.
+
+Project Status:
+The workstation now supports the complete manual paper trading lifecycle:
+Scan → Select → Enter Position Size → Open Trade → Monitor → Manual or Automatic Exit → Journal → Portfolio Update.
+
+Next Planned Tasks:
+- Implement risk-based position sizing recommendations.
+- Improve live portfolio metrics and visualization.
+- Add trade journal viewer.
+- Build equity curve and performance dashboard.
+- Continue extended paper trading validation before IBKR integration.

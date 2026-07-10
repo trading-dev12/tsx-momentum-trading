@@ -109,4 +109,9 @@ def evaluate_historical_setup(row, previous_row=None):
         "tmqs": tmqs,
         "rvol": rvol,
         "breakout": breakout,
+
+        # TMQS Breakdown
+        "breakout_score": round(breakout_score, 2),
+        "volume_score": round(volume_score, 2),
+        "price_score": round(price_score, 2),
     }

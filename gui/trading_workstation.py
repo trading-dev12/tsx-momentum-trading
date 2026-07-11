@@ -12,6 +12,9 @@ from core.watchlist_loader import load_all_watchlists
 from core.market_data import get_quotes
 from core.market_context import score_market_context
 from paper_trading.paper_engine import PaperTradingEngine
+from paper_trading.automatic_execution import (
+    start_automatic_execution_service,
+)
 
 class TradingWorkstation:
     def __init__(self, root):
@@ -26,6 +29,12 @@ class TradingWorkstation:
         self.latest_quotes = []
         self.previous_ready_symbols = set()
         self.paper_engine = PaperTradingEngine(starting_cash=10000)
+        self.automatic_execution_thread = (
+            start_automatic_execution_service(
+                self.paper_engine,
+            )
+        )
+        
         self.market_label = tk.Label(
             root,
             text="Market Health: Loading...",

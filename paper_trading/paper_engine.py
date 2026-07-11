@@ -2,10 +2,12 @@
 Paper Trading Engine
 
 Connects scanner signals to the paper portfolio,
-position manager, trade journal, and pending trade queue.
+position manager, trade journal, pending trade queue,
+and automatic next-day paper execution.
 """
 
 from paper_trading.journal import save_trade
+from paper_trading.opening_price import get_market_open_price
 from paper_trading.pending_trades import PendingTradeQueue
 from paper_trading.portfolio import PaperPortfolio
 from paper_trading.position_manager import monitor_positions
@@ -54,6 +56,138 @@ class PaperTradingEngine:
             "attempted": len(ready_signals),
             "added": added,
             "rejected": rejected,
+            "results": results,
+        }
+
+    def execute_pending_trades_for_date(
+        self,
+        execution_date,
+        price_provider=get_market_open_price,
+        atr_multiplier=2.0,
+        reward_multiplier=2.5,
+        max_hold_days=10,
+    ):
+        """
+        Automatically execute all eligible pending trades using
+        the exact opening price for execution_date.
+
+        Trades remain pending when:
+        - execution_date is not after the signal date,
+        - no opening price is available,
+        - position sizing fails,
+        - portfolio execution fails,
+        - or an open position already exists.
+
+        A pending trade is removed only after a successful
+        portfolio position is opened.
+        """
+
+        pending_trades = self.pending_trades.get_all()
+        results = []
+
+        for pending_trade in pending_trades:
+            symbol = pending_trade["symbol"]
+            signal_date = pending_trade["signal_date"]
+
+            if execution_date <= signal_date:
+                results.append(
+                    {
+                        "success": False,
+                        "symbol": symbol,
+                        "status": "SKIPPED",
+                        "message": (
+                            f"{symbol} is not eligible until after "
+                            f"{signal_date}."
+                        ),
+                    }
+                )
+                continue
+
+            price_result = price_provider(
+                symbol,
+                execution_date,
+            )
+
+            if not price_result.get("success"):
+                results.append(
+                    {
+                        "success": False,
+                        "symbol": symbol,
+                        "status": "PRICE_UNAVAILABLE",
+                        "message": price_result.get(
+                            "message",
+                            "Opening price unavailable.",
+                        ),
+                    }
+                )
+                continue
+
+            execution_result = self.execute_pending_trade(
+                symbol=symbol,
+                entry_price=price_result["open_price"],
+                entry_date=execution_date,
+                atr_multiplier=atr_multiplier,
+                reward_multiplier=reward_multiplier,
+                max_hold_days=max_hold_days,
+            )
+
+            result = {
+                "success": execution_result.get(
+                    "success",
+                    False,
+                ),
+                "symbol": symbol,
+                "entry_date": execution_date,
+                "entry_price": price_result["open_price"],
+                "status": (
+                    "EXECUTED"
+                    if execution_result.get("success")
+                    else "FAILED"
+                ),
+                "message": execution_result.get(
+                    "message",
+                    "",
+                ),
+            }
+
+            if execution_result.get("success"):
+                result["position"] = execution_result.get(
+                    "position"
+                )
+
+            results.append(result)
+
+        executed = sum(
+            1
+            for result in results
+            if result["status"] == "EXECUTED"
+        )
+
+        price_unavailable = sum(
+            1
+            for result in results
+            if result["status"] == "PRICE_UNAVAILABLE"
+        )
+
+        skipped = sum(
+            1
+            for result in results
+            if result["status"] == "SKIPPED"
+        )
+
+        failed = sum(
+            1
+            for result in results
+            if result["status"] == "FAILED"
+        )
+
+        return {
+            "execution_date": execution_date,
+            "attempted": len(pending_trades),
+            "executed": executed,
+            "price_unavailable": price_unavailable,
+            "skipped": skipped,
+            "failed": failed,
             "results": results,
         }
 

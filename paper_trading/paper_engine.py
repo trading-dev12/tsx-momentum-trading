@@ -3,7 +3,7 @@ Paper Trading Engine
 
 Connects scanner signals to the paper portfolio,
 position manager, trade journal, pending trade queue,
-and automatic next-day paper execution.
+automatic next-day execution, and risk-based sizing.
 """
 
 from paper_trading.journal import save_trade
@@ -16,6 +16,10 @@ from paper_trading.position_manager import monitor_positions
 PORTFOLIO_STATE_FILE = "paper_portfolio_state.json"
 PENDING_TRADES_FILE = "pending_trades.csv"
 
+DEFAULT_RISK_PER_TRADE_PERCENT = 1.0
+DEFAULT_MAX_POSITION_PERCENT = 20.0
+DEFAULT_MAX_OPEN_POSITIONS = 5
+
 
 class PaperTradingEngine:
     def __init__(
@@ -23,6 +27,9 @@ class PaperTradingEngine:
         starting_cash=10000,
         portfolio_state_file=PORTFOLIO_STATE_FILE,
         pending_trades_file=PENDING_TRADES_FILE,
+        risk_per_trade_percent=DEFAULT_RISK_PER_TRADE_PERCENT,
+        max_position_percent=DEFAULT_MAX_POSITION_PERCENT,
+        max_open_positions=DEFAULT_MAX_OPEN_POSITIONS,
     ):
         self.portfolio = PaperPortfolio(
             starting_cash=starting_cash,
@@ -31,6 +38,18 @@ class PaperTradingEngine:
 
         self.pending_trades = PendingTradeQueue(
             file_path=pending_trades_file,
+        )
+
+        self.risk_per_trade_percent = float(
+            risk_per_trade_percent
+        )
+
+        self.max_position_percent = float(
+            max_position_percent
+        )
+
+        self.max_open_positions = int(
+            max_open_positions
         )
 
     def queue_signal(self, signal):
@@ -67,21 +86,6 @@ class PaperTradingEngine:
         reward_multiplier=2.5,
         max_hold_days=10,
     ):
-        """
-        Automatically execute all eligible pending trades using
-        the exact opening price for execution_date.
-
-        Trades remain pending when:
-        - execution_date is not after the signal date,
-        - no opening price is available,
-        - position sizing fails,
-        - portfolio execution fails,
-        - or an open position already exists.
-
-        A pending trade is removed only after a successful
-        portfolio position is opened.
-        """
-
         pending_trades = self.pending_trades.get_all()
         results = []
 
@@ -150,11 +154,6 @@ class PaperTradingEngine:
                 ),
             }
 
-            if execution_result.get("success"):
-                result["position"] = execution_result.get(
-                    "position"
-                )
-
             results.append(result)
 
         executed = sum(
@@ -218,6 +217,18 @@ class PaperTradingEngine:
                     ),
                 }
 
+        if (
+            len(self.portfolio.open_positions)
+            >= self.max_open_positions
+        ):
+            return {
+                "success": False,
+                "message": (
+                    "Maximum number of open positions "
+                    f"reached ({self.max_open_positions})."
+                ),
+            }
+
         if entry_date <= pending_trade["signal_date"]:
             return {
                 "success": False,
@@ -241,13 +252,17 @@ class PaperTradingEngine:
         )
 
         shares = self.calculate_position_size(
-            entry_price,
+            entry_price=entry_price,
+            stop_price=stop_price,
         )
 
         if shares <= 0:
             return {
                 "success": False,
-                "message": "Position size is zero.",
+                "message": (
+                    "Position size is zero under the current "
+                    "risk and cash limits."
+                ),
             }
 
         position = {
@@ -283,13 +298,46 @@ class PaperTradingEngine:
             if position["symbol"] == symbol:
                 return None
 
+        if (
+            len(self.portfolio.open_positions)
+            >= self.max_open_positions
+        ):
+            return {
+                "success": False,
+                "message": (
+                    "Maximum number of open positions "
+                    f"reached ({self.max_open_positions})."
+                ),
+            }
+
+        stop_price = float(
+            signal.get(
+                "stop_price",
+                price * 0.95,
+            )
+        )
+
+        target_price = float(
+            signal.get(
+                "target_price",
+                price * 1.125,
+            )
+        )
+
         shares = self.calculate_position_size(
-            price,
-            signal.get("shares"),
+            entry_price=price,
+            stop_price=stop_price,
+            requested_shares=signal.get("shares"),
         )
 
         if shares <= 0:
-            return None
+            return {
+                "success": False,
+                "message": (
+                    "Position size is zero under the current "
+                    "risk and cash limits."
+                ),
+            }
 
         position = {
             "symbol": symbol,
@@ -299,14 +347,8 @@ class PaperTradingEngine:
             ),
             "entry_price": price,
             "shares": shares,
-            "stop_price": signal.get(
-                "stop_price",
-                price * 0.95,
-            ),
-            "target_price": signal.get(
-                "target_price",
-                price * 1.125,
-            ),
+            "stop_price": stop_price,
+            "target_price": target_price,
             "tmqs": signal.get(
                 "tmqs",
                 100,
@@ -325,15 +367,56 @@ class PaperTradingEngine:
 
     def calculate_position_size(
         self,
-        price,
+        entry_price,
+        stop_price,
         requested_shares=None,
     ):
+        entry_price = float(entry_price)
+        stop_price = float(stop_price)
+
+        if entry_price <= 0:
+            return 0
+
+        risk_per_share = entry_price - stop_price
+
+        if risk_per_share <= 0:
+            return 0
+
+        portfolio_value = self.portfolio.portfolio_value()
+
+        risk_budget = portfolio_value * (
+            self.risk_per_trade_percent / 100
+        )
+
+        maximum_position_value = portfolio_value * (
+            self.max_position_percent / 100
+        )
+
+        shares_by_risk = int(
+            risk_budget // risk_per_share
+        )
+
+        shares_by_allocation = int(
+            maximum_position_value // entry_price
+        )
+
+        shares_by_cash = int(
+            self.portfolio.cash // entry_price
+        )
+
+        allowed_shares = min(
+            shares_by_risk,
+            shares_by_allocation,
+            shares_by_cash,
+        )
+
         if requested_shares is not None:
-            return int(requested_shares)
+            allowed_shares = min(
+                allowed_shares,
+                int(requested_shares),
+            )
 
-        cash_to_use = self.portfolio.cash * 0.10
-
-        return int(cash_to_use // price)
+        return max(allowed_shares, 0)
 
     def update_positions(
         self,

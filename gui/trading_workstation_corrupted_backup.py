@@ -14,14 +14,22 @@ from core.market_context import score_market_context
 from paper_trading.paper_engine import PaperTradingEngine
 
 class TradingWorkstation:
-    def __init__(self, root):
+    reason",
+        )
+
+        self.tree = ttk.Treeview(main_frame, columns=columns, show="headings", height=22)
+
+        headidef __init__(self, root):
         self.root = root
         self.root.title("TSX Momentum Pro")
         self.root.geometry("1450x760")
 
+        self.current_view = "LIVE"
+
         self.refresh_interval_seconds = 30
         self.countdown_seconds = self.refresh_interval_seconds
         self.is_refreshing = False
+
         self.latest_quotes = []
         self.previous_ready_symbols = set()
         self.paper_engine = PaperTradingEngine(starting_cash=10000)
@@ -53,7 +61,11 @@ class TradingWorkstation:
         self.best_trade_label.pack(fill="x", padx=10, pady=5)
 
         button_frame = tk.Frame(root)
-        button_frame.pack(fill="x", padx=10, pady=5)
+        button_frame.pack(
+            fill="x",
+            padx=10,
+            pady=5,
+        )
 
         self.refresh_button = tk.Button(
             button_frame,
@@ -66,12 +78,15 @@ class TradingWorkstation:
         self.eod_button = tk.Button(
             button_frame,
             text="End-of-Day Signals",
-            command=self.load_eod_data,
+            command=self.show_eod_test_message,
             font=("Arial", 11, "bold"),
         )
+        self.eod_button.pack(
+            side="left",
+            padx=(10, 0),
+        )
 
-        self.eod_button.pack(side="left", padx=(10, 0))
-
+        main_frame = tk.Frame(root)
         main_frame = tk.Frame(root)
         main_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
@@ -87,12 +102,7 @@ class TradingWorkstation:
             "momentum",
             "liquidity",
             "decision",
-            "reason",
-        )
-
-        self.tree = ttk.Treeview(main_frame, columns=columns, show="headings", height=22)
-
-        headings = {
+            "ngs = {
             "rank": "#",
             "symbol": "Symbol",
             "price": "Price",
@@ -202,7 +212,7 @@ class TradingWorkstation:
 
         self.refresh_data()
         self.update_countdown()
-
+    
     def refresh_data(self):
         if self.is_refreshing:
             return
@@ -214,72 +224,7 @@ class TradingWorkstation:
         thread = threading.Thread(target=self.load_data)
         thread.daemon = True
         thread.start()
-    def load_eod_data(self):
-        if self.is_refreshing:
-            return
 
-        self.is_refreshing = True
-        self.eod_button.config(
-            state="disabled",
-            text="Loading EOD Signals...",
-        )
-        self.status_label.config(
-            text="Scanning completed daily candles...",
-        )
-
-        def worker():
-            try:
-                results = scan_eod_signals()
-
-                def finish_scan():
-                    ready_count = len(results["ready"])
-                    watch_count = len(results["watch"])
-                    ignore_count = len(results["ignore"])
-                    error_count = len(results["errors"])
-
-                    self.status_label.config(
-                        text=(
-                            f"EOD scan complete | "
-                            f"READY: {ready_count} | "
-                            f"WATCH: {watch_count} | "
-                            f"IGNORE: {ignore_count} | "
-                            f"ERRORS: {error_count}"
-                        )
-                    )
-
-                    self.eod_button.config(
-                        state="normal",
-                        text="End-of-Day Signals",
-                    )
-                    self.is_refreshing = False
-
-                    messagebox.showinfo(
-                        "End-of-Day Scan Complete",
-                        (
-                            f"READY: {ready_count}\n"
-                            f"WATCH: {watch_count}\n"
-                            f"IGNORE: {ignore_count}\n"
-                            f"ERRORS: {error_count}"
-                        ),
-                    )
-
-                self.root.after(0, finish_scan)
-
-            except Exception as error:
-                def show_eod_error():
-                    self.eod_button.config(
-                        state="normal",
-                        text="End-of-Day Signals",
-                    )
-                    self.is_refreshing = False
-                    self.show_error(error)
-
-                self.root.after(0, show_eod_error)
-
-        thread = threading.Thread(target=worker)
-        thread.daemon = True
-        thread.start()
-        
     def load_data(self):
         try:
             settings = load_settings()
@@ -289,7 +234,10 @@ class TradingWorkstation:
 
             self.root.after(
                 0,
-                lambda: self.update_dashboard(market, quotes),
+                lambda: self.update_dashboard(
+                    market,
+                    quotes,
+                ),
             )
 
         except Exception as error:
@@ -297,7 +245,59 @@ class TradingWorkstation:
                 0,
                 lambda error=error: self.show_error(error),
             )
+    def display_eod_results(self, results):
+        """
+        Display end-of-day READY/WATCH setups in the workstation table.
+        """
 
+        self.latest_quotes = []
+
+        for row in self.tree.get_children():
+            self.tree.delete(row)
+
+        quotes = results["ready"] + results["watch"]
+
+        self.summary_label.config(
+            text=(
+                f"EOD Scan | "
+                f"READY: {len(results['ready'])} | "
+                f"WATCH: {len(results['watch'])} | "
+                f"IGNORE: {len(results['ignore'])}"
+            )
+        )
+
+        if not quotes:
+            self.update_best_trade_banner(None)
+            return
+
+        best = max(
+            quotes,
+            key=lambda quote: quote["tmqs"],
+        )
+
+        self.update_best_trade_banner(best)
+
+        for rank, quote in enumerate(quotes, start=1):
+            self.tree.insert(
+                "",
+                "end",
+                iid=str(rank - 1),
+                values=(
+                    rank,
+                    quote["symbol"],
+                    f"{quote['close']:.2f}",
+                    quote["tmqs"],
+                    "--",
+                    f"{quote['rvol']:.2f}x",
+                    "--",
+                    quote["breakout"],
+                    "--",
+                    "--",
+                    quote["decision"],
+                    quote["reason"],
+                ),
+                tags=(quote["decision"],),
+            )
     def update_dashboard(self, market, quotes):
         self.latest_quotes = quotes
         self.check_ready_alerts(quotes)
@@ -839,7 +839,62 @@ class TradingWorkstation:
         if value is None:
             return "N/A"
         return f"{value}%"
+    
+    def show_eod_test_message(self):
+        if self.is_refreshing:
+            return
 
+        self.current_view = "EOD"
+        self.is_refreshing = True
+
+        self.eod_button.config(
+            state="disabled",
+            text="Loading EOD Signals...",
+        )
+
+        self.status_label.config(
+            text="Loading completed-candle EOD signals...",
+        )
+
+        thread = threading.Thread(
+            target=self.load_eod_data,
+        )
+        thread.daemon = True
+        thread.start()
+    
+def load_eod_data(self):
+        try:
+            results = scan_eod_signals()
+
+            self.root.after(
+                0,
+                lambda: self.finish_eod_load(results),
+            )
+
+        except Exception as error:
+            self.root.after(
+                0,
+                lambda error=error: self.show_error(error),
+            )
+def load_eod_data(self):
+        try:
+            results = scan_eod_signals()
+
+            self.root.after(
+                0,
+                lambda: self.finish_eod_load(results),
+            )
+
+        except Exception as error:
+            self.root.after(
+                0,
+                lambda error=error: self.show_error(error),
+            )                   
+def show_eod_test_message(self):
+        messagebox.showinfo(
+            "End-of-Day Signals",
+            "EOD button is connected correctly.",
+        )
 
 def main():
     root = tk.Tk()

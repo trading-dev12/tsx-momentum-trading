@@ -1055,3 +1055,93 @@ Next Priorities:
 4. Add paper portfolio persistence (save/restore).
 5. Add TSX holiday calendar support.
 6. Begin multi-week paper trading validation against ETF benchmarks.
+============================================================
+Version 3.3 Beta 2 – End-of-Day Signal Service
+Date: July 10, 2026
+============================================================
+
+Completed:
+- Added an end-of-day signal testing workflow based on completed daily candles.
+- Added TMQS component breakdown values for breakout, volume, and price strength.
+- Added reusable production service:
+  core/eod_signal_service.py
+- Added batch Yahoo Finance downloading for the complete watchlist.
+- Reduced EOD scan time by replacing 53 separate downloads with one batch request.
+- Confirmed the EOD service reproduces the validated strategy results.
+- Preserved the validated workflow:
+  completed signal candle -> next trading day entry.
+- Restored the live trading workstation to the last stable committed GUI version after an unsuccessful GUI integration attempt.
+
+Validation:
+- Stocks scanned: 53
+- READY: 0
+- WATCH: 6
+- IGNORE: 47
+- Errors: 0
+
+Current Status:
+- Live workstation is stable.
+- EOD service is stable and independently tested.
+- GUI integration has been postponed until the working service changes are safely committed.
+
+Next Priorities:
+1. Reintroduce EOD mode into the GUI using small, separately tested changes.
+2. Add a safe display adapter for EOD signal records.
+3. Disable paper-trade entry directly from signal-day closing prices.
+4. Prepare next-session trade plans using executable next-day entry rules.
+Development Log – July 10, 2026
+
+Version: 3.3 Beta 3 (Work in Progress – Not Committed)
+
+Completed
+Implemented completed-candle End-of-Day (EOD) signal engine.
+EOD scan successfully processes the research universe.
+Verified EOD results:
+READY: 0
+WATCH: 6
+IGNORE: 47
+ERRORS: 0
+Added strategy alignment so EOD signals use the same rules as the backtester.
+Began GUI integration for End-of-Day mode.
+Confirmed the EOD service can be called successfully from the workstation.
+Issue Encountered
+During GUI integration, trading_workstation.py became corrupted due to multiple edit/restore cycles and merge conflicts.
+The EOD service itself remains functional.
+Only the GUI integration requires rebuilding.
+Next Session Plan
+Restore the workstation from the last stable commit.
+Re-add the End-of-Day button.
+Connect the button to scan_eod_signals().
+Display READY/WATCH signals in the workstation table.
+Update the Trade Checklist for EOD signals.
+Disable live auto-refresh while in EOD mode.
+Return to Live mode when Refresh Scanner is pressed.
+Commit as Version 3.3 Beta 3 – End-of-Day Workstation Mode.
+Rebuild the GUI integration from the stable Version 3.3 Beta 2 workstation using the already-working EOD engine.
+Development Log Entry
+
+Version 3.3 Beta 3 – EOD Workstation Integration (Part 1)
+
+Completed
+
+Restored trading_workstation.py from the last stable commit after the failed GUI integration.
+Verified the workstation was fully operational again.
+Added a dedicated toolbar frame for scanner controls.
+Reintroduced the End-of-Day Signals button.
+Connected the button to the production scan_eod_signals() service.
+Implemented background-thread execution to keep the GUI responsive during EOD scans.
+Added completion reporting showing READY, WATCH, IGNORE, and ERROR counts.
+Confirmed successful integration with zero scan errors.
+
+Current Status
+
+Live scanner operational.
+Paper trading operational.
+EOD scan successfully launched from the workstation.
+GUI and EOD engine are now connected.
+
+Next Priority
+
+Replace the summary popup with full EOD signal display in the scanner table.
+Prevent same-day paper trade entries from EOD signals.
+Begin generating executable next-day paper trading candidates using the validated workflow.

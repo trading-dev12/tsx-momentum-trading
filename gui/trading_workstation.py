@@ -34,7 +34,7 @@ class TradingWorkstation:
                 self.paper_engine,
             )
         )
-        
+
         self.market_label = tk.Label(
             root,
             text="Market Health: Loading...",
@@ -306,6 +306,15 @@ class TradingWorkstation:
         self.current_view = "EOD"
         
         eod_quotes = results["ready"] + results["watch"]
+        queue_summary = self.paper_engine.queue_eod_signals(results)
+
+        print(
+            (
+            "Queued "
+            f"{queue_summary['added']} READY signals "
+            f"({queue_summary['rejected']} duplicates)."
+            )
+        )
         self.latest_quotes = eod_quotes
 
         for row in self.tree.get_children():
@@ -315,6 +324,8 @@ class TradingWorkstation:
             text=(
                 f"EOD Signals | "
                 f"READY: {len(results['ready'])} | "
+                f"Queued: {queue_summary['added']} | "
+                f"Duplicates: {queue_summary['rejected']} | "
                 f"WATCH: {len(results['watch'])} | "
                 f"IGNORE: {len(results['ignore'])} | "
                 f"ERRORS: {len(results['errors'])}"

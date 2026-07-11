@@ -1,0 +1,249 @@
+"""
+Automatic End-of-Day Signal Service
+
+Runs the production EOD scanner once per eligible trading day
+after the TSX closes, queues READY signals, and records the date
+so application refreshes or restarts do not repeat the scan.
+
+The service runs in a background daemon thread so it does not
+block the Trading Workstation.
+"""
+
+from datetime import datetime
+import json
+import os
+import threading
+
+from core.eod_signal_service import scan_eod_signals
+from core.market_hours import (
+    MARKET_CLOSE_TIME,
+    TORONTO_TIMEZONE,
+)
+
+
+AUTO_EOD_STATE_FILE = "automatic_eod_state.json"
+DEFAULT_CHECK_SECONDS = 60
+
+
+def normalize_current_datetime(current_datetime=None):
+    """
+    Return a timezone-aware Toronto datetime.
+    """
+
+    if current_datetime is None:
+        return datetime.now(TORONTO_TIMEZONE)
+
+    if current_datetime.tzinfo is None:
+        return current_datetime.replace(
+            tzinfo=TORONTO_TIMEZONE,
+        )
+
+    return current_datetime.astimezone(
+        TORONTO_TIMEZONE,
+    )
+
+
+def load_last_run_date(
+    state_file=AUTO_EOD_STATE_FILE,
+):
+    """
+    Load the last successfully completed automatic EOD date.
+    """
+
+    if not os.path.exists(state_file):
+        return None
+
+    try:
+        with open(
+            state_file,
+            "r",
+            encoding="utf-8",
+        ) as file:
+            state = json.load(file)
+
+        return state.get("last_run_date")
+
+    except (
+        OSError,
+        json.JSONDecodeError,
+    ):
+        return None
+
+
+def save_last_run_date(
+    run_date,
+    state_file=AUTO_EOD_STATE_FILE,
+):
+    """
+    Persist the most recent successful automatic EOD date.
+    """
+
+    state = {
+        "last_run_date": run_date,
+    }
+
+    with open(
+        state_file,
+        "w",
+        encoding="utf-8",
+    ) as file:
+        json.dump(
+            state,
+            file,
+            indent=4,
+        )
+
+
+def should_run_automatic_eod(
+    current_datetime=None,
+    state_file=AUTO_EOD_STATE_FILE,
+):
+    """
+    Return True only once per weekday after the TSX closes.
+    """
+
+    current_datetime = normalize_current_datetime(
+        current_datetime
+    )
+
+    if current_datetime.weekday() >= 5:
+        return False
+
+    current_time = (
+        current_datetime.time().replace(tzinfo=None)
+    )
+
+    if current_time < MARKET_CLOSE_TIME:
+        return False
+
+    current_date = current_datetime.date().isoformat()
+
+    last_run_date = load_last_run_date(
+        state_file=state_file,
+    )
+
+    return last_run_date != current_date
+
+
+def run_automatic_eod_cycle(
+    paper_engine,
+    current_datetime=None,
+    state_file=AUTO_EOD_STATE_FILE,
+    scan_provider=scan_eod_signals,
+):
+    """
+    Run one automatic EOD cycle when eligible.
+
+    The completion date is persisted only after the scan and
+    queue workflow finish successfully.
+    """
+
+    current_datetime = normalize_current_datetime(
+        current_datetime
+    )
+
+    current_date = current_datetime.date().isoformat()
+
+    if not should_run_automatic_eod(
+        current_datetime=current_datetime,
+        state_file=state_file,
+    ):
+        return {
+            "success": True,
+            "status": "NOT_DUE",
+            "run_date": current_date,
+            "message": (
+                "Automatic EOD scan is not due."
+            ),
+        }
+
+    results = scan_provider(
+        current_datetime=current_datetime,
+    )
+
+    queue_summary = paper_engine.queue_eod_signals(
+        results
+    )
+
+    save_last_run_date(
+        current_date,
+        state_file=state_file,
+    )
+
+    summary = {
+        "success": True,
+        "status": "COMPLETED",
+        "run_date": current_date,
+        "ready": len(results["ready"]),
+        "watch": len(results["watch"]),
+        "ignored": len(results["ignore"]),
+        "errors": len(results["errors"]),
+        "queued": queue_summary["added"],
+        "duplicates": queue_summary["rejected"],
+        "scan_results": results,
+        "queue_summary": queue_summary,
+    }
+
+    print("\n" + "=" * 60)
+    print("AUTOMATIC END-OF-DAY SCAN")
+    print("=" * 60)
+    print(f"Run date   : {current_date}")
+    print(f"READY      : {summary['ready']}")
+    print(f"Queued     : {summary['queued']}")
+    print(f"Duplicates : {summary['duplicates']}")
+    print(f"WATCH      : {summary['watch']}")
+    print(f"IGNORE     : {summary['ignored']}")
+    print(f"Errors     : {summary['errors']}")
+    print("=" * 60)
+
+    return summary
+
+
+def automatic_eod_worker(
+    paper_engine,
+    check_seconds=DEFAULT_CHECK_SECONDS,
+    stop_event=None,
+):
+    """
+    Continuously check whether the daily EOD scan is due.
+    """
+
+    if stop_event is None:
+        stop_event = threading.Event()
+
+    while not stop_event.is_set():
+        try:
+            run_automatic_eod_cycle(
+                paper_engine=paper_engine,
+            )
+
+        except Exception as error:
+            print(
+                "Automatic EOD scan error: "
+                f"{error}"
+            )
+
+        stop_event.wait(check_seconds)
+
+
+def start_automatic_eod_service(
+    paper_engine,
+    check_seconds=DEFAULT_CHECK_SECONDS,
+):
+    """
+    Start the automatic EOD service in a daemon thread.
+    """
+
+    thread = threading.Thread(
+        target=automatic_eod_worker,
+        kwargs={
+            "paper_engine": paper_engine,
+            "check_seconds": check_seconds,
+        },
+        daemon=True,
+        name="automatic-eod-service",
+    )
+
+    thread.start()
+
+    return thread

@@ -1381,3 +1381,175 @@ Validating portfolio performance over multiple trading days.
 Measuring real-world strategy performance before making any further strategy or GUI enhancements.
 
 This milestone represents one of the largest architectural advancements in the project to date and establishes the foundation required to determine whether the momentum strategy has a repeatable edge under real market conditions.
+Version 3.4 Beta 2 — Professional Risk Management
+
+Date: July 11, 2026
+
+Objective
+
+Replace the temporary fixed-capital position sizing model with a professional risk-based position sizing system aligned with the validated backtesting assumptions.
+
+Improvements
+Risk-Based Position Sizing
+
+The paper trading engine now sizes every trade using predefined portfolio risk rather than allocating a fixed percentage of available cash.
+
+Current defaults:
+
+Risk per trade: 1% of total portfolio equity
+Maximum position size: 20% of portfolio value
+Maximum concurrent positions: 5
+Never exceeds available cash
+Position Size Calculation
+
+Position size is now determined using:
+
+Portfolio value
+Risk budget
+Entry price
+Initial stop-loss distance (ATR-based)
+Available cash
+Maximum allocation limit
+
+The engine automatically selects the most conservative share quantity that satisfies all constraints.
+
+Example
+
+For a $10,000 portfolio:
+
+Portfolio risk budget: $100
+Entry: $26.00
+Stop: $23.00
+Risk per share: $3.00
+
+Calculated position:
+
+33 shares
+Capital deployed: $858
+Maximum possible loss (if stop is reached): approximately $99
+
+This keeps every trade consistent with the intended portfolio risk model.
+
+Validation Completed
+
+Verified:
+
+✓ 1% portfolio risk calculation
+✓ ATR-based risk sizing
+✓ Maximum allocation enforcement
+✓ Available cash enforcement
+✓ Maximum open-position enforcement
+✓ Automatic execution compatibility
+✓ Automatic monitoring compatibility
+✓ Automatic exits
+✓ Automatic journaling
+✓ Portfolio persistence
+Project Status
+
+The paper trading engine now mirrors the risk-management philosophy used during strategy validation rather than using a simple percentage-of-cash allocation.
+
+This provides a much more realistic simulation of live trading and ensures future paper-trading performance is directly comparable to historical backtesting assumptions.
+
+Current Production Workflow
+Production End-of-Day Scan
+        ↓
+Queue READY Signals
+        ↓
+Persistent Pending Queue
+        ↓
+Automatic Next-Day Execution
+        ↓
+Risk-Based Position Sizing
+        ↓
+Portfolio Persistence
+        ↓
+Automatic Position Monitoring
+        ↓
+Automatic Stop / Target / Time Exit
+        ↓
+Trade Journal
+Next Phase
+
+The infrastructure for automated paper trading is now substantially complete.
+
+The immediate focus shifts to observing the strategy in live market conditions, validating trade quality, and measuring real-world performance over multiple trading sessions before making further strategy refinements or adding advanced features.
+# Version 3.4 Beta 3 — Fully Automated EOD Workflow
+
+Date: July 11, 2026
+
+## Objective
+
+Remove the final manual daily step from the paper-trading workflow by automating the end-of-day production scan and READY-signal queue process.
+
+## Improvements
+
+### Completed-Candle Validation
+
+Updated the production EOD scanner so daily candles are handled correctly based on Toronto market time.
+
+The scanner now:
+
+- excludes the current day’s candle before the TSX closes;
+- includes the current day’s candle after 4:00 PM ET;
+- excludes same-day weekend candles;
+- continues to accept prior completed trading-day candles;
+- prevents stale Friday data from being treated as Monday’s completed session.
+
+### Automatic End-of-Day Service
+
+Added a dedicated background EOD service that:
+
+- starts automatically with the Trading Workstation;
+- checks every 60 seconds;
+- runs only Monday through Friday;
+- runs only after the TSX market closes;
+- executes only once per trading day;
+- queues all READY signals automatically;
+- persists the completed run date;
+- prevents duplicate scans after refreshes or application restarts;
+- does not block or freeze the GUI.
+
+### EOD Queue Integration
+
+Connected the EOD scanner directly to the persistent pending trade queue.
+
+The workflow now:
+
+- scans completed daily candles;
+- identifies READY signals;
+- queues READY trades;
+- reports duplicates;
+- saves pending trades to CSV;
+- preserves signals overnight for next-day execution.
+
+## Validation Completed
+
+Verified:
+
+- Monday before-close candle exclusion;
+- Monday after-close candle inclusion;
+- previous completed trading-day acceptance;
+- weekend same-day rejection;
+- automatic EOD eligibility logic;
+- once-per-day execution;
+- persistent last-run date;
+- duplicate scan prevention;
+- READY-signal queueing;
+- pending queue persistence;
+- background-thread execution;
+- workstation startup integration.
+
+## Fully Automated Production Workflow
+
+TSX Market Session
+
+```text
+Live scanner refreshes
+        ↓
+Latest prices update
+        ↓
+Open paper positions monitored
+        ↓
+Automatic stop / target / time exits
+        ↓
+Closed trades journaled

@@ -2,17 +2,26 @@
 End-of-Day Signal Service
 
 Generates trading signals from completed daily candles only.
-The current day's incomplete candle is excluded.
+
+Today's candle is:
+- excluded before the TSX closes;
+- included after the TSX closes;
+- never treated as completed on weekends.
 
 The complete watchlist is downloaded in one batch to avoid
 making a separate Yahoo Finance request for every symbol.
 """
-from backtesting.trade_simulator import calculate_atr
+
 from datetime import datetime
 
 import yfinance as yf
 
 from backtesting.strategy import evaluate_historical_setup
+from backtesting.trade_simulator import calculate_atr
+from core.market_hours import (
+    MARKET_CLOSE_TIME,
+    TORONTO_TIMEZONE,
+)
 from core.watchlist_loader import load_all_watchlists
 
 
@@ -24,9 +33,68 @@ def normalize_yahoo_symbol(symbol):
     return symbol if symbol.endswith(".TO") else f"{symbol}.TO"
 
 
-def download_watchlist_history(watchlist, period="10d"):
+def normalize_current_datetime(current_datetime=None):
     """
-    Download daily history for the complete watchlist in one request.
+    Return a timezone-aware Toronto datetime.
+    """
+
+    if current_datetime is None:
+        return datetime.now(TORONTO_TIMEZONE)
+
+    if current_datetime.tzinfo is None:
+        return current_datetime.replace(
+            tzinfo=TORONTO_TIMEZONE,
+        )
+
+    return current_datetime.astimezone(
+        TORONTO_TIMEZONE,
+    )
+
+
+def is_daily_candle_complete(
+    row_date,
+    current_datetime=None,
+):
+    """
+    Determine whether a daily candle is complete.
+
+    Previous calendar dates are complete.
+
+    Today's candle is complete only when:
+    - today is Monday through Friday; and
+    - Toronto time is 4:00 PM or later.
+
+    Future dates are never complete.
+    """
+
+    current_datetime = normalize_current_datetime(
+        current_datetime
+    )
+
+    today = current_datetime.date()
+
+    if row_date < today:
+        return True
+
+    if row_date > today:
+        return False
+
+    if current_datetime.weekday() >= 5:
+        return False
+
+    current_time = (
+        current_datetime.time().replace(tzinfo=None)
+    )
+
+    return current_time >= MARKET_CLOSE_TIME
+
+
+def download_watchlist_history(
+    watchlist,
+    period="10d",
+):
+    """
+    Download daily history for the complete watchlist.
     """
 
     yahoo_symbols = [
@@ -50,6 +118,7 @@ def download_watchlist_history(watchlist, period="10d"):
 def get_completed_daily_rows_from_batch(
     history,
     symbol,
+    current_datetime=None,
 ):
     """
     Extract completed daily candles for one symbol from the
@@ -66,17 +135,21 @@ def get_completed_daily_rows_from_batch(
     except (KeyError, TypeError):
         return []
 
-    if symbol_history is None or symbol_history.empty:
+    if (
+        symbol_history is None
+        or symbol_history.empty
+    ):
         return []
 
     completed_rows = []
-    today = datetime.now().date()
 
     for index, row in symbol_history.iterrows():
         row_date = index.date()
 
-        # Exclude today's candle because it may be incomplete.
-        if row_date >= today:
+        if not is_daily_candle_complete(
+            row_date,
+            current_datetime=current_datetime,
+        ):
             continue
 
         open_price = row.get("Open")
@@ -93,8 +166,10 @@ def get_completed_daily_rows_from_batch(
             volume,
         ]
 
-        # Skip missing or invalid rows.
-        if any(value != value for value in required_values):
+        if any(
+            value != value
+            for value in required_values
+        ):
             continue
 
         completed_rows.append(
@@ -125,7 +200,11 @@ def build_eod_signal_from_rows(
     previous_row = rows[-2]
     signal_row = rows[-1]
     signal_index = len(rows) - 1
-    atr = calculate_atr(rows, signal_index)
+
+    atr = calculate_atr(
+        rows,
+        signal_index,
+    )
 
     signal = evaluate_historical_setup(
         signal_row,
@@ -157,7 +236,10 @@ def build_eod_signal_from_rows(
     }
 
 
-def scan_eod_signals(watchlist=None):
+def scan_eod_signals(
+    watchlist=None,
+    current_datetime=None,
+):
     """
     Scan the complete TSX watchlist using one batch download.
     """
@@ -181,6 +263,7 @@ def scan_eod_signals(watchlist=None):
             rows = get_completed_daily_rows_from_batch(
                 history,
                 symbol,
+                current_datetime=current_datetime,
             )
 
             signal = build_eod_signal_from_rows(

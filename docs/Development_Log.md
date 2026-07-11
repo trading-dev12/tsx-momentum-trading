@@ -1553,3 +1553,61 @@ Open paper positions monitored
 Automatic stop / target / time exits
         ↓
 Closed trades journaled
+# Version 3.4 Beta 4 — Paper Trading Analytics Dashboard
+
+Date: July 11, 2026
+
+## Objective
+
+Introduce a professional analytics dashboard to measure live paper-trading performance throughout the validation phase.
+
+## Improvements
+
+Added a reusable analytics engine to calculate performance statistics directly from completed paper trades.
+
+### New Metrics
+
+- Total Trades
+- Winning Trades
+- Losing Trades
+- Breakeven Trades
+- Win Rate
+- Profit Factor
+- Expectancy
+- Average Winner
+- Average Loser
+- Total Closed Return
+- Maximum Drawdown
+- Best Trade
+- Worst Trade
+
+### Dashboard Improvements
+
+Enhanced the paper-trading dashboard to display:
+
+- Current portfolio summary
+- Available cash
+- Portfolio value
+- Realized profit/loss
+- Unrealized profit/loss
+- Open positions
+- Recent closed trades
+- Professional performance statistics
+
+### Validation
+
+Verified all calculations using controlled test trades.
+
+Confirmed accurate calculation of:
+
+- Win rate
+- Profit factor
+- Expectancy
+- Average gains and losses
+- Closed return
+- Maximum drawdown
+- Best and worst trade identification
+
+## Project Status
+
+The platform now provides real-time performance analytics during paper trading, allowing strategy validation to be measured objectively from the very first live paper trade.

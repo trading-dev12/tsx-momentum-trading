@@ -1145,3 +1145,108 @@ Next Priority
 Replace the summary popup with full EOD signal display in the scanner table.
 Prevent same-day paper trade entries from EOD signals.
 Begin generating executable next-day paper trading candidates using the validated workflow.
+Version 3.3 Beta 3 – Persistent Paper Trading Workflow
+Completed
+End-of-Day Workflow
+Completed production End-of-Day signal engine integration.
+Verified completed-candle scanning against the full research universe.
+Confirmed production scan successfully classifies READY, WATCH and IGNORE signals.
+Validated zero-error production scanning.
+Pending Trade Queue
+Added PendingTradeQueue ownership to PaperTradingEngine.
+Queue now accepts only READY signals.
+Duplicate pending trades are automatically rejected.
+Added pending trade lookup by symbol.
+Added automatic removal after successful execution.
+Added CSV persistence for pending trades.
+Pending trades now survive application restarts.
+Paper Trading Engine
+Added queue_signal() API.
+Added queue_eod_signals() API.
+Added execute_pending_trade() workflow.
+Added next-day execution safety lock preventing same-day execution.
+Added duplicate open-position protection.
+Added ATR-based stop calculation from stored EOD signal.
+Added reward target calculation using project risk/reward settings.
+Portfolio Persistence
+Added JSON portfolio persistence.
+Portfolio now saves:
+Starting cash
+Current cash
+Open positions
+Closed trades
+Portfolio automatically reloads after restart.
+Portfolio automatically saves after opening positions.
+Portfolio automatically saves after closing positions.
+End-to-End Validation
+
+Successfully validated:
+
+Production EOD Scanner
+        ↓
+PaperTradingEngine
+        ↓
+Pending Trade Queue
+        ↓
+CSV Persistence
+        ↓
+Next-Day Execution
+        ↓
+Portfolio Persistence
+        ↓
+Application Restart Recovery
+
+Verified:
+
+Production EOD scan
+Queue persistence
+Portfolio persistence
+Overnight recovery
+Duplicate prevention
+Same-day execution protection
+Automatic queue cleanup after execution
+Current Status
+Stable
+Historical Backtester
+Optimizer
+Research Universe
+TMQS Strategy
+Production EOD Scanner
+Pending Trade Queue
+Paper Trading Engine
+Portfolio Persistence
+Trade Journal
+Position Manager
+Overnight Recovery Workflow
+
+The complete paper trading infrastructure is now operational.
+
+Next Development Priority
+
+Implement automatic next-day paper trade execution.
+
+Target workflow:
+
+Market Close
+      ↓
+Run Production EOD Scan
+      ↓
+Queue READY Signals
+      ↓
+Save Pending Trades
+
+====================
+
+Next Market Open
+      ↓
+Load Pending Trades
+      ↓
+Retrieve Opening Prices
+      ↓
+Execute Paper Trades
+      ↓
+Open Portfolio Positions
+      ↓
+Begin Position Monitoring
+
+This will complete the first fully automated paper trading cycle.

@@ -7,7 +7,7 @@ The current day's incomplete candle is excluded.
 The complete watchlist is downloaded in one batch to avoid
 making a separate Yahoo Finance request for every symbol.
 """
-
+from backtesting.trade_simulator import calculate_atr
 from datetime import datetime
 
 import yfinance as yf
@@ -124,6 +124,8 @@ def build_eod_signal_from_rows(
 
     previous_row = rows[-2]
     signal_row = rows[-1]
+    signal_index = len(rows) - 1
+    atr = calculate_atr(rows, signal_index)
 
     signal = evaluate_historical_setup(
         signal_row,
@@ -134,6 +136,7 @@ def build_eod_signal_from_rows(
         "symbol": symbol,
         "signal_date": signal_row["date"],
         "close": signal_row["close"],
+        "atr": atr,
         "tmqs": signal["tmqs"],
         "rvol": signal["rvol"],
         "breakout": signal["breakout"],
@@ -170,7 +173,7 @@ def scan_eod_signals(watchlist=None):
 
     history = download_watchlist_history(
         watchlist,
-        period="10d",
+        period="3mo",
     )
 
     for symbol in watchlist:

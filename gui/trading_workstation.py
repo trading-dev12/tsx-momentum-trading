@@ -18,6 +18,7 @@ class TradingWorkstation:
         self.root = root
         self.root.title("TSX Momentum Pro")
         self.root.geometry("1450x760")
+        self.current_view = "LIVE"
 
         self.refresh_interval_seconds = 30
         self.countdown_seconds = self.refresh_interval_seconds
@@ -204,8 +205,9 @@ class TradingWorkstation:
         self.update_countdown()
 
     def refresh_data(self):
+        self.current_view = "LIVE"
         if self.is_refreshing:
-            return
+                return
 
         self.is_refreshing = True
         self.refresh_button.config(state="disabled", text="Refreshing...")
@@ -253,15 +255,9 @@ class TradingWorkstation:
                     )
                     self.is_refreshing = False
 
-                    messagebox.showinfo(
-                        "End-of-Day Scan Complete",
-                        (
-                            f"READY: {ready_count}\n"
-                            f"WATCH: {watch_count}\n"
-                            f"IGNORE: {ignore_count}\n"
-                            f"ERRORS: {error_count}"
-                        ),
-                    )
+                    self.display_eod_results(results)
+                    print("Displaying EOD results...")
+                    print("Finished displaying EOD results.")
 
                 self.root.after(0, finish_scan)
 
@@ -279,7 +275,7 @@ class TradingWorkstation:
         thread = threading.Thread(target=worker)
         thread.daemon = True
         thread.start()
-        
+
     def load_data(self):
         try:
             settings = load_settings()
@@ -297,7 +293,77 @@ class TradingWorkstation:
                 0,
                 lambda error=error: self.show_error(error),
             )
+    def display_eod_results(self, results):
+        self.current_view = "EOD"
+        
+        eod_quotes = results["ready"] + results["watch"]
+        self.latest_quotes = eod_quotes
 
+        for row in self.tree.get_children():
+            self.tree.delete(row)
+
+        self.summary_label.config(
+            text=(
+                f"EOD Signals | "
+                f"READY: {len(results['ready'])} | "
+                f"WATCH: {len(results['watch'])} | "
+                f"IGNORE: {len(results['ignore'])} | "
+                f"ERRORS: {len(results['errors'])}"
+            )
+        )
+
+        if eod_quotes:
+            best = max(
+                eod_quotes,
+                key=lambda quote: (
+                    quote["tmqs"],
+                    quote["rvol"],
+                ),
+            )
+
+            self.best_trade_label.config(
+                text=(
+                    f"Best EOD Candidate: {best['symbol']} | "
+                    f"Decision: {best['decision']} | "
+                    f"TMQS: {best['tmqs']} | "
+                    f"RVOL: {best['rvol']:.2f}x | "
+                    f"Breakout: {best['breakout']} | "
+                    f"Signal Date: {best['signal_date']} | "
+                    f"Next Trading Day Entry"
+                ),
+                bg=(
+                    "#b6d7a8"
+                    if best["decision"] == "READY"
+                    else "#fff2cc"
+                ),
+            )
+        else:
+            self.best_trade_label.config(
+                text="Best EOD Candidate: None",
+                bg="#e8f0fe",
+            )
+
+        for rank, quote in enumerate(eod_quotes, start=1):
+            self.tree.insert(
+                "",
+                "end",
+                iid=str(rank - 1),
+                values=(
+                    rank,
+                    quote["symbol"],
+                    f"{quote['close']:.2f}",
+                    quote["tmqs"],
+                    "--",
+                    f"{quote['rvol']:.2f}x",
+                    "--",
+                    quote["breakout"],
+                    "--",
+                    "--",
+                    quote["decision"],
+                    quote["reason"],
+                ),
+                tags=(quote["decision"],),
+            )
     def update_dashboard(self, market, quotes):
         self.latest_quotes = quotes
         self.check_ready_alerts(quotes)
@@ -499,6 +565,16 @@ class TradingWorkstation:
         self.refresh_button.config(state="normal", text="Refresh Scanner")
 
     def open_selected_paper_trade(self):
+        if self.current_view == "EOD":
+            messagebox.showinfo(
+                "Next Trading Day Entry Required",
+                (
+                    "End-of-day signals are based on the completed daily candle.\n\n"
+                    "Paper trades must be opened on the next trading day using "
+                    "the executable entry price, not the signal-day closing price."
+                ),
+            )
+            return
         selected = self.tree.selection()
 
         if not selected:

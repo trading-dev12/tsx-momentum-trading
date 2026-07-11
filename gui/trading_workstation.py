@@ -15,6 +15,12 @@ from paper_trading.paper_engine import PaperTradingEngine
 from paper_trading.automatic_execution import (
     start_automatic_execution_service,
 )
+from paper_trading.automatic_eod import (
+    start_automatic_eod_service,
+)
+from gui.system_health_panel import (
+    SystemHealthPanel,
+)
 
 class TradingWorkstation:
     def __init__(self, root):
@@ -28,12 +34,18 @@ class TradingWorkstation:
         self.is_refreshing = False
         self.latest_quotes = []
         self.previous_ready_symbols = set()
+        self.last_successful_refresh = None
         self.paper_engine = PaperTradingEngine(starting_cash=10000)
         self.automatic_execution_thread = (
             start_automatic_execution_service(
                 self.paper_engine,
             )
         )
+        self.automatic_eod_thread = (
+            start_automatic_eod_service(
+                self.paper_engine,
+        )
+    )
 
         self.market_label = tk.Label(
             root,
@@ -184,7 +196,13 @@ class TradingWorkstation:
             anchor="w",
         )
         self.market_session_label.pack(fill="x", padx=10, pady=(0, 5))
+        self.system_health_panel = SystemHealthPanel(root)
 
+        self.system_health_panel.pack(
+            fill="x",
+            padx=10,
+            pady=(0,5),
+        )
         portfolio_title = tk.Label(
             checklist_frame,
             text="Trader Control Center",
@@ -386,6 +404,9 @@ class TradingWorkstation:
             )
     def update_dashboard(self, market, quotes):
         self.latest_quotes = quotes
+        self.last_successful_refresh = (
+            datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        )
         self.check_ready_alerts(quotes)
         self.monitor_paper_positions()
 
@@ -887,6 +908,72 @@ class TradingWorkstation:
         self.paper_portfolio_text.delete("1.0", tk.END)
         self.paper_portfolio_text.insert("1.0", text)
         self.paper_portfolio_text.config(state="disabled")
+    
+    def update_system_health(self):
+        scanner = (
+            "REFRESHING"
+            if self.is_refreshing
+            else "RUNNING"
+        )
+
+        execution = (
+            "RUNNING"
+            if self.automatic_execution_thread.is_alive()
+            else "STOPPED"
+        )
+
+        eod = (
+            "RUNNING"
+            if self.automatic_eod_thread.is_alive()
+            else "STOPPED"
+        )
+
+        monitor = (
+            "ACTIVE"
+            if self.paper_engine.portfolio.open_positions
+            else "WAITING"
+        )
+
+        journal = "READY"
+
+        self.system_health_panel.set_status(
+            "scanner",
+            scanner,
+        )
+
+        self.system_health_panel.set_status(
+            "execution",
+            execution,
+        )
+
+        self.system_health_panel.set_status(
+            "eod",
+            eod,
+        )
+
+        self.system_health_panel.set_status(
+            "monitor",
+            monitor,
+        )
+
+        self.system_health_panel.set_status(
+            "journal",
+            journal,
+        )
+
+        self.system_health_panel.update_counts(
+            pending_trades=len(
+                self.paper_engine.pending_trades.get_all()
+            ),
+            open_positions=len(
+                self.paper_engine.portfolio.open_positions
+            ),
+            closed_trades=len(
+                self.paper_engine.portfolio.closed_trades
+            ),
+            last_refresh=self.last_successful_refresh,
+        )
+
     def update_market_session_status(self):
         session = get_tsx_market_status()
 
@@ -911,7 +998,7 @@ class TradingWorkstation:
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
         self.update_market_session_status()
-
+        self.update_system_health()
         if self.is_refreshing:
             status = f"Refreshing data... | Time: {now}"
         else:

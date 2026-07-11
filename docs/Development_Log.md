@@ -1250,3 +1250,134 @@ Open Portfolio Positions
 Begin Position Monitoring
 
 This will complete the first fully automated paper trading cycle.
+Version 3.4 Beta 1 — Automatic Next-Day Paper Execution
+
+Date: July 11, 2026
+
+Objective
+
+Complete the final major component required to begin fully automated paper-trading validation by implementing automatic next-day paper trade execution using real market opening prices.
+
+New Features
+Automatic Next-Day Paper Execution
+Added automatic execution of queued READY signals on the next trading day.
+Executes trades using the actual market opening price.
+Automatically opens paper positions without manual intervention.
+Opening Price Provider
+
+Created a dedicated opening price module that:
+
+Retrieves the first available regular-session 1-minute opening candle from Yahoo Finance.
+Falls back to the exact daily opening price when appropriate.
+Never substitutes a previous trading day's price.
+Correctly rejects weekends and market holidays.
+Automatic Execution Service
+
+Added a background execution service that:
+
+Starts automatically when the Trading Workstation launches.
+Runs independently of the GUI.
+Checks the pending trade queue immediately on startup.
+Retries every 60 seconds until an opening price becomes available.
+Does not block or freeze the workstation interface.
+Paper Trading Engine Enhancements
+
+Added automatic queue processing that:
+
+Loads all pending trades.
+Verifies next-day eligibility.
+Retrieves opening prices.
+Calculates position sizing.
+Creates paper positions.
+Updates portfolio persistence.
+Removes queued trades only after successful execution.
+Validation Completed
+
+Successfully verified:
+
+✓ Overnight queue persistence
+✓ Portfolio persistence
+✓ Engine restart recovery
+✓ Same-day execution protection
+✓ Weekend protection
+✓ Holiday protection
+✓ Opening price retrieval
+✓ One-minute market open detection
+✓ Automatic execution at market open
+✓ Queue retention when prices are unavailable
+✓ Automatic retry behaviour
+✓ Duplicate execution prevention
+✓ Queue cleanup after successful execution
+✓ Real Yahoo Finance integration
+✓ Background execution service
+✓ GUI startup integration
+✓ Position sizing
+✓ Stop-loss calculation
+✓ Profit target calculation
+Production Workflow
+
+Market Close
+
+Run Production EOD Scan
+        ↓
+Queue READY Signals
+        ↓
+Save pending_trades.csv
+
+Next Trading Day
+
+Launch Trading Workstation
+        ↓
+Automatic Execution Service Starts
+        ↓
+Load Pending Trades
+        ↓
+Retrieve Opening Price
+        ↓
+Open Paper Position
+        ↓
+Persist Portfolio
+        ↓
+Remove Pending Trade
+        ↓
+Monitor Position
+        ↓
+Automatic Exit
+        ↓
+Trade Journal
+Current Project Status
+
+The project has now progressed from:
+
+Historical Backtesting
+
+↓
+
+Strategy Optimization
+
+↓
+
+Production Scanner
+
+↓
+
+Persistent Paper Trading
+
+↓
+
+Automated Next-Day Paper Execution
+
+The complete end-to-end automated paper trading pipeline is now operational.
+
+Next Development Phase
+
+The immediate priority is no longer building infrastructure.
+
+The focus now shifts to continuous production paper-trading validation, including:
+
+Running the complete production workflow with live market data.
+Monitoring automatic entries and exits during real market sessions.
+Validating portfolio performance over multiple trading days.
+Measuring real-world strategy performance before making any further strategy or GUI enhancements.
+
+This milestone represents one of the largest architectural advancements in the project to date and establishes the foundation required to determine whether the momentum strategy has a repeatable edge under real market conditions.

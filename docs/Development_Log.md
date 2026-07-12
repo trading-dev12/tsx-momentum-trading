@@ -1724,3 +1724,21 @@ False at 10:01 a.m.
 False on weekends.
 
 The Morning Recorder Service now has a tested market-time eligibility rule.
+Version 3.4 Beta 8 — Morning Candidate Snapshot Capture
+
+Added immutable morning candidate snapshot support to the Morning Recorder Service.
+
+Changes
+Added capture_morning_candidates() to the Morning Recorder Service.
+The service now creates an independent copy of all pending candidates at the beginning of the recording session.
+Snapshot data remains available even after the automatic execution engine removes trades from the live pending queue.
+Preserved complete separation between the research platform and the paper-trading execution engine.
+Validation
+Created a test pending candidate.
+Captured a morning snapshot.
+Removed the candidate from the live pending queue.
+Verified the snapshot still contained the candidate.
+Confirmed the live queue was empty.
+Confirmed the snapshot remained unchanged.
+
+This establishes the foundation for continuous morning observation without affecting production trading behaviour.

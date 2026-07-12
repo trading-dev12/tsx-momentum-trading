@@ -35,7 +35,24 @@ def normalize_current_datetime(current_datetime=None):
     return current_datetime.astimezone(
         TORONTO_TIMEZONE,
     )
+def capture_morning_candidates(
+    paper_engine,
+):
+    """
+    Return an independent snapshot of the pending candidates.
 
+    The returned dictionaries are copies so later queue changes
+    do not alter the recorder's morning candidate list.
+    """
+
+    pending_trades = (
+        paper_engine.pending_trades.get_all()
+    )
+
+    return [
+        dict(pending_trade)
+        for pending_trade in pending_trades
+    ]
 
 def should_record_morning_observations(
     current_datetime=None,

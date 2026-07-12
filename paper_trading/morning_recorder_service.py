@@ -9,6 +9,7 @@ workflow.
 """
 
 from datetime import datetime, time
+import threading
 
 from core.market_hours import TORONTO_TIMEZONE
 
@@ -17,6 +18,31 @@ MORNING_RECORDING_START_TIME = time(9, 30)
 MORNING_RECORDING_END_TIME = time(10, 0)
 
 DEFAULT_CHECK_SECONDS = 60
+
+class MorningRecorderService:
+    """
+    Background service responsible for recording morning
+    market observations.
+
+    The service owns its own recording session state while
+    remaining completely independent from paper execution.
+    """
+
+    def __init__(
+        self,
+        paper_engine,
+        check_seconds=DEFAULT_CHECK_SECONDS,
+    ):
+        self.paper_engine = paper_engine
+        self.check_seconds = check_seconds
+
+        self.stop_event = threading.Event()
+
+        self.thread = None
+
+        self.current_recording_date = None
+
+        self.candidate_snapshot = []
 
 
 def normalize_current_datetime(current_datetime=None):

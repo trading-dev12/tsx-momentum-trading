@@ -1814,3 +1814,32 @@ Confirmed the method reported one captured candidate.
 Confirmed the complete candidate data was stored in service.candidate_snapshot.
 
 The Morning Recorder Service can now preserve its own research candidate list for the recording session.
+Version 3.4 Beta 13 — Once-Per-Day Morning Snapshot
+
+Date: July 11, 2026
+
+Summary
+
+Updated the Morning Recorder Service so its immutable candidate snapshot is captured only once per Toronto trading date.
+
+Changes
+Updated MorningRecorderService.capture_today_snapshot().
+Added Toronto-date normalization through normalize_current_datetime().
+Added tracking through current_recording_date.
+Added CAPTURED status for a newly captured daily snapshot.
+Added ALREADY_CAPTURED status when a snapshot already exists for the same date.
+Preserved the existing same-day candidate snapshot even when the pending-trade queue changes.
+Allowed a fresh snapshot to be captured when a new trading date begins.
+Did not modify baseline paper execution.
+Did not add the continuous recording loop.
+Validation
+
+Confirmed with a focused regression test:
+
+First capture on July 13 recorded one candidate.
+A second capture on July 13 did not replace the snapshot.
+A new capture on July 14 recorded the updated two-candidate queue.
+The final snapshot contained only the newly captured July 14 candidates.
+Architectural Result
+
+The Morning Recorder Service now owns a stable, immutable candidate list for each trading day. Baseline execution may remove trades from the live pending queue without interrupting the recorder’s research observations.

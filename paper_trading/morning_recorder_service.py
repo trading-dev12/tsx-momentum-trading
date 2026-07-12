@@ -110,27 +110,52 @@ class MorningRecorderService:
             current_datetime=current_datetime,
             pending_trades=self.candidate_snapshot,
         )
-    def capture_today_snapshot(self):
+    def capture_today_snapshot(
+        self,
+        current_datetime=None,
+    ):
         """
-        Capture today's pending candidates.
+        Capture today's pending candidates once per trading day.
 
-        The snapshot is only taken once and then used for the
-        remainder of the morning recording session.
+        A previously captured snapshot is preserved for the
+        remainder of the same trading day. A new snapshot is
+        captured when the Toronto calendar date changes.
         """
+
+        current_datetime = normalize_current_datetime(
+            current_datetime
+        )
+        recording_date = current_datetime.date()
+
+        if self.current_recording_date == recording_date:
+            return {
+                "success": True,
+                "status": "ALREADY_CAPTURED",
+                "recording_date": (
+                    recording_date.isoformat()
+                ),
+                "candidates": len(
+                    self.candidate_snapshot
+                ),
+            }
 
         self.candidate_snapshot = (
             capture_morning_candidates(
                 self.paper_engine
             )
         )
+        self.current_recording_date = recording_date
 
         return {
             "success": True,
+            "status": "CAPTURED",
+            "recording_date": (
+                recording_date.isoformat()
+            ),
             "candidates": len(
                 self.candidate_snapshot
             ),
         }
-
 def normalize_current_datetime(current_datetime=None):
     """
     Return a timezone-aware Toronto datetime.

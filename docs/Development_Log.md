@@ -1701,3 +1701,26 @@ Confirmed one observation was successfully written to SQLite.
 Confirmed the recorder checked one candidate with zero unavailable records and zero duplicates.
 
 This establishes the correct architecture for the upcoming Morning Recorder Service.
+Version 3.4 Beta 7 — Morning Recorder Scheduling Window
+
+Added the scheduling foundation for the background Morning Market Recorder Service.
+
+Changes
+Created paper_trading/morning_recorder_service.py.
+Added Toronto-time normalization.
+Added a weekday-only recording rule.
+Defined the Morning Recorder window as 9:30 a.m. through 10:00 a.m. Toronto time.
+Added a configurable default service check interval.
+Kept the new service completely separate from paper execution, pending-trade management, portfolio management, and the GUI.
+Validation
+
+Confirmed the recorder scheduling rules return:
+
+False at 9:29 a.m.
+True at 9:30 a.m.
+True during the recording window.
+True at 10:00 a.m.
+False at 10:01 a.m.
+False on weekends.
+
+The Morning Recorder Service now has a tested market-time eligibility rule.

@@ -76,15 +76,33 @@ class MorningRecorderService:
 
     def worker(self):
         """
-        Temporary worker.
+        Background scheduling loop.
 
-        The recording loop will be added next.
+        Periodically checks whether the service is within the
+        morning recording window. If so, one recording cycle is
+        performed using the immutable daily snapshot.
         """
 
         while not self.stop_event.is_set():
+
+            current_datetime = (
+                normalize_current_datetime()
+            )
+
+            if should_record_morning_observations(
+                current_datetime
+            ):
+                self.capture_today_snapshot(
+                    current_datetime
+                )
+
+                self.run_recording_cycle(
+                    current_datetime
+                )
+
             self.stop_event.wait(
                 self.check_seconds
-            )
+            )    
     def run_recording_cycle(
         self,
         current_datetime=None,

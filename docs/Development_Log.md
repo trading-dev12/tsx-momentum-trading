@@ -1843,3 +1843,32 @@ The final snapshot contained only the newly captured July 14 candidates.
 Architectural Result
 
 The Morning Recorder Service now owns a stable, immutable candidate list for each trading day. Baseline execution may remove trades from the live pending queue without interrupting the recorder’s research observations.
+Version 3.4 Beta 14 — Activate Morning Recorder Scheduling Loop
+
+Date: July 11, 2026
+
+Summary
+
+Replaced the placeholder Morning Recorder Service worker with an active background scheduling loop.
+
+Changes
+Updated MorningRecorderService.worker().
+The worker now retrieves the current Toronto datetime.
+The worker checks the existing weekday 9:30 a.m.–10:00 a.m. recording window.
+During the recording window, the service calls capture_today_snapshot().
+The once-per-day snapshot protection preserves the immutable candidate list.
+The service then calls run_recording_cycle() using the saved snapshot.
+The worker waits for the configured check_seconds interval between checks.
+The stop event continues to provide clean and responsive service shutdown.
+Baseline paper-trade execution remains unchanged.
+Validation
+Successfully compiled the complete paper_trading package.
+Started the Morning Recorder Service with a one-second test interval.
+Confirmed the background worker thread remained active during the test.
+Stopped the service successfully.
+Confirmed the worker thread was no longer alive after shutdown.
+Architectural Result
+
+The Morning Recorder Service now has an operational scheduling loop connecting the morning recording window, immutable daily candidate snapshot, and SQLite observation recording cycle.
+
+The service remains research-only and does not modify pending trades, open positions, or baseline execution decisions.

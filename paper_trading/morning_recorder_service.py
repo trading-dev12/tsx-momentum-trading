@@ -37,13 +37,52 @@ class MorningRecorderService:
         self.check_seconds = check_seconds
 
         self.stop_event = threading.Event()
-
         self.thread = None
-
         self.current_recording_date = None
-
         self.candidate_snapshot = []
 
+    def start(self):
+        """
+        Start the background recorder service.
+        """
+
+        if (
+            self.thread is not None
+            and self.thread.is_alive()
+        ):
+            return
+
+        self.stop_event.clear()
+
+        self.thread = threading.Thread(
+            target=self.worker,
+            daemon=True,
+            name="morning-recorder-service",
+        )
+
+        self.thread.start()
+
+    def stop(self):
+        """
+        Stop the background recorder service.
+        """
+
+        self.stop_event.set()
+
+        if self.thread is not None:
+            self.thread.join(timeout=2)
+
+    def worker(self):
+        """
+        Temporary worker.
+
+        The recording loop will be added next.
+        """
+
+        while not self.stop_event.is_set():
+            self.stop_event.wait(
+                self.check_seconds
+            )
 
 def normalize_current_datetime(current_datetime=None):
     """

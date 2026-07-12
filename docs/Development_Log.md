@@ -1765,3 +1765,19 @@ thread is None.
 stop_event is initialized and not set.
 
 This establishes the object that will manage the complete morning recording lifecycle.
+Version 3.4 Beta 10 — Morning Recorder Service Lifecycle
+
+Added the service lifecycle methods to the MorningRecorderService class.
+
+Changes
+Added start() method to launch the recorder in a background daemon thread.
+Added stop() method to request a clean shutdown and wait for the worker thread to terminate.
+Added an initial placeholder worker() method that remains idle until the stop event is set.
+Established the complete background service lifecycle while keeping the recorder independent of the paper-trading engine and GUI.
+Validation
+Successfully instantiated the service.
+Confirmed the background thread starts correctly.
+Confirmed the worker remains active while running.
+Confirmed the service shuts down cleanly when stop() is called.
+
+The Morning Recorder Service is now a managed background component ready for recording logic.

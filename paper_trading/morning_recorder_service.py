@@ -110,6 +110,26 @@ class MorningRecorderService:
             current_datetime=current_datetime,
             pending_trades=self.candidate_snapshot,
         )
+    def capture_today_snapshot(self):
+        """
+        Capture today's pending candidates.
+
+        The snapshot is only taken once and then used for the
+        remainder of the morning recording session.
+        """
+
+        self.candidate_snapshot = (
+            capture_morning_candidates(
+                self.paper_engine
+            )
+        )
+
+        return {
+            "success": True,
+            "candidates": len(
+                self.candidate_snapshot
+            ),
+        }
 
 def normalize_current_datetime(current_datetime=None):
     """

@@ -1872,3 +1872,56 @@ Architectural Result
 The Morning Recorder Service now has an operational scheduling loop connecting the morning recording window, immutable daily candidate snapshot, and SQLite observation recording cycle.
 
 The service remains research-only and does not modify pending trades, open positions, or baseline execution decisions.
+Development Log
+Version 3.4 Beta 14 – Telegram Notification Framework
+Summary
+
+Implemented the foundation for a secure Telegram notification system, enabling the trading workstation to communicate directly with a mobile device. Notifications are now supported through a reusable module that reads credentials securely from a local .env file rather than storing sensitive information in the source code.
+
+Completed
+Created and configured a dedicated Telegram bot (@ChrisTSXMomentumBot).
+Verified secure communication between Python and the Telegram Bot API.
+Retrieved and validated the personal Telegram Chat ID.
+Implemented a permanent notifications package.
+Created telegram_notifier.py with reusable send_telegram_message() functionality.
+Implemented automatic loading of Telegram credentials from a local .env file.
+Confirmed .env is ignored by Git and will not expose credentials in the repository.
+Successfully transmitted live notifications from the trading workstation to the Android device.
+Confirmed requests dependency is already included in the project requirements.
+Architectural Improvements
+Established a centralized notification framework that can be reused across the project.
+Removed the need to manually paste API tokens during normal operation.
+Isolated all Telegram-specific logic into a dedicated module to keep the remainder of the application independent of the notification implementation.
+Prepared the project for future notification providers without requiring changes throughout the codebase.
+Research Findings
+
+Reviewed the workstation code and identified the ideal integration point:
+
+check_ready_alerts()
+
+This function already:
+
+Detects newly qualified READY trades.
+Prevents duplicate alerts.
+Maintains state between refresh cycles.
+
+This makes it the correct location for live Telegram notifications without generating repeated messages every scanner refresh.
+
+Next Development Session
+
+Replace the existing console output:
+
+print("NEW READY ALERT:", ...)
+
+with a call to the reusable Telegram notification module.
+
+After successful validation, extend notifications to:
+
+READY trade alerts
+Paper trade opened
+Stop loss triggered
+Target reached
+Time exit
+Morning Recorder completion
+End-of-day summary
+System warnings and service failures

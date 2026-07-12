@@ -12,7 +12,9 @@ from datetime import datetime, time
 import threading
 
 from core.market_hours import TORONTO_TIMEZONE
-
+from paper_trading.morning_recorder import (
+    record_pending_candidates_once,
+)
 
 MORNING_RECORDING_START_TIME = time(9, 30)
 MORNING_RECORDING_END_TIME = time(10, 0)
@@ -83,6 +85,31 @@ class MorningRecorderService:
             self.stop_event.wait(
                 self.check_seconds
             )
+    def run_recording_cycle(
+        self,
+        current_datetime=None,
+    ):
+        """
+        Run one morning recording cycle.
+
+        This method performs one recording pass using the
+        service's saved candidate snapshot.
+        """
+
+        if not self.candidate_snapshot:
+            return {
+                "success": True,
+                "status": "NO_CANDIDATES",
+                "message": (
+                    "No morning candidates are available."
+                ),
+            }
+
+        return record_pending_candidates_once(
+            paper_engine=self.paper_engine,
+            current_datetime=current_datetime,
+            pending_trades=self.candidate_snapshot,
+        )
 
 def normalize_current_datetime(current_datetime=None):
     """
@@ -100,6 +127,8 @@ def normalize_current_datetime(current_datetime=None):
     return current_datetime.astimezone(
         TORONTO_TIMEZONE,
     )
+
+
 def capture_morning_candidates(
     paper_engine,
 ):
@@ -117,7 +146,7 @@ def capture_morning_candidates(
     return [
         dict(pending_trade)
         for pending_trade in pending_trades
-    ]
+    ]    
 
 def should_record_morning_observations(
     current_datetime=None,

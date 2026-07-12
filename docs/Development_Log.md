@@ -1781,3 +1781,19 @@ Confirmed the worker remains active while running.
 Confirmed the service shuts down cleanly when stop() is called.
 
 The Morning Recorder Service is now a managed background component ready for recording logic.
+Version 3.4 Beta 11 — Single Morning Recording Cycle
+
+Added a testable single-cycle recording method to the MorningRecorderService.
+
+Changes
+Added run_recording_cycle() to the service class.
+The method records from the service-owned candidate snapshot.
+Added safe handling when no candidates are available.
+Kept the recording operation separate from the background worker loop.
+Preserved complete separation from automatic paper execution and portfolio management.
+Validation
+Confirmed morning_recorder_service.py compiles without syntax errors.
+Confirmed the service returns NO_CANDIDATES when its candidate snapshot is empty.
+Confirmed the method is accessible as part of MorningRecorderService.
+
+The service can now perform one independently testable recording pass.

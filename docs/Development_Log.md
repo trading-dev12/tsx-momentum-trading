@@ -1681,3 +1681,23 @@ The TSX Momentum Pro workstation now includes:
 - Real-Time System Health Monitoring
 
 The project is now ready for its first live paper trading validation beginning with the next trading session.
+Version 3.4 Beta 6 — Morning Candidate Snapshot Support
+
+Added immutable candidate snapshot support to the Morning Market Recorder.
+
+Changes
+Updated record_pending_candidates_once() to accept an optional supplied list of pending trades.
+Preserved the existing behaviour of reading from the live pending queue when no candidate list is supplied.
+Added defensive copying of supplied candidates so the recorder works from an independent snapshot.
+Enabled future background recording to continue after successful automatic execution removes trades from the live pending queue.
+Kept the paper portfolio, pending queue, and automatic execution workflow completely unchanged.
+Validation
+Created a test pending candidate.
+Copied the candidate into an in-memory snapshot.
+Removed the candidate from the live pending queue.
+Recorded an observation using the snapshot.
+Confirmed the live queue remained empty.
+Confirmed one observation was successfully written to SQLite.
+Confirmed the recorder checked one candidate with zero unavailable records and zero duplicates.
+
+This establishes the correct architecture for the upcoming Morning Recorder Service.

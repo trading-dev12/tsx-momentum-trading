@@ -1797,3 +1797,20 @@ Confirmed the service returns NO_CANDIDATES when its candidate snapshot is empty
 Confirmed the method is accessible as part of MorningRecorderService.
 
 The service can now perform one independently testable recording pass.
+Version 3.4 Beta 12 — Morning Candidate Snapshot Ownership
+
+Added service-owned candidate snapshot capture to the Morning Recorder Service.
+
+Changes
+Added capture_today_snapshot() to MorningRecorderService.
+The service now copies pending candidates into its own in-memory snapshot.
+The snapshot is independent of the live pending-trade queue.
+This allows morning observations to continue after automatic execution removes successfully opened trades from the pending queue.
+The baseline paper-trading engine remains unchanged.
+Validation
+Created one test pending candidate.
+Captured the candidate through the Morning Recorder Service.
+Confirmed the method reported one captured candidate.
+Confirmed the complete candidate data was stored in service.candidate_snapshot.
+
+The Morning Recorder Service can now preserve its own research candidate list for the recording session.

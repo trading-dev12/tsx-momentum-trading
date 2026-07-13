@@ -19,7 +19,7 @@ from core.market_hours import (
     MARKET_CLOSE_TIME,
     TORONTO_TIMEZONE,
 )
-
+from notifications.telegram_notifier import send_telegram_message
 
 AUTO_EOD_STATE_FILE = "automatic_eod_state.json"
 DEFAULT_CHECK_SECONDS = 60
@@ -183,6 +183,39 @@ def run_automatic_eod_cycle(
         "scan_results": results,
         "queue_summary": queue_summary,
     }
+    
+    telegram_message = (
+        "✅ AUTOMATIC EOD SCAN COMPLETED\n\n"
+        f"Date: {current_date}\n"
+        f"READY: {summary['ready']}\n"
+        f"Queued: {summary['queued']}\n"
+        f"Duplicates: {summary['duplicates']}\n"
+        f"WATCH: {summary['watch']}\n"
+        f"IGNORE: {summary['ignored']}\n"
+        f"Errors: {summary['errors']}\n\n"
+        "Pending signals are ready for next-day execution."
+    )
+
+    try:
+        telegram_result = send_telegram_message(
+            telegram_message
+        )
+    except Exception as error:
+        telegram_result = {
+            "success": False,
+            "message": (
+                "Unexpected Telegram notification error: "
+                f"{error}"
+            ),
+        }
+
+    summary["telegram"] = telegram_result
+
+    if not telegram_result["success"]:
+        print(
+            "Telegram notification warning: "
+            f"{telegram_result['message']}"
+        )
 
     print("\n" + "=" * 60)
     print("AUTOMATIC END-OF-DAY SCAN")

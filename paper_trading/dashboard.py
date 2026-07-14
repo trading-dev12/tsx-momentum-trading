@@ -4,7 +4,7 @@ Paper Trading Dashboard
 Builds portfolio status, open-position details, recent trades,
 and performance analytics for live paper-trading validation.
 """
-
+from datetime import datetime
 
 def calculate_closed_trade_metrics(
     closed_trades,
@@ -155,7 +155,36 @@ def calculate_closed_trade_metrics(
         if starting_cash > 0
         else 0.0
     )
+    holding_days = []
 
+    for trade in closed_trades:
+        try:
+            entry = datetime.strptime(
+                trade["entry_date"],
+                "%Y-%m-%d",
+            )
+
+            exit_ = datetime.strptime(
+                trade["exit_date"],
+                "%Y-%m-%d",
+            )
+
+            holding_days.append(
+                (exit_ - entry).days
+            )
+
+        except (
+            KeyError,
+            ValueError,
+            TypeError,
+        ):
+            pass
+
+    average_hold_days = (
+        sum(holding_days) / len(holding_days)
+        if holding_days
+        else 0.0
+    )
     return {
         "total_trades": total_trades,
         "winning_trades": len(winning_trades),
@@ -171,6 +200,7 @@ def calculate_closed_trade_metrics(
         "best_trade": best_trade,
         "worst_trade": worst_trade,
         "maximum_drawdown": maximum_drawdown,
+        "average_hold_days": average_hold_days,
     }
 
 
@@ -310,6 +340,10 @@ def build_paper_dashboard_text(
         lines.append(
             f"Expectancy         "
             f"{metrics['expectancy_percent']:>11.2f}%"
+        )
+        lines.append(
+            f"Average Hold       "
+            f"{metrics['average_hold_days']:>11.1f} days"
         )
         lines.append(
             f"Average Winner    "

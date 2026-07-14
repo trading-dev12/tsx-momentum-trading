@@ -7,6 +7,7 @@ import threading
 from core.eod_signal_service import scan_eod_signals
 
 from paper_trading.dashboard import build_paper_dashboard_text
+from notifications.telegram_notifier import send_telegram_message
 from core.config_loader import load_settings
 from core.watchlist_loader import load_all_watchlists
 from core.market_data import get_quotes
@@ -528,10 +529,83 @@ class TradingWorkstation:
             q["symbol"] for q in quotes if q["decision"] == "READY"
         }
 
-        new_ready_symbols = current_ready_symbols - self.previous_ready_symbols
+        new_ready_symbols = (
+            current_ready_symbols
+            - self.previous_ready_symbols
+        )
 
         if new_ready_symbols:
-            print("NEW READY ALERT:", ", ".join(new_ready_symbols))
+            print(
+                "NEW READY ALERT:",
+                ", ".join(sorted(new_ready_symbols)),
+            )
+
+            ready_quotes = [
+                quote
+                for quote in quotes
+                if quote["symbol"] in new_ready_symbols
+            ]
+
+            message_lines = [
+                "TSX MOMENTUM PRO - NEW READY ALERT",
+                "",
+            ]
+
+            for ready_quote in ready_quotes:
+                message_lines.extend(
+                    [
+                        f"Symbol: {ready_quote['symbol']}",
+                        (
+                            "Price: "
+                            f"${float(ready_quote.get('price', 0)):.2f}"
+                        ),
+                        (
+                            "TMQS: "
+                            f"{ready_quote.get('tmqs', 0)}"
+                        ),
+                        (
+                            "Confidence: "
+                            f"{ready_quote.get('confidence_score', 0)}%"
+                        ),
+                        (
+                            "RVOL: "
+                            f"{float(ready_quote.get('relative_volume', 0)):.2f}x"
+                        ),
+                        (
+                            "Breakout: "
+                            f"{ready_quote.get('breakout_status', '')}"
+                        ),
+                        (
+                            "Reason: "
+                            f"{ready_quote.get('reason', '')}"
+                        ),
+                        "",
+                    ]
+                )
+
+            telegram_message = "\n".join(message_lines).strip()
+
+            def send_ready_telegram_alert():
+                try:
+                    result = send_telegram_message(
+                        telegram_message
+                    )
+
+                    if not result.get("success"):
+                        print(
+                            "Telegram READY alert warning: "
+                            f"{result.get('message', '')}"
+                        )
+                except Exception as error:
+                    print(
+                        "Unexpected Telegram READY alert error: "
+                        f"{error}"
+                    )
+
+            threading.Thread(
+                target=send_ready_telegram_alert,
+                daemon=True,
+            ).start()
 
         self.previous_ready_symbols = current_ready_symbols
 

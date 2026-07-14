@@ -36,10 +36,10 @@ class TradingWorkstation:
         self.previous_ready_symbols = set()
         self.last_successful_refresh = None
         self.paper_engine = PaperTradingEngine(
-            starting_cash=50000,
+            starting_cash=500000,
             risk_model="fixed",
             fixed_risk_amount=100.0,
-            max_open_positions=20,
+            max_open_positions=100,
         )
         self.automatic_execution_thread = (
             start_automatic_execution_service(

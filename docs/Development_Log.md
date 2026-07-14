@@ -2066,3 +2066,50 @@ Design Rationale
 The current objective is to validate the momentum strategy itself—not to simulate a specific account size.
 
 By removing artificial cash and portfolio limits, the system can execute every qualifying paper trade, resulting in a more complete and statistically reliable baseline dataset. This improves confidence in subsequent performance analysis before introducing realistic capital constraints for live deployment.
+
+Development Log
+Version 3.5 Beta 1 – Telegram READY Alerts & Analytics Enhancement
+
+Date: July 14, 2026
+
+Stability Improvements
+Fixed stale pending trade queue after workstation restart.
+Added automatic synchronization between pending trades and open positions.
+Pending trades for symbols with existing open positions are now automatically removed as SKIPPED instead of repeatedly attempting execution.
+Verified:
+Automatic execution no longer retries stale trades.
+Pending queue remains synchronized after restart.
+Portfolio state restores correctly.
+Restart workflow is stable.
+Paper Trading
+Verified:
+Open Positions: 6
+Pending Trades: 0
+Closed Trades: 0
+Confirmed automatic execution, position monitoring, and journal services remain operational.
+Analytics
+Added Average Holding Time calculation to the paper trading analytics engine.
+Uses entry_date and exit_date from completed trades.
+Integrated the metric into the analytics dashboard.
+Verified dashboard compiles and launches successfully.
+Telegram Notifications
+Integrated Telegram with the live READY signal detector.
+READY alerts now include:
+Symbol
+Price
+TMQS
+Confidence Score
+Relative Volume (RVOL)
+Breakout Status
+Decision Reason
+Preserved duplicate-alert protection so the same READY symbol is not repeatedly sent.
+Telegram notifications run in a background thread to prevent GUI freezes if Telegram is unavailable.
+Existing Automatic End-of-Day Telegram notification remains intact.
+Scanner Validation
+Verified:
+Scanner operational.
+Auto Execution running.
+Position Monitor active.
+Trade Journal ready.
+Queue synchronization functioning correctly.
+Observed TD.TO generating a READY signal after market close. This remains an investigation item to determine why it differed from the earlier End-of-Day scan.

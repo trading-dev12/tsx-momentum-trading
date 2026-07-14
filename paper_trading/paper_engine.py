@@ -93,9 +93,30 @@ class PaperTradingEngine:
         pending_trades = self.pending_trades.get_all()
         results = []
 
+        open_symbols = {
+            position["symbol"]
+            for position in self.portfolio.open_positions
+        }
+
         for pending_trade in pending_trades:
             symbol = pending_trade["symbol"]
             signal_date = pending_trade["signal_date"]
+
+            if symbol in open_symbols:
+                self.pending_trades.remove_trade(symbol)
+
+                results.append(
+                    {
+                        "success": False,
+                        "symbol": symbol,
+                        "status": "SKIPPED",
+                        "message": (
+                            f"{symbol} already has an open position. "
+                            "Stale pending trade removed."
+                        ),
+                    }
+                )
+                continue
 
             if execution_date <= signal_date:
                 results.append(

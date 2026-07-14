@@ -1996,3 +1996,37 @@ Baseline End-of-Day automation validated.
 Next milestone:
 
 Validate complete overnight execution cycle (EOD → Pending Queue → Automatic Market Open Execution → Portfolio Update → Trade Journal).
+Development Log
+
+Date: July 14, 2026
+
+Summary
+
+Implemented a dedicated Validation Risk Mode for the paper trading engine, allowing research to collect complete baseline data without account-size constraints.
+
+Features Added
+Validation Risk Model
+Added support for two position-sizing modes:
+Percentage Risk (existing behavior)
+Fixed Dollar Risk (new)
+Introduced configurable risk_model and fixed_risk_amount parameters to the PaperTradingEngine.
+Preserved backward compatibility by keeping Percentage Risk as the default.
+Validation Configuration
+Configured the Trading Workstation to use:
+Starting Cash: $50,000
+Fixed Risk: $100 per trade
+Maximum Open Positions: 20
+This separates research validation from realistic account constraints while maintaining consistent trade risk.
+Validation Performed
+Successfully compiled:
+paper_trading/paper_engine.py
+gui/trading_workstation.py
+Verified Fixed Risk mode returns expected position sizing.
+Confirmed Trading Workstation loads:
+Risk Model: fixed
+Fixed Risk: $100
+Starting Cash: $50,000
+Maximum Open Positions: 20
+Verified six pending trades remain queued for morning execution.
+Notes
+Telegram notifications could not connect while on the workplace network. Testing indicates the issue is network-related rather than application-related. Paper trading functionality is unaffected and should be retested on the home network.

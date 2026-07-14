@@ -23,14 +23,18 @@ DEFAULT_MAX_OPEN_POSITIONS = 5
 
 class PaperTradingEngine:
     def __init__(
-        self,
-        starting_cash=10000,
-        portfolio_state_file=PORTFOLIO_STATE_FILE,
-        pending_trades_file=PENDING_TRADES_FILE,
-        risk_per_trade_percent=DEFAULT_RISK_PER_TRADE_PERCENT,
-        max_position_percent=DEFAULT_MAX_POSITION_PERCENT,
-        max_open_positions=DEFAULT_MAX_OPEN_POSITIONS,
+    self,
+    starting_cash=10000,
+    portfolio_state_file=PORTFOLIO_STATE_FILE,
+    pending_trades_file=PENDING_TRADES_FILE,
+    risk_per_trade_percent=DEFAULT_RISK_PER_TRADE_PERCENT,
+    risk_model="percent",
+    fixed_risk_amount=100.0,
+    max_position_percent=DEFAULT_MAX_POSITION_PERCENT,
+    max_open_positions=DEFAULT_MAX_OPEN_POSITIONS,
     ):
+        self.risk_model = str(risk_model).lower()
+        self.fixed_risk_amount = float(fixed_risk_amount) 
         self.portfolio = PaperPortfolio(
             starting_cash=starting_cash,
             state_file=portfolio_state_file,
@@ -384,10 +388,12 @@ class PaperTradingEngine:
 
         portfolio_value = self.portfolio.portfolio_value()
 
-        risk_budget = portfolio_value * (
-            self.risk_per_trade_percent / 100
-        )
-
+        if self.risk_model == "fixed":
+            risk_budget = self.fixed_risk_amount
+        else:
+            risk_budget = portfolio_value * (
+                self.risk_per_trade_percent / 100
+            )   
         maximum_position_value = portfolio_value * (
             self.max_position_percent / 100
         )

@@ -6,6 +6,9 @@ position manager, trade journal, pending trade queue,
 automatic next-day execution, and risk-based sizing.
 """
 
+import threading
+
+from notifications.telegram_notifier import send_telegram_message
 from paper_trading.journal import save_trade
 from paper_trading.opening_price import get_market_open_price
 from paper_trading.pending_trades import PendingTradeQueue
@@ -309,6 +312,7 @@ class PaperTradingEngine:
 
         if result.get("success"):
             self.pending_trades.remove_trade(symbol)
+            self._notify_trade_opened(position)
 
         return result
 
@@ -388,7 +392,61 @@ class PaperTradingEngine:
             ),
         }
 
-        return self.portfolio.open_position(position)
+        result = self.portfolio.open_position(position)
+
+        if result.get("success"):
+            self._notify_trade_opened(position)
+
+        return result
+
+    def _send_telegram_async(self, message):
+        def worker():
+            try:
+                result = send_telegram_message(message)
+
+                if not result.get("success"):
+                    print(
+                        "Telegram trade alert warning: "
+                        f"{result.get('message', '')}"
+                    )
+            except Exception as error:
+                print(
+                    "Unexpected Telegram trade alert error: "
+                    f"{error}"
+                )
+
+        threading.Thread(
+            target=worker,
+            daemon=True,
+        ).start()
+
+    def _notify_trade_opened(self, position):
+        entry_price = float(position["entry_price"])
+        stop_price = float(position["stop_price"])
+        target_price = float(position["target_price"])
+        shares = int(position["shares"])
+
+        risk_amount = (
+            entry_price - stop_price
+        ) * shares
+
+        summary = self.portfolio.summary()
+
+        message = (
+            "PAPER TRADE OPENED\n\n"
+            f"Symbol: {position['symbol']}\n"
+            f"Entry: ${entry_price:.2f}\n"
+            f"Shares: {shares}\n"
+            f"Stop: ${stop_price:.2f}\n"
+            f"Target: ${target_price:.2f}\n"
+            f"Position Risk: ${risk_amount:.2f}\n\n"
+            f"Available Cash: ${summary['cash']:,.2f}\n"
+            f"Portfolio Value: "
+            f"${summary['portfolio_value']:,.2f}\n"
+            f"Open Positions: {summary['open_positions']}"
+        )
+
+        self._send_telegram_async(message)
 
     def calculate_position_size(
         self,
@@ -458,6 +516,7 @@ class PaperTradingEngine:
 
         for trade in closed_trades:
             save_trade(trade)
+            self._notify_trade_closed(trade)
 
         return closed_trades
 
@@ -477,8 +536,59 @@ class PaperTradingEngine:
 
         if result.get("success"):
             save_trade(result["trade"])
+            self._notify_trade_closed(result["trade"])
 
         return result
 
+    def _notify_trade_closed(self, trade):
+        profit_loss = float(
+            trade.get("profit_loss", 0)
+        )
+
+        profit_loss_percent = float(
+            trade.get("profit_loss_percent", 0)
+        )
+
+        exit_reason = str(
+            trade.get("exit_reason", "Trade closed")
+        )
+
+        reason_title = {
+            "Stop hit": "STOP HIT",
+            "Target hit": "TARGET HIT",
+            "Time exit": "TIME EXIT",
+            "Manual exit": "MANUAL EXIT",
+        }.get(
+            exit_reason,
+            exit_reason.upper(),
+        )
+
+        summary = self.portfolio.summary()
+
+        message = (
+            f"{reason_title}\n\n"
+            f"Symbol: {trade['symbol']}\n"
+            f"Entry: "
+            f"${float(trade['entry_price']):.2f}\n"
+            f"Exit: "
+            f"${float(trade['exit_price']):.2f}\n"
+            f"Shares: {int(trade['shares'])}\n"
+            f"Realized P/L: "
+            f"${profit_loss:+,.2f} "
+            f"({profit_loss_percent:+.2f}%)\n"
+            f"Exit Reason: {exit_reason}\n\n"
+            f"Available Cash: "
+            f"${summary['cash']:,.2f}\n"
+            f"Portfolio Value: "
+            f"${summary['portfolio_value']:,.2f}\n"
+            f"Open Positions: "
+            f"{summary['open_positions']}\n"
+            f"Closed Trades: "
+            f"{summary['closed_trades']}"
+        )
+
+        self._send_telegram_async(message)
+
     def summary(self):
         return self.portfolio.summary()
+    

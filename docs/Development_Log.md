@@ -2140,3 +2140,87 @@ Next Development Target:
   - Trade Opened notifications
   - Trade Closed notifications
   - Portfolio/P&L status messages
+  Development Log
+
+Version 3.5 Beta 2 – Telegram Trade Lifecycle Alerts
+
+Date: July 15, 2026
+
+Summary
+
+Completed the Telegram notification system for the complete paper trade lifecycle. The system now automatically notifies the user whenever a paper trade is opened or closed while preserving all existing execution, portfolio management, and journaling functionality.
+
+Features Added
+Trade Opened Notifications
+Added automatic Telegram notifications whenever a paper trade is successfully opened.
+Notifications include:
+Symbol
+Entry Price
+Share Quantity
+Stop Price
+Profit Target
+Position Risk ($)
+Available Cash
+Portfolio Value
+Open Position Count
+Trade Closed Notifications
+Added automatic Telegram notifications whenever a paper trade is closed.
+Supports all exit types:
+Stop Hit
+Target Hit
+Time Exit
+Manual Exit
+Notifications include:
+Symbol
+Entry Price
+Exit Price
+Shares
+Realized Profit/Loss ($)
+Realized Return (%)
+Exit Reason
+Available Cash
+Portfolio Value
+Open Positions
+Closed Trade Count
+Notification Infrastructure
+Added reusable asynchronous Telegram notification helper.
+Notifications are sent on a background thread to avoid blocking scanner or execution performance.
+Added error handling so Telegram failures cannot interrupt trading operations.
+Validation
+
+Successfully verified:
+
+✅ Paper Trade Opened notification delivered to Telegram.
+✅ Paper Trade Closed notification delivered to Telegram.
+✅ Realized P/L displayed correctly.
+✅ Automatic execution logic unchanged.
+✅ Position sizing unchanged.
+✅ Stop-loss and target logic unchanged.
+✅ Paper portfolio integrity maintained.
+✅ Existing six-position paper portfolio unaffected.
+✅ paper_engine.py compiled successfully after changes.
+Current Telegram Capabilities
+
+The system now sends:
+
+✅ READY setup alerts
+✅ Paper Trade Opened alerts
+✅ Paper Trade Closed alerts
+✅ End-of-Day scan summary
+Remaining Telegram Enhancement
+
+Next milestone:
+
+Telegram Portfolio Control Center
+
+Planned information:
+
+Portfolio Value
+Available Cash
+Open P/L
+Realized P/L
+Total Return
+Open Positions
+Pending Trades
+Closed Trades
+Daily Performance Summary

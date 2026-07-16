@@ -2536,3 +2536,14 @@ Version 3.2 – 52-Week Breakout Strategy Foundation
 - Confirmed the existing momentum decision pipeline remains unchanged.
 - Verified live Yahoo Finance → Market Data → Adapter → Strategy execution path.
 - Full project regression test completed successfully (11/11 tests passed).
+Version 3.3 – Multi-Strategy Trade Identification
+
+- Added a strategy identifier to pending trades.
+- Existing signals default safely to MOMENTUM.
+- Added strategy identifiers to newly opened paper positions.
+- Migrated all existing open positions to MOMENTUM.
+- Added the strategy column to the paper trade journal.
+- Migrated genuine validation trades to MOMENTUM.
+- Updated the automatic EOD validation test to use isolated temporary state.
+- Confirmed portfolio persistence preserves strategy ownership.
+- Full regression suite completed successfully with 12 passing tests.

@@ -295,6 +295,7 @@ class PaperTradingEngine:
 
         position = {
             "symbol": symbol,
+            "strategy": pending_trade.get("strategy", "MOMENTUM"),
             "signal_date": pending_trade["signal_date"],
             "entry_date": entry_date,
             "entry_price": entry_price,
@@ -370,6 +371,7 @@ class PaperTradingEngine:
 
         position = {
             "symbol": symbol,
+            "strategy": signal.get("strategy", "MOMENTUM"),
             "entry_date": signal.get(
                 "date",
                 "2026-07-09",

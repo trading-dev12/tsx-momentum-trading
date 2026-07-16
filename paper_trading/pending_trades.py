@@ -37,6 +37,7 @@ class PendingTradeQueue:
 
         pending_trade = {
             "symbol": symbol,
+            "strategy": signal.get("strategy", "MOMENTUM"),
             "signal_date": signal["signal_date"],
             "signal_close": float(signal["close"]),
             "atr": float(signal["atr"]),
@@ -45,7 +46,7 @@ class PendingTradeQueue:
             "breakout": signal["breakout"],
             "reason": signal.get("reason", ""),
             "status": "PENDING",
-        }
+    }
 
         self.pending_trades.append(pending_trade)
         self._save_to_csv()
@@ -103,11 +104,14 @@ class PendingTradeQueue:
                 row["tmqs"] = float(row["tmqs"])
                 row["rvol"] = float(row["rvol"])
 
+                row.setdefault("strategy", "MOMENTUM")
+
                 self.pending_trades.append(row)
 
     def _save_to_csv(self):
         fieldnames = [
             "symbol",
+            "strategy",
             "signal_date",
             "signal_close",
             "atr",

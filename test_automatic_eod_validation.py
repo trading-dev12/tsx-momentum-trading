@@ -34,24 +34,20 @@ def fake_validation_runner(state_file=None):
     }
 
 
-summary = run_automatic_eod_cycle(
-    paper_engine=FakePaperEngine(),
-    current_datetime=datetime(2026, 7, 16, 17, 0),
-    state_file="test_automatic_eod_state.json",
-    scan_provider=fake_scan_provider,
-    validation_runner=fake_validation_runner,
-)
+def test_automatic_eod_validation(tmp_path):
+    state_file = tmp_path / "automatic_eod_state.json"
 
-print()
-print("Validation section:")
-print(summary["validation"])
+    summary = run_automatic_eod_cycle(
+        paper_engine=FakePaperEngine(),
+        current_datetime=datetime(2026, 7, 16, 17, 0),
+        state_file=str(state_file),
+        scan_provider=fake_scan_provider,
+        validation_runner=fake_validation_runner,
+    )
 
-assert summary["status"] == "COMPLETED"
-assert summary["ready"] == 2
-assert summary["watch"] == 1
-assert summary["ignored"] == 0
-assert summary["queued"] == 2
-assert summary["validation"]["status"] == "PASS"
-
-print()
-print("Automatic EOD validation integration test passed.")
+    assert summary["status"] == "COMPLETED"
+    assert summary["ready"] == 2
+    assert summary["watch"] == 1
+    assert summary["ignored"] == 0
+    assert summary["queued"] == 2
+    assert summary["validation"]["status"] == "PASS"

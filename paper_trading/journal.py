@@ -16,6 +16,7 @@ def save_trade(trade, file_path=JOURNAL_FILE):
 
     fieldnames = [
         "symbol",
+        "strategy",
         "entry_date",
         "exit_date",
         "entry_price",

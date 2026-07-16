@@ -2401,3 +2401,30 @@ Verified:
 ## Result
 
 The trading platform now contains an independent audit layer that verifies the integrity of the complete paper trading pipeline after every automatic End-of-Day cycle while generating permanent validation records for future analysis.
+## Date: July 16, 2026
+
+### Portfolio Dashboard Enhancement
+
+Added an **Open Positions** metric to the Paper Trading Control Center portfolio summary.
+
+#### Features
+- Added calculation of deployed capital based on the cost basis of all open positions.
+- Displays the total capital currently invested in open trades.
+- Updates automatically whenever the portfolio refreshes.
+- Integrated into the existing portfolio summary without affecting existing calculations.
+
+#### Portfolio Section
+
+The portfolio summary now displays:
+
+- Starting Cash
+- Available Cash
+- Open Positions (Cost Basis)
+- Portfolio Value
+- Total Return
+
+#### Validation
+
+- Verified portfolio summary calculation.
+- Verified dashboard formatting.
+- Verified live dashboard displays deployed capital correctly.

@@ -2428,3 +2428,48 @@ The portfolio summary now displays:
 - Verified portfolio summary calculation.
 - Verified dashboard formatting.
 - Verified live dashboard displays deployed capital correctly.
+## Date: July 16, 2026
+
+# Portfolio Dashboard Enhancement
+
+## Summary
+
+Enhanced the Paper Trading Portfolio dashboard by adding live capital deployment metrics.
+
+## Features Added
+
+### Open Position Value
+- Added calculation of total capital currently invested in open positions.
+- Uses position cost basis (Entry Price × Shares).
+- Updates automatically whenever the portfolio refreshes.
+
+### Portfolio Exposure
+- Added Portfolio Exposure percentage.
+- Calculated as:
+
+  Open Position Value ÷ Portfolio Value × 100
+
+- Provides an immediate view of how much capital is currently deployed.
+
+## Portfolio Dashboard
+
+The Portfolio section now displays:
+
+- Starting Cash
+- Available Cash
+- Open Positions (Cost Basis)
+- Portfolio Exposure
+- Portfolio Value
+- Total Return
+
+## Validation
+
+Verified:
+- Portfolio summary calculations.
+- Dashboard formatting.
+- Live dashboard display.
+- Portfolio exposure calculations using live portfolio data.
+
+## Result
+
+The dashboard now provides a much clearer operational view of both available capital and deployed capital, making it easier to monitor account utilization during live paper trading.

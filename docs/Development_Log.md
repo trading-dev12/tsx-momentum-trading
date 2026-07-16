@@ -2473,3 +2473,29 @@ Verified:
 ## Result
 
 The dashboard now provides a much clearer operational view of both available capital and deployed capital, making it easier to monitor account utilization during live paper trading.
+## Date: July 16, 2026
+
+### Open Position Status Enhancement
+
+Added live winning and losing position counts to the Position Status section of the Paper Trading dashboard.
+
+#### Features
+- Counts open positions currently above entry price.
+- Counts open positions currently below entry price.
+- Positions exactly at entry price are treated as breakeven and excluded from both counts.
+- Uses the same live current-price data already used for Open P/L.
+- Does not alter trading logic, execution, or portfolio state.
+
+#### Position Status Now Displays
+- Open Positions
+- Winning Positions
+- Losing Positions
+- Closed Trades
+- Open P/L
+- Realized P/L
+
+#### Validation
+- Verified dashboard compilation.
+- Verified controlled test with one winning and one losing position.
+- Confirmed Open P/L continued to calculate correctly.
+- Verified live dashboard layout.

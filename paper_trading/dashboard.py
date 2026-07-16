@@ -233,6 +233,8 @@ def build_paper_dashboard_text(
     lines = []
 
     total_open_profit_loss = 0.0
+    winning_open_positions = 0
+    losing_open_positions = 0
 
     for position in open_positions:
         symbol = position["symbol"]
@@ -250,9 +252,18 @@ def build_paper_dashboard_text(
             )
         )
 
-        total_open_profit_loss += (
+        position_profit_loss = (
             current_price - entry_price
         ) * shares
+
+        total_open_profit_loss += (
+            position_profit_loss
+        )
+
+        if position_profit_loss > 0:
+            winning_open_positions += 1
+        elif position_profit_loss < 0:
+            losing_open_positions += 1
 
     profit_factor = metrics["profit_factor"]
 
@@ -302,6 +313,14 @@ def build_paper_dashboard_text(
     lines.append(
         f"Open Positions    "
         f"{summary['open_positions']:>13}"
+    )
+    lines.append(
+        f"Winning Positions "
+        f"{winning_open_positions:>13}"
+    )
+    lines.append(
+        f"Losing Positions  "
+        f"{losing_open_positions:>13}"
     )
     lines.append(
         f"Closed Trades     "

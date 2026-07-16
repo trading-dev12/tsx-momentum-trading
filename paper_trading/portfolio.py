@@ -135,7 +135,11 @@ class PaperPortfolio:
             * position["entry_price"]
             for position in self.open_positions
         )
-
+        portfolio_exposure = (
+            (open_position_value / value) * 100
+            if value > 0
+            else 0
+        )
         total_return = (
             (
                 (value - self.starting_cash)
@@ -149,6 +153,7 @@ class PaperPortfolio:
             "starting_cash": self.starting_cash,
             "cash": self.cash,
             "open_position_value": open_position_value,
+            "portfolio_exposure": portfolio_exposure,
             "portfolio_value": value,
             "total_return": total_return,
             "open_positions": len(

@@ -284,6 +284,10 @@ def build_paper_dashboard_text(
         f"${summary['open_position_value']:>12,.2f}"
     )
     lines.append(
+        f"Portfolio Exposure "
+        f"{summary['portfolio_exposure']:>10.2f}%"
+    )
+    lines.append(
         f"Portfolio Value   "
         f"${summary['portfolio_value']:>12,.2f}"
     )

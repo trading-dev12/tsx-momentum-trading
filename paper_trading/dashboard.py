@@ -280,6 +280,10 @@ def build_paper_dashboard_text(
         f"${summary['cash']:>12,.2f}"
     )
     lines.append(
+        f"Open Positions    "
+        f"${summary['open_position_value']:>12,.2f}"
+    )
+    lines.append(
         f"Portfolio Value   "
         f"${summary['portfolio_value']:>12,.2f}"
     )
@@ -422,6 +426,15 @@ def build_paper_dashboard_text(
                 )
                 / entry_price
             ) * 100
+            # R-Multiple
+            initial_risk = entry_price - stop_price
+
+            if initial_risk > 0:
+                current_r = (
+                    current_price - entry_price
+                ) / initial_risk
+            else:
+                current_r = 0.0
 
             price_range = (
                 target_price - stop_price
@@ -485,9 +498,9 @@ def build_paper_dashboard_text(
 
             lines.append(
                 f"Shares {shares:<5} | "
-                f"P/L ${profit_loss:+,.2f}"
+                f"P/L ${profit_loss:+,.2f} | "
+                f"R {current_r:+.2f}"
             )
-
             lines.append(
                 f"Entry ${entry_price:.2f} | "
                 f"Current ${current_price:.2f}"

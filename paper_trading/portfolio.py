@@ -129,6 +129,12 @@ class PaperPortfolio:
 
     def summary(self, current_prices=None):
         value = self.portfolio_value(current_prices)
+        
+        open_position_value = sum(
+            position["shares"]
+            * position["entry_price"]
+            for position in self.open_positions
+        )
 
         total_return = (
             (
@@ -142,6 +148,7 @@ class PaperPortfolio:
         return {
             "starting_cash": self.starting_cash,
             "cash": self.cash,
+            "open_position_value": open_position_value,
             "portfolio_value": value,
             "total_return": total_return,
             "open_positions": len(

@@ -173,7 +173,7 @@ class TradingWorkstation:
             checklist_frame,
             width=48,
             height=16,
-            font=("Consolas", 13),
+            font=("Consolas", 10),
             wrap="word",
         )
         self.checklist_text.pack(fill="x")
@@ -211,7 +211,7 @@ class TradingWorkstation:
         )
         portfolio_title = tk.Label(
             checklist_frame,
-            text="════════  TRADER CONTROL CENTER  ════════",
+            text="Trader Control Center",
             font=("Arial", 14, "bold"),
             anchor="w",
         )
@@ -221,34 +221,11 @@ class TradingWorkstation:
             checklist_frame,
             width=48,
             height=22,
-            font=("Consolas", 13),
+            font=("Consolas", 10),
             wrap="word",
         )
         self.paper_portfolio_text.pack(fill="both", expand=True)
         self.paper_portfolio_text.config(state="disabled")
-        self.paper_portfolio_text.tag_configure(
-            "heading",
-            foreground="#4FC3F7",
-            font=("Consolas", 10, "bold"),
-        )
-
-        self.paper_portfolio_text.tag_configure(
-            "profit",
-            foreground="#4CAF50",
-            font=("Consolas", 10, "bold"),
-        )
-
-        self.paper_portfolio_text.tag_configure(
-            "loss",
-            foreground="#F44336",
-            font=("Consolas", 10, "bold"),
-        )
-
-        self.paper_portfolio_text.tag_configure(
-            "warning",
-            foreground="#FFB300",
-            font=("Consolas", 10, "bold"),
-        )
         self.status_label = tk.Label(
             root,
             text="Starting...",
@@ -1008,44 +985,7 @@ class TradingWorkstation:
 
         self.paper_portfolio_text.config(state="normal")
         self.paper_portfolio_text.delete("1.0", tk.END)
-        for line in text.splitlines(keepends=True):
-            stripped_line = line.strip()
-            tag = None
-
-            if stripped_line in {
-                "TSX MOMENTUM PRO",
-                "PAPER TRADING ANALYTICS",
-                "PORTFOLIO",
-                "POSITION STATUS",
-                "PERFORMANCE",
-                "OPEN POSITIONS",
-                "RECENT CLOSED TRADES",
-            }:
-                tag = "heading"
-
-            elif stripped_line.startswith(">>>"):
-                tag = "heading"
-
-            elif "Status: PROFIT" in line:
-                tag = "profit"
-
-            elif "Status: LOSS" in line:
-                tag = "loss"
-
-            elif "Status: FLAT" in line:
-                tag = "warning"
-
-            if tag:
-                self.paper_portfolio_text.insert(
-                    tk.END,
-                    line,
-                    tag,
-                )
-            else:
-                self.paper_portfolio_text.insert(
-                    tk.END,
-                    line,
-                )
+        self.paper_portfolio_text.insert("1.0", text)
         self.paper_portfolio_text.config(state="disabled")
     
     def update_system_health(self):

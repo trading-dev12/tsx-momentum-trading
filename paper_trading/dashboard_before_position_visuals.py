@@ -265,11 +265,11 @@ def build_paper_dashboard_text(
 
     lines.append(header_divider)
     lines.append("TSX MOMENTUM PRO")
-    lines.append("TRADING ANALYTICS")
+    lines.append("PAPER TRADING ANALYTICS")
     lines.append(header_divider)
 
     lines.append("")
-    lines.append("■ PORTFOLIO")
+    lines.append("PORTFOLIO")
     lines.append(divider)
     lines.append(
         f"Starting Cash     "
@@ -289,7 +289,7 @@ def build_paper_dashboard_text(
     )
 
     lines.append("")
-    lines.append("■ POSITION STATUS")
+    lines.append("POSITION STATUS")
     lines.append(divider)
     lines.append(
         f"Open Positions    "
@@ -309,7 +309,7 @@ def build_paper_dashboard_text(
     )
 
     lines.append("")
-    lines.append("■ PERFORMANCE")
+    lines.append("PERFORMANCE")
     lines.append(divider)
 
     if metrics["total_trades"] > 0:
@@ -381,14 +381,12 @@ def build_paper_dashboard_text(
         )
 
     lines.append("")
-    lines.append("■ OPEN POSITIONS")
+    lines.append("OPEN POSITIONS")
     lines.append(divider)
 
     if not open_positions:
         lines.append("No open positions.")
     else:
-        bar_width = 20
-
         for position in open_positions:
             symbol = position["symbol"]
             entry_price = float(
@@ -423,97 +421,25 @@ def build_paper_dashboard_text(
                 / entry_price
             ) * 100
 
-            price_range = (
-                target_price - stop_price
-            )
-
-            if price_range > 0:
-                progress = (
-                    current_price - stop_price
-                ) / price_range
-            else:
-                progress = 0.0
-
-            progress = max(
-                0.0,
-                min(
-                    progress,
-                    1.0,
-                ),
-            )
-
-            filled_blocks = round(
-                progress * bar_width
-            )
-
-            progress_bar = (
-                "["
-                + "=" * filled_blocks
-                + "-" * (
-                    bar_width - filled_blocks
-                )
-                + "]"
-            )
-
-            progress_percent = (
-                progress * 100
-            )
-
-            if profit_loss > 0.01:
-                status = "PROFIT"
-            elif profit_loss < -0.01:
-                status = "LOSS"
-            else:
-                status = "FLAT"
-
-            distance_to_stop = (
-                current_price - stop_price
-            )
-
-            distance_to_target = (
-                target_price - current_price
-            )
-
             lines.append(
-                f">>> {symbol} <<<"
+                f"{symbol} | {shares} shares"
             )
-
-            lines.append(
-                f"Status: {status} | "
-                f"Return: {profit_loss_percent:+.2f}%"
-            )
-
-            lines.append(
-                f"Shares {shares:<5} | "
-                f"P/L ${profit_loss:+,.2f}"
-            )
-
             lines.append(
                 f"Entry ${entry_price:.2f} | "
                 f"Current ${current_price:.2f}"
             )
-
             lines.append(
-                f"Stop  ${stop_price:.2f} | "
-                f"Target  ${target_price:.2f}"
-            )
-
-            lines.append(
-                f"STOP {progress_bar} TARGET"
-            )
-
-            lines.append(
-                f"Position Progress: "
-                f"{progress_percent:5.1f}%"
+                f"Stop ${stop_price:.2f} | "
+                f"Target ${target_price:.2f}"
             )
             lines.append(
-                f"To Stop ${distance_to_stop:+.2f} | "
-                f"To Target ${distance_to_target:+.2f}"
+                f"Open P/L "
+                f"${profit_loss:+,.2f} "
+                f"({profit_loss_percent:+.2f}%)"
             )
+            lines.append("")
 
-            lines.append(divider)
-
-    lines.append("■ RECENT CLOSED TRADES")
+    lines.append("RECENT CLOSED TRADES")
     lines.append(divider)
 
     if not closed_trades:

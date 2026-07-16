@@ -2259,3 +2259,83 @@ Evidence strongly suggests previous Telegram notification failures were caused b
 
 Next validation milestone:
 Verify tomorrow morning's automatic execution of the queued trades (EQB.TO and MFC.TO) and continue validating buy/sell Telegram notifications.
+## 52-Week Breakout Strategy - Initial Foundation (2026-07-15)
+
+### Objective
+Begin development of a separate 52-week breakout sister strategy without modifying or interfering with the existing momentum validation workflow.
+
+### Added
+- Created a new `strategies` Python package.
+- Added `strategies/__init__.py`.
+- Added `strategies/breakout_52week_strategy.py`.
+- Added configurable Version 1 filters:
+  - Minimum price: $5.00
+  - Minimum average daily volume: 300,000 shares
+  - Minimum relative volume: 1.50
+  - Bullish trend requirement: 50-day SMA above 200-day SMA
+  - Breakout requirement: close at or above the prior 52-week high
+- Added independent READY, WATCH and IGNORE decisions.
+- Added explanatory reasons to every decision result.
+
+### Tests Passed
+- Python compilation test passed.
+- READY test passed for a qualifying 52-week breakout.
+- WATCH test passed for a breakout with insufficient relative volume.
+- IGNORE test passed when price remained below the prior 52-week high.
+
+### Safety
+The new strategy is currently isolated and is not connected to:
+- The live scanner
+- Automatic EOD processing
+- The pending trade queue
+- Paper execution
+- Telegram
+- The current momentum strategy
+
+This protects the scheduled next-day momentum execution validation while allowing development of Strategy #2 to begin.
+
+### Next Step
+Build automated unit tests and then create a historical-data adapter that calculates the prior 52-week high, average volume, relative volume, 50-day SMA and 200-day SMA from actual market data.
+Development Log
+
+Date: July 15, 2026
+
+Summary
+
+Continued development of the Version 4 Trader Control Center with a focus on improving readability and preparing the interface for long-term paper trading validation.
+
+Improvements Completed
+Trader Control Center
+Added structured section headers using:
+■ Portfolio
+■ Position Status
+■ Performance
+■ Open Positions
+■ Recent Closed Trades
+Improved overall visual organization of the dashboard.
+Dashboard Layout
+Increased readability of the Trade Checklist panel.
+Refined spacing and formatting throughout the paper trading dashboard.
+Added clearer position card formatting for open positions.
+Improved separation between portfolio statistics and position details.
+Visual Enhancements
+Preserved color coding for:
+Profit metrics
+Loss metrics
+Position status
+Maintained colored position cards and enhanced dashboard readability.
+Development Notes
+Experimented with separate title and subtitle rendering for the Trader Control Center.
+Discovered an indentation issue while modifying the renderer.
+Successfully restored the last stable version from backup.
+Confirmed the workstation compiles and runs correctly after restoration.
+Deferred title styling improvements to a future session using a cleaner implementation approach.
+Validation
+✅ Dashboard compiles successfully.
+✅ Trading Workstation compiles successfully.
+✅ GUI launches normally.
+✅ Trader Control Center displays correctly.
+✅ Paper trading engine remains fully operational.
+Current Status
+
+The Version 4 Trader Control Center now provides a cleaner and more professional operational dashboard while preserving the stability of the paper trading validation system.

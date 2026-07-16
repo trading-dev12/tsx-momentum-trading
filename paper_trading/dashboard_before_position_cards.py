@@ -265,11 +265,11 @@ def build_paper_dashboard_text(
 
     lines.append(header_divider)
     lines.append("TSX MOMENTUM PRO")
-    lines.append("TRADING ANALYTICS")
+    lines.append("PAPER TRADING ANALYTICS")
     lines.append(header_divider)
 
     lines.append("")
-    lines.append("■ PORTFOLIO")
+    lines.append("PORTFOLIO")
     lines.append(divider)
     lines.append(
         f"Starting Cash     "
@@ -289,7 +289,7 @@ def build_paper_dashboard_text(
     )
 
     lines.append("")
-    lines.append("■ POSITION STATUS")
+    lines.append("POSITION STATUS")
     lines.append(divider)
     lines.append(
         f"Open Positions    "
@@ -309,7 +309,7 @@ def build_paper_dashboard_text(
     )
 
     lines.append("")
-    lines.append("■ PERFORMANCE")
+    lines.append("PERFORMANCE")
     lines.append(divider)
 
     if metrics["total_trades"] > 0:
@@ -381,7 +381,7 @@ def build_paper_dashboard_text(
         )
 
     lines.append("")
-    lines.append("■ OPEN POSITIONS")
+    lines.append("OPEN POSITIONS")
     lines.append(divider)
 
     if not open_positions:
@@ -475,12 +475,9 @@ def build_paper_dashboard_text(
             )
 
             lines.append(
-                f">>> {symbol} <<<"
-            )
-
-            lines.append(
-                f"Status: {status} | "
-                f"Return: {profit_loss_percent:+.2f}%"
+                f"{symbol:<8} "
+                f"{status:<6} "
+                f"{profit_loss_percent:+7.2f}%"
             )
 
             lines.append(
@@ -513,7 +510,7 @@ def build_paper_dashboard_text(
 
             lines.append(divider)
 
-    lines.append("■ RECENT CLOSED TRADES")
+    lines.append("RECENT CLOSED TRADES")
     lines.append(divider)
 
     if not closed_trades:

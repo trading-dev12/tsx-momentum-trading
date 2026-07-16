@@ -1,3 +1,6 @@
+from datetime import datetime, timedelta
+from shlex import quote
+from zoneinfo import ZoneInfo
 import yfinance as yf
 
 from core.previous_day import get_previous_day
@@ -5,6 +8,8 @@ from scanner.momentum_score import calculate_score
 from scanner.stock_grader import grade_stock
 from scanner.tmqs_score import calculate_tmqs
 from rules.trade_decision import get_trade_decision
+from strategies.breakout_52week_adapter import build_breakout_52week_input
+from strategies.breakout_52week_strategy import Breakout52WeekStrategy
 from scanner.confidence_score import calculate_confidence_score
 
 def get_breakout_status(quote):
@@ -41,7 +46,68 @@ def get_average_volume(symbol, days=20):
 
     except Exception:
         return 0
+def get_52_week_breakout_metrics(symbol):
+    """
+    Return the completed-session data required by the 52-week breakout strategy.
 
+    Today's partial daily candle is excluded by requesting history only through
+    the current Toronto date. Yahoo Finance treats the end date as exclusive.
+    """
+
+    empty_metrics = {
+        "prior_52_week_high": 0.0,
+        "sma_50": 0.0,
+        "sma_200": 0.0,
+    }
+
+    try:
+        yahoo_symbol = symbol if symbol.endswith(".TO") else symbol + ".TO"
+
+        today = datetime.now(ZoneInfo("America/Toronto")).date()
+        start_date = today - timedelta(days=800)
+
+        history = yf.Ticker(yahoo_symbol).history(
+            start=start_date.isoformat(),
+            end=today.isoformat(),
+            interval="1d",
+            auto_adjust=False,
+        )
+
+        if history is None or history.empty:
+            return empty_metrics
+
+        if "High" not in history.columns or "Close" not in history.columns:
+            return empty_metrics
+
+        history = history.dropna(subset=["High", "Close"])
+
+        if history.empty:
+            return empty_metrics
+
+        prior_high_window = history["High"].tail(252)
+        prior_52_week_high = float(prior_high_window.max())
+
+        sma_50 = (
+            float(history["Close"].tail(50).mean())
+            if len(history) >= 50
+            else 0.0
+        )
+
+        sma_200 = (
+            float(history["Close"].tail(200).mean())
+            if len(history) >= 200
+            else 0.0
+        )
+
+        return {
+            "prior_52_week_high": prior_52_week_high,
+            "sma_50": sma_50,
+            "sma_200": sma_200,
+        }
+
+    except Exception as error:
+        print(f"52-week metrics unavailable for {symbol}: {error}")
+        return empty_metrics
 
 def get_rvol_status(relative_volume):
     if relative_volume >= 2:
@@ -131,6 +197,7 @@ def get_live_quote(symbol):
 
         average_volume = get_average_volume(symbol)
         atr = calculate_live_atr(symbol)
+        breakout_metrics = get_52_week_breakout_metrics(symbol)
 
         if average_volume > 0:
             relative_volume = round(volume / average_volume, 2)
@@ -148,6 +215,9 @@ def get_live_quote(symbol):
             "volume": volume,
             "average_volume": average_volume,
             "relative_volume": relative_volume,
+            "prior_52_week_high": breakout_metrics["prior_52_week_high"],
+            "sma_50": breakout_metrics["sma_50"],
+            "sma_200": breakout_metrics["sma_200"],
             "atr": atr,
             "rvol_status": get_rvol_status(relative_volume),
             "status": "Live Data",
@@ -162,6 +232,15 @@ def get_live_quote(symbol):
 
         quote["decision"] = decision
         quote["reason"] = reason
+
+        breakout_52week_input = build_breakout_52week_input(quote)
+        breakout_52week_result = Breakout52WeekStrategy().evaluate(
+        breakout_52week_input
+        )
+
+        quote["breakout_52week_decision"] = breakout_52week_result.decision.value
+        quote["breakout_52week_reason"] = breakout_52week_result.reason
+        quote["breakout_52week"] = breakout_52week_result.breakout
 
         return quote
 

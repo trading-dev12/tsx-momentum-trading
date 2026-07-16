@@ -2499,3 +2499,40 @@ Added live winning and losing position counts to the Position Status section of 
 - Verified controlled test with one winning and one losing position.
 - Confirmed Open P/L continued to calculate correctly.
 - Verified live dashboard layout.
+Version 3.1 – Repository Cleanup & Validation Baseline
+
+Removed obsolete temporary backup files accidentally committed during development.
+Cleaned paper_trade_journal.csv to retain only genuine validation trades.
+Verified the complete operational pipeline:
+Automatic EOD scan
+Telegram notifications
+Pending trade generation
+Portfolio persistence
+Dashboard
+Trade journaling
+Confirmed repository is now clean and ready for continued paper-trading validation.
+Project focus now shifts from infrastructure validation to expanding the research platform, beginning with development of the 52-week breakout sister strategy.
+Version 3.2 – 52-Week Breakout Strategy Foundation
+
+- Added automated pytest support to the development environment.
+- Validated the isolated 52-week breakout decision engine with 8 passing tests.
+- Added a typed adapter converting shared market-data quotes into 52-week strategy inputs.
+- Validated the adapter with 2 passing tests.
+- Extended core market data with prior 52-week high, 50-day SMA, and 200-day SMA values.
+- Integrated independent 52-week decision fields into the shared quote object.
+- Confirmed the existing momentum decision and reason fields remain unchanged.
+- Verified the complete isolated path from Yahoo data to adapter to 52-week strategy evaluation.
+Version 3.2 – 52-Week Breakout Strategy Foundation
+
+- Added pytest to the development environment.
+- Validated the isolated 52-week breakout decision engine (8 passing tests).
+- Added a typed adapter converting shared market-data quotes into strategy inputs.
+- Validated the adapter (2 passing tests).
+- Extended the shared market-data layer with:
+  - Prior 52-week high
+  - 50-day SMA
+  - 200-day SMA
+- Integrated independent 52-week strategy evaluation into the shared quote object.
+- Confirmed the existing momentum decision pipeline remains unchanged.
+- Verified live Yahoo Finance → Market Data → Adapter → Strategy execution path.
+- Full project regression test completed successfully (11/11 tests passed).

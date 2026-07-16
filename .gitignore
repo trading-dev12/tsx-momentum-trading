@@ -224,3 +224,6 @@ __marimo__/
 *.sqlite-journal
 *.sqlite3
 *.sqlite3-journal
+
+# Generated trading pipeline validation reports
+validation_reports/

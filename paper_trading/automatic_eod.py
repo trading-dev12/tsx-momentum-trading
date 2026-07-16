@@ -12,6 +12,7 @@ block the Trading Workstation.
 from datetime import datetime
 import json
 import os
+from pathlib import Path
 import threading
 
 from core.eod_signal_service import scan_eod_signals
@@ -20,6 +21,10 @@ from core.market_hours import (
     TORONTO_TIMEZONE,
 )
 from notifications.telegram_notifier import send_telegram_message
+from paper_trading.trading_pipeline_validator import (
+    run_validation,
+    save_validation_report,
+)
 
 AUTO_EOD_STATE_FILE = "automatic_eod_state.json"
 DEFAULT_CHECK_SECONDS = 60
@@ -124,12 +129,85 @@ def should_run_automatic_eod(
 
     return last_run_date != current_date
 
+def run_pipeline_validation(
+    state_file=AUTO_EOD_STATE_FILE,
+):
+    """
+    Run the read-only trading pipeline validator and save an
+    immutable JSON report.
 
+    Validation failures are returned to the EOD service rather
+    than raising an exception that could crash the worker.
+    """
+
+    try:
+        (
+            report,
+            portfolio,
+            journal_rows,
+            pending_rows,
+            eod_state,
+        ) = run_validation(
+            eod_state_file=Path(state_file),
+        )
+
+        report.print_report()
+
+        source_data_loaded = all(
+            item is not None
+            for item in (
+                portfolio,
+                journal_rows,
+                pending_rows,
+                eod_state,
+            )
+        )
+
+        if not source_data_loaded:
+            return {
+                "success": False,
+                "status": report.overall_status,
+                "report_path": None,
+                "message": (
+                    "Validation report was not saved because "
+                    "one or more source files could not be loaded."
+                ),
+            }
+
+        report_path = save_validation_report(
+            report,
+            portfolio=portfolio,
+            journal_rows=journal_rows,
+            pending_rows=pending_rows,
+            eod_state=eod_state,
+        )
+
+        return {
+            "success": report.overall_status != "FAIL",
+            "status": report.overall_status,
+            "report_path": str(report_path),
+            "message": (
+                "Trading pipeline validation completed with "
+                f"status {report.overall_status}."
+            ),
+        }
+
+    except Exception as error:
+        return {
+            "success": False,
+            "status": "ERROR",
+            "report_path": None,
+            "message": (
+                "Unexpected trading pipeline validation error: "
+                f"{error}"
+            ),
+        }
 def run_automatic_eod_cycle(
     paper_engine,
     current_datetime=None,
     state_file=AUTO_EOD_STATE_FILE,
     scan_provider=scan_eod_signals,
+    validation_runner=run_pipeline_validation,
 ):
     """
     Run one automatic EOD cycle when eligible.
@@ -183,7 +261,23 @@ def run_automatic_eod_cycle(
         "scan_results": results,
         "queue_summary": queue_summary,
     }
-    
+    validation_result = validation_runner(
+        state_file=state_file,
+    )
+
+    summary["validation"] = validation_result
+
+    if validation_result["report_path"]:
+        print(
+            "Validation report saved: "
+            f"{validation_result['report_path']}"
+        )
+
+    if not validation_result["success"]:
+        print(
+            "Trading pipeline validation warning: "
+            f"{validation_result['message']}"
+        )
     telegram_message = (
         "✅ AUTOMATIC EOD SCAN COMPLETED\n\n"
         f"Date: {current_date}\n"
@@ -192,7 +286,9 @@ def run_automatic_eod_cycle(
         f"Duplicates: {summary['duplicates']}\n"
         f"WATCH: {summary['watch']}\n"
         f"IGNORE: {summary['ignored']}\n"
-        f"Errors: {summary['errors']}\n\n"
+         f"Errors: {summary['errors']}\n"
+        f"Pipeline Validation: "
+        f"{validation_result['status']}\n\n"
         "Pending signals are ready for next-day execution."
     )
 
@@ -227,6 +323,17 @@ def run_automatic_eod_cycle(
     print(f"WATCH      : {summary['watch']}")
     print(f"IGNORE     : {summary['ignored']}")
     print(f"Errors     : {summary['errors']}")
+    print(
+        "Validation : "
+        f"{validation_result['status']}"
+    )
+
+    if validation_result["report_path"]:
+        print(
+            "Report     : "
+            f"{validation_result['report_path']}"
+        )
+
     print("=" * 60)
 
     return summary

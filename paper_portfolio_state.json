@@ -1,6 +1,6 @@
 {
     "starting_cash": 500000,
-    "cash": 491743.46995109017,
+    "cash": 486752.5399510902,
     "open_positions": [
         {
             "symbol": "PPL.TO",
@@ -55,6 +55,34 @@
             "atr": 2.2399989536830356,
             "tmqs": 85.21,
             "rvol": 1.9595666194745949,
+            "breakout": "STRONG BREAKOUT",
+            "max_hold_days": 10
+        },
+        {
+            "symbol": "MFC.TO",
+            "signal_date": "2026-07-15",
+            "entry_date": "2026-07-16",
+            "entry_price": 60.23,
+            "shares": 53,
+            "stop_price": 58.362142748151506,
+            "target_price": 64.89964312962123,
+            "atr": 0.9339286259242466,
+            "tmqs": 83.18,
+            "rvol": 1.9170411775666107,
+            "breakout": "STRONG BREAKOUT",
+            "max_hold_days": 10
+        },
+        {
+            "symbol": "EQB.TO",
+            "signal_date": "2026-07-15",
+            "entry_date": "2026-07-16",
+            "entry_price": 149.895,
+            "shares": 12,
+            "stop_price": 141.87357339041574,
+            "target_price": 169.94856652396066,
+            "atr": 4.010713304792132,
+            "tmqs": 92.35,
+            "rvol": 2.2789146341463415,
             "breakout": "STRONG BREAKOUT",
             "max_hold_days": 10
         }

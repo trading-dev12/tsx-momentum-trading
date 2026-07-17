@@ -2547,3 +2547,68 @@ Version 3.3 – Multi-Strategy Trade Identification
 - Updated the automatic EOD validation test to use isolated temporary state.
 - Confirmed portfolio persistence preserves strategy ownership.
 - Full regression suite completed successfully with 12 passing tests.
+## Version 3.3 - 52-Week Breakout Shadow Mode
+
+Date: July 17, 2026
+
+### Summary
+
+Integrated the 52-week breakout strategy into the automatic end-of-day workflow in research-only shadow mode.
+
+The strategy now runs automatically after the Momentum EOD cycle and saves daily research results without queuing, executing, or journaling paper trades.
+
+### Features Added
+
+- Added the 52-week breakout scanner.
+- Integrated the scanner into the automatic EOD cycle.
+- Added daily CSV research exports to:
+  - research/52_week_results/
+- Added READY, WATCH, IGNORE, and error result tracking.
+- Kept the strategy fully isolated from the Paper Trading Engine.
+- Added test coverage to verify the shadow scanner does not affect trade-journal data.
+
+### Live Validation
+
+Successful research files were generated for:
+
+- July 16, 2026
+- July 17, 2026
+
+July 17 results:
+
+- Stocks scanned: 53
+- READY: 0
+- WATCH: 3
+- IGNORE: 50
+
+WATCH candidates:
+
+- CNR.TO
+- CP.TO
+- EMA.TO
+
+Each candidate passed the 52-week breakout condition but failed the required relative-volume threshold.
+
+### Isolation Validation
+
+Confirmed:
+
+- No 52-week trades were added to pending_trades.csv.
+- All seven open positions remained tagged MOMENTUM.
+- All journal entries remained tagged MOMENTUM.
+- Momentum EOD processing remained operational.
+- The 52-week strategy produced research output only.
+
+### Automated Validation
+
+Passed:
+
+- test_automatic_eod_validation.py
+- test_trade_journal.py
+- python -m compileall paper_trading scanner
+
+### Status
+
+The 52-week breakout shadow-mode feature is validated and ready to be committed.
+
+The next development stage is to promote the strategy into independent paper trading while preserving separate strategy identity and statistics.

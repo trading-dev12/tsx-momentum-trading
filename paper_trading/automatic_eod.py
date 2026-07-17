@@ -21,6 +21,11 @@ from core.market_hours import (
     TORONTO_TIMEZONE,
 )
 from notifications.telegram_notifier import send_telegram_message
+from core.watchlist_loader import load_all_watchlists
+from scanner.breakout_52week_scanner import (
+    save_results as save_52_week_results,
+    scan_52_week_breakouts,
+)
 from paper_trading.trading_pipeline_validator import (
     run_validation,
     save_validation_report,
@@ -202,12 +207,32 @@ def run_pipeline_validation(
                 f"{error}"
             ),
         }
+def run_52_week_shadow_scan():
+    """
+    Run the 52-week strategy in research-only shadow mode.
+
+    This function does not queue or execute any paper trades.
+    """
+
+    watchlist = load_all_watchlists()
+    results = scan_52_week_breakouts(watchlist)
+    report_path = save_52_week_results(results)
+
+    return {
+        "success": True,
+        "ready": len(results["ready"]),
+        "watch": len(results["watch"]),
+        "ignored": len(results["ignore"]),
+        "errors": len(results["errors"]),
+        "report_path": report_path,
+    }
 def run_automatic_eod_cycle(
     paper_engine,
     current_datetime=None,
     state_file=AUTO_EOD_STATE_FILE,
     scan_provider=scan_eod_signals,
     validation_runner=run_pipeline_validation,
+    shadow_scan_runner=run_52_week_shadow_scan,
 ):
     """
     Run one automatic EOD cycle when eligible.
@@ -266,6 +291,21 @@ def run_automatic_eod_cycle(
     )
 
     summary["validation"] = validation_result
+
+    try:
+        shadow_result = shadow_scan_runner()
+    except Exception as error:
+        shadow_result = {
+            "success": False,
+            "ready": 0,
+            "watch": 0,
+            "ignored": 0,
+            "errors": 1,
+            "report_path": None,
+            "message": str(error),
+        }
+
+    summary["breakout_52week_shadow"] = shadow_result
 
     if validation_result["report_path"]:
         print(

@@ -32,7 +32,15 @@ def fake_validation_runner(state_file=None):
         "report_path": "validation_reports/test_report.json",
         "message": "Validation completed successfully.",
     }
-
+def fake_shadow_scan_runner():
+    return {
+        "success": True,
+        "ready": 1,
+        "watch": 2,
+        "ignored": 50,
+        "errors": 0,
+        "report_path": "research/52_week_results/test.csv",
+    }
 
 def test_automatic_eod_validation(tmp_path):
     state_file = tmp_path / "automatic_eod_state.json"
@@ -43,7 +51,8 @@ def test_automatic_eod_validation(tmp_path):
         state_file=str(state_file),
         scan_provider=fake_scan_provider,
         validation_runner=fake_validation_runner,
-    )
+        shadow_scan_runner=fake_shadow_scan_runner,
+)
 
     assert summary["status"] == "COMPLETED"
     assert summary["ready"] == 2
@@ -51,3 +60,4 @@ def test_automatic_eod_validation(tmp_path):
     assert summary["ignored"] == 0
     assert summary["queued"] == 2
     assert summary["validation"]["status"] == "PASS"
+    assert summary["breakout_52week_shadow"]["ready"] == 1

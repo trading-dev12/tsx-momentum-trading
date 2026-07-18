@@ -227,3 +227,6 @@ __marimo__/
 
 # Generated trading pipeline validation reports
 validation_reports/
+
+# Runtime-generated dashboard data
+data/runtime/

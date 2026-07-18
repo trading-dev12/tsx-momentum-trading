@@ -2612,3 +2612,38 @@ Passed:
 The 52-week breakout shadow-mode feature is validated and ready to be committed.
 
 The next development stage is to promote the strategy into independent paper trading while preserving separate strategy identity and statistics.
+Date: July 17, 2026
+
+Summary
+
+Enhanced the Mobile Dashboard to display live position performance using the Trading Workstation as the authoritative source of market prices.
+
+Features Added
+Live Price Snapshot Integration
+Trading Workstation now publishes a read-only runtime price snapshot to:
+data/runtime/latest_prices.json
+Snapshot includes:
+Timestamp
+Current prices for all monitored symbols
+Snapshot is written atomically to prevent partial reads.
+Mobile Dashboard
+Added support for reading the runtime price snapshot.
+Open Positions table now displays:
+Current Price
+Live Open P/L
+Dashboard uses the Trading Workstation snapshot instead of downloading market data independently.
+Architecture
+Trading Workstation remains the single source of truth for live prices.
+Mobile dashboard remains completely read-only.
+Eliminated duplicate market-data retrieval.
+Validation
+Verified runtime snapshot generation.
+Verified dashboard reads snapshot successfully.
+Verified Current Price values.
+Verified Open P/L calculations against manual calculations.
+python -m compileall mobile_dashboard\app.py passes successfully.
+Known Follow-up Items
+Improve Open P/L formatting (green/red).
+Add total Open P/L metric.
+Add Realized P/L metrics.
+Standardize dashboard launch method (python -m mobile_dashboard.app).

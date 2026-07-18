@@ -1,3 +1,6 @@
+import json
+from pathlib import Path
+
 from shlex import quote
 import tkinter as tk
 from core.market_hours import get_tsx_market_status
@@ -998,8 +1001,48 @@ class TradingWorkstation:
     def update_paper_portfolio_panel(self):
         current_prices = {}
 
-        for quote in self.latest_quotes:
-            current_prices[quote["symbol"]] = quote["price"]
+        for quote_data in self.latest_quotes:
+            current_prices[quote_data["symbol"]] = quote_data["price"]
+
+        runtime_folder = (
+            Path(__file__).resolve().parent.parent
+            / "data"
+            / "runtime"
+        )
+
+        runtime_folder.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+
+        latest_prices_file = (
+            runtime_folder / "latest_prices.json"
+        )
+
+        temporary_file = (
+            runtime_folder / "latest_prices.tmp"
+        )
+
+        price_snapshot = {
+            "generated_at": datetime.now().isoformat(
+                timespec="seconds"
+            ),
+            "prices": current_prices,
+        }
+
+        with temporary_file.open(
+            "w",
+            encoding="utf-8",
+        ) as file:
+            json.dump(
+                price_snapshot,
+                file,
+                indent=4,
+            )
+
+        temporary_file.replace(
+            latest_prices_file
+        )
 
         text = build_paper_dashboard_text(
             self.paper_engine,
@@ -1008,6 +1051,7 @@ class TradingWorkstation:
 
         self.paper_portfolio_text.config(state="normal")
         self.paper_portfolio_text.delete("1.0", tk.END)
+
         for line in text.splitlines(keepends=True):
             stripped_line = line.strip()
             tag = None
@@ -1046,6 +1090,7 @@ class TradingWorkstation:
                     tk.END,
                     line,
                 )
+
         self.paper_portfolio_text.config(state="disabled")
     
     def update_system_health(self):

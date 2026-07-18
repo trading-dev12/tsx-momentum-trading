@@ -18,48 +18,19 @@ from paper_trading.portfolio import PaperPortfolio
 
 
 app = Flask(__name__)
-
-
-@app.get("/manifest.json")
-def manifest():
-    return jsonify(
-        {
-            "name": "Northstar Quant",
-            "short_name": "Northstar",
-            "start_url": "/",
-            "display": "standalone",
-            "background_color": "#10141b",
-            "theme_color": "#10141b",
-            "icons": [
-                {
-                    "src": "/static/northstar-quant-192.png",
-                    "sizes": "192x192",
-                    "type": "image/png",
-                },
-                {
-                    "src": "/static/northstar-quant-512.png",
-                    "sizes": "512x512",
-                    "type": "image/png",
-                },
-            ]
-        }
-    )
-
+app = Flask(__name__)
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 PORTFOLIO_STATE_FILE = (
     PROJECT_ROOT / "paper_portfolio_state.json"
 )
-
 PENDING_TRADES_FILE = (
     PROJECT_ROOT / "pending_trades.csv"
 )
-
 AUTOMATIC_EOD_STATE_FILE = (
     PROJECT_ROOT / "automatic_eod_state.json"
 )
-
 VALIDATION_REPORTS_FOLDER = (
     PROJECT_ROOT / "validation_reports"
 )
@@ -69,6 +40,70 @@ LATEST_PRICES_FILE = (
     / "runtime"
     / "latest_prices.json"
 )
+
+
+@app.get("/manifest.json")
+def manifest():
+    return jsonify(
+        {
+            "id": "/",
+            "name": "Northstar Quant",
+            "short_name": "Northstar",
+            "start_url": "/",
+            "scope": "/",
+            "display": "standalone",
+            "background_color": "#10141b",
+            "theme_color": "#10141b",
+            "icons": [
+                {
+                    "src": "/static/northstar-quant-192.png",
+                    "sizes": "192x192",
+                    "type": "image/png",
+                    "purpose": "any maskable",
+                },
+                {
+                    "src": "/static/northstar-quant-512.png",
+                    "sizes": "512x512",
+                    "type": "image/png",
+                    "purpose": "any maskable",
+                },
+            ],
+        }
+    )
+
+@app.get("/service-worker.js")
+def service_worker():
+
+    print("***** USING UPDATED APP.PY *****")
+
+    javascript = """
+const CACHE_NAME = "northstar-quant-v2";
+
+self.addEventListener("install", function(event) {
+    self.skipWaiting();
+});
+
+self.addEventListener("activate", function(event) {
+    event.waitUntil(self.clients.claim());
+});
+
+self.addEventListener("fetch", function(event) {
+    event.respondWith(
+        fetch(event.request)
+    );
+});
+"""
+
+    response = app.response_class(
+        response=javascript,
+        status=200,
+        mimetype="application/javascript",
+    )
+
+    response.headers["Service-Worker-Allowed"] = "/"
+    response.headers["Cache-Control"] = "no-cache"
+
+    return response
 
 def load_portfolio_data():
     """
@@ -80,11 +115,14 @@ def load_portfolio_data():
     )
 
     return {
-        "summary": portfolio.summary(),
-        "open_positions": list(
-            portfolio.open_positions
-        ),
-    }
+    "summary": portfolio.summary(),
+    "open_positions": list(
+        portfolio.open_positions
+    ),
+    "closed_trades": list(
+        portfolio.closed_trades
+    ),
+}
 
 def load_latest_prices():
     """
@@ -203,7 +241,11 @@ def dashboard():
             "open_positions"
         ]
 
-        data_status = "LIVE PORTFOLIO STATE"
+        closed_trades = portfolio_data[
+            "closed_trades"
+        ]
+
+        data_status = "LIVE DATA AVAILABLE"
         error_message = ""
 
     except (
@@ -224,6 +266,7 @@ def dashboard():
         }
 
         open_positions = []
+        closed_trades = []
 
         data_status = "PORTFOLIO DATA UNAVAILABLE"
         error_message = str(error)
@@ -362,11 +405,11 @@ def dashboard():
         )
 
         open_pl_color = (
-        "#198754"
-        if open_pl > 0
-        else "#dc3545"
-        if open_pl < 0
-        else "#6c757d"
+             "#198754"
+            if open_pl > 0
+            else "#dc3545"
+            if open_pl < 0
+            else "#6c757d"
         )
 
         position_rows.append(
@@ -423,13 +466,32 @@ def dashboard():
             else f"${total_open_pl:,.2f}"
         )
 
-        total_open_pl_color = (
+    total_open_pl_color = (
             "#198754"
             if total_open_pl > 0
             else "#dc3545"
             if total_open_pl < 0
             else "#ffffff"
         )
+
+    realized_pl = sum(
+        float(trade.get("profit_loss", 0) or 0)
+        for trade in closed_trades
+    )
+
+    realized_pl_display = (
+        f"-${abs(realized_pl):,.2f}"
+        if realized_pl < 0
+        else f"${realized_pl:,.2f}"
+    )
+
+    realized_pl_color = (
+        "#198754"
+        if realized_pl > 0
+        else "#dc3545"
+        if realized_pl < 0
+        else "#ffffff"
+    )
 
     if position_rows:
         open_positions_html = "".join(
@@ -446,11 +508,10 @@ def dashboard():
 
     refreshed_at = datetime.now().strftime(
         "%Y-%m-%d %H:%M:%S"
-    )
+    )    
 
     return f"""
-    <!doctype html>
-    <html lang="en">
+        <html lang="en">
     <head>
         <meta charset="utf-8">
 
@@ -465,7 +526,22 @@ def dashboard():
         >
 
         <title>Northstar Quant</title>
-        <meta name="theme-color" content="#10141b">
+
+        <link
+            rel="icon"
+            type="image/png"
+            href="/static/northstar-quant-192.png"
+        >
+
+        <link
+            rel="apple-touch-icon"
+            href="/static/northstar-quant-512.png"
+        >
+
+        <meta
+            name="theme-color"
+            content="#10141b"
+        >
 
         <meta name="mobile-web-app-capable" content="yes">
 
@@ -492,18 +568,51 @@ def dashboard():
             }}
 
             .container {{
-                max-width: 1000px;
-                margin: 0 auto;
-            }}
+    max-width: 1000px;
+    margin: 0 auto;
+}}
 
-            h1 {{
-                margin-bottom: 4px;
-            }}
+.dashboard-header {{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}}
 
-            .subtitle {{
-                color: #aeb8c8;
-            }}
+.branding {{
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}}
 
+.logo {{
+    width: 52px;
+    height: 52px;
+    object-fit: contain;
+    flex-shrink: 0;
+}}
+
+.branding h1 {{
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+}}
+
+.subtitle {{
+    color: #9ca3af;
+    font-size: 0.85rem;
+    margin-top: 2px;
+}}
+
+.paper-badge {{
+    background: #f59e0b;
+    color: #111827;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+}}
             .status-card,
             .health-card,
             .table-card {{
@@ -638,11 +747,27 @@ def dashboard():
 
     <body>
         <main class="container">
-            <h1>Northstar Quant</h1>
+    <header class="dashboard-header">
+        <div class="branding">
+            <img
+                src="/static/northstar-quant-512.png"
+                alt="Northstar Quant"
+                class="logo"
+            >
 
-            <div class="subtitle">
-                Research & Trading Platform
+            <div>
+                <h1>Northstar Quant</h1>
+
+                <div class="subtitle">
+                    Research & Trading Platform
+                </div>
             </div>
+        </div>
+
+        <div class="paper-badge">
+            PAPER
+        </div>
+    </header>
 
             <section class="status-card">
                 <div class="status">
@@ -682,16 +807,16 @@ def dashboard():
 
                     <div class="health-item">
                         <div class="health-label">
-                            Pending Queue
+                            Automatic EOD State
                         </div>
 
                         <div class="
                             health-value
                             {status_class(
-                                pending_file_health["status"]
+                                eod_file_health["status"]
                             )}
                         ">
-                            {pending_file_health["text"]}
+                            {eod_file_health["text"]}
                         </div>
                     </div>
 
@@ -803,7 +928,18 @@ def dashboard():
                         ${summary["portfolio_value"]:,.2f}
                     </div>
                 </div>
+                <div class="metric">
+    <div class="metric-label">
+        Realized P/L
+    </div>
 
+    <div
+        class="metric-value"
+        style="color: {realized_pl_color};"
+    >
+        {realized_pl_display}
+    </div>
+</div>
                 <div class="metric">
                     <div class="metric-label">
                         Total Open P/L
@@ -897,9 +1033,25 @@ def dashboard():
                 Dashboard refreshed: {refreshed_at}
                 · Auto-refreshes every 60 seconds
             </div>
-        </main>
+    <script>
+            if ("serviceWorker" in navigator) {{
+                window.addEventListener(
+                    "load",
+                    function() {{
+                        navigator.serviceWorker
+                            .register("/service-worker.js")
+                            .catch(function(error) {{
+                                console.error(
+                                    "Service worker registration failed:",
+                                    error
+                                );
+                            }});
+                    }}
+                );
+            }}
+        </script>  
     </body>
-    </html>
+    </html>    
     """
 
 

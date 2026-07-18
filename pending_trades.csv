@@ -1,2 +1,1 @@
-symbol,signal_date,signal_close,atr,tmqs,rvol,breakout,reason,status
-DSG.TO,2026-07-16,106.58999633789062,3.9264281136648997,91.0,2.167054892601432,STRONG BREAKOUT,Strong breakout with quality volume,PENDING
+symbol,strategy,signal_date,signal_close,atr,tmqs,rvol,breakout,reason,status

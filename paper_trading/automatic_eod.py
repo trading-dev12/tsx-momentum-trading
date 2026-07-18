@@ -318,15 +318,25 @@ def run_automatic_eod_cycle(
             "Trading pipeline validation warning: "
             f"{validation_result['message']}"
         )
+    has_eod_warning = (
+        summary["errors"] > 0
+        or validation_result["status"] != "PASS"
+    )
+
+    telegram_heading = (
+        "AUTOMATIC EOD WARNING"
+        if has_eod_warning
+        else "AUTOMATIC EOD SCAN COMPLETED"
+    )
     telegram_message = (
-        "✅ AUTOMATIC EOD SCAN COMPLETED\n\n"
+        f"{telegram_heading}\n\n"
         f"Date: {current_date}\n"
         f"READY: {summary['ready']}\n"
         f"Queued: {summary['queued']}\n"
         f"Duplicates: {summary['duplicates']}\n"
         f"WATCH: {summary['watch']}\n"
         f"IGNORE: {summary['ignored']}\n"
-         f"Errors: {summary['errors']}\n"
+        f"Errors: {summary['errors']}\n"
         f"Pipeline Validation: "
         f"{validation_result['status']}\n\n"
         "Pending signals are ready for next-day execution."

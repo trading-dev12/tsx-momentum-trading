@@ -2647,3 +2647,68 @@ Improve Open P/L formatting (green/red).
 Add total Open P/L metric.
 Add Realized P/L metrics.
 Standardize dashboard launch method (python -m mobile_dashboard.app).
+2026-07-18 – Mobile Dashboard PWA & Secure Remote Access Complete
+Objective
+
+Complete the Northstar Quant mobile dashboard as a secure Progressive Web App (PWA) that can be installed on Android devices and accessed remotely through Tailscale without exposing the application to the public Internet.
+
+Major Accomplishments
+Secure HTTPS Remote Access
+Configured Tailscale Serve to proxy the Flask dashboard over HTTPS.
+Enabled HTTPS certificates on the Tailnet.
+Dashboard is now accessible securely via:
+https://nucbox-m8.taile9412e.ts.net
+No public Internet exposure required.
+Progressive Web App (PWA)
+
+Implemented full PWA support including:
+
+Web App Manifest
+Standalone display mode
+Mobile theme color
+Application icons
+Service Worker
+Proper HTTPS installation requirements
+
+Successfully verified:
+
+Desktop Chrome recognizes Northstar Quant as an installable application.
+Android installation now launches in standalone application mode.
+Browser address bar is removed after installation.
+Dashboard behaves like a native application.
+Mobile Dashboard Stability
+
+Resolved multiple issues discovered during deployment:
+
+Corrected malformed HTML structure.
+Fixed service worker registration.
+Eliminated duplicate fetch handlers.
+Updated manifest metadata.
+Added application scope and ID.
+Corrected global constant initialization.
+Fixed dashboard startup NameError.
+Validated Flask deployment under Waitress.
+Confirmed Tailscale HTTPS routing.
+Final Validation
+
+Successfully verified:
+
+HTTPS access
+Manifest detection
+Service Worker registration
+Standalone installation
+Native application launch
+Remote monitoring from mobile devices
+Project Status
+
+Mobile Dashboard Phase: ✅ COMPLETE
+
+Northstar Quant now includes a production-quality mobile companion application capable of securely monitoring the trading platform from any authorized device connected to the user's Tailscale network.
+
+Next Development Priorities
+Polish mobile UI to match the finalized Northstar design concept.
+Add scanner heartbeat/status indicator.
+Add live system monitoring enhancements.
+Continue Momentum validation.
+Continue 52-week breakout shadow-mode data collection.
+Begin historical trade enrichment engine after live validation milestone.

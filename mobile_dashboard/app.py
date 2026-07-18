@@ -820,11 +820,6 @@ def dashboard():
                         </div>
                     </div>
 
-                    <div class="health-item">
-                        <div class="health-label">
-                            Automatic EOD State
-                        </div>
-
                         <div class="
                             health-value
                             {status_class(

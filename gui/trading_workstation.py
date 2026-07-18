@@ -1,4 +1,7 @@
 import json
+import socket
+import subprocess
+import sys
 from pathlib import Path
 
 from shlex import quote
@@ -32,6 +35,12 @@ class TradingWorkstation:
         self.root.title("TSX Momentum Pro")
         self.root.geometry("1450x760")
         self.current_view = "LIVE"
+
+        self.mobile_dashboard_process = None
+        self.mobile_dashboard_started_here = False
+
+        self.start_mobile_dashboard()
+        self.root.protocol("WM_DELETE_WINDOW", self.on_close)
 
         self.refresh_interval_seconds = 30
         self.countdown_seconds = self.refresh_interval_seconds
@@ -1157,7 +1166,115 @@ class TradingWorkstation:
             ),
             last_refresh=self.last_successful_refresh,
         )
+    def is_mobile_dashboard_running(self, host="127.0.0.1", port=5000):
+        """
+        Return True when something is already listening on the
+        mobile dashboard port.
+        """
+        try:
+            with socket.create_connection(
+                (host, port),
+                timeout=1.0,
+            ):
+                return True
+        except OSError:
+            return False
 
+    def start_mobile_dashboard(self):
+        """
+        Start the Waitress mobile dashboard unless port 5000
+        is already being used.
+        """
+        if self.is_mobile_dashboard_running():
+            print(
+                "Mobile dashboard is already running "
+                "on port 5000."
+            )
+            return
+
+        project_root = Path(__file__).resolve().parent.parent
+
+        command = [
+            sys.executable,
+            "-m",
+            "waitress",
+            "--listen=0.0.0.0:5000",
+            "mobile_dashboard.app:app",
+        ]
+
+        startup_info = None
+        creation_flags = 0
+
+        if sys.platform == "win32":
+            startup_info = subprocess.STARTUPINFO()
+            startup_info.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+            creation_flags = subprocess.CREATE_NO_WINDOW
+
+        try:
+            self.mobile_dashboard_process = subprocess.Popen(
+                command,
+                cwd=project_root,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                startupinfo=startup_info,
+                creationflags=creation_flags,
+            )
+
+            self.mobile_dashboard_started_here = True
+
+            print(
+                "Mobile dashboard started automatically "
+                "on port 5000."
+            )
+
+        except Exception as error:
+            self.mobile_dashboard_process = None
+            self.mobile_dashboard_started_here = False
+
+            print(
+                "Unable to start mobile dashboard: "
+                f"{error}"
+            )
+
+    def stop_mobile_dashboard(self):
+        """
+        Stop the dashboard only when this workstation started it.
+        Do not stop an independently running dashboard.
+        """
+        if not self.mobile_dashboard_started_here:
+            return
+
+        process = self.mobile_dashboard_process
+
+        if process is None:
+            return
+
+        if process.poll() is not None:
+            return
+
+        try:
+            process.terminate()
+            process.wait(timeout=5)
+
+        except subprocess.TimeoutExpired:
+            process.kill()
+
+        except Exception as error:
+            print(
+                "Unable to stop mobile dashboard cleanly: "
+                f"{error}"
+            )
+
+        finally:
+            self.mobile_dashboard_process = None
+            self.mobile_dashboard_started_here = False
+
+    def on_close(self):
+        """
+        Shut down workstation-owned services and close the GUI.
+        """
+        self.stop_mobile_dashboard()
+        self.root.destroy()
     def update_market_session_status(self):
         session = get_tsx_market_status()
 

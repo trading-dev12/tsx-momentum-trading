@@ -29,6 +29,15 @@ def save_trade(trade, file_path=JOURNAL_FILE):
         "exit_reason",
         "profit_loss",
         "profit_loss_percent",
+
+        # Relative Strength research
+        "stock_return_20",
+        "xic_return_20",
+        "xiu_return_20",
+        "rs_xic_20",
+        "rs_xiu_20",
+        "rs_measurement_date",
+        "rs_status",
     ]
 
     with open(file_path, "a", newline="") as file:
@@ -39,7 +48,42 @@ def save_trade(trade, file_path=JOURNAL_FILE):
 
         row = {}
 
+        # Copy the existing trade fields
         for field in fieldnames:
             row[field] = trade.get(field, "")
+
+        # Flatten the Relative Strength research data
+        rs = (
+            trade.get("research", {})
+                 .get("relative_strength", {})
+        )
+
+        row["stock_return_20"] = rs.get(
+            "stock_return_20", ""
+        )
+
+        row["xic_return_20"] = rs.get(
+            "xic_return_20", ""
+        )
+
+        row["xiu_return_20"] = rs.get(
+            "xiu_return_20", ""
+        )
+
+        row["rs_xic_20"] = rs.get(
+            "rs_xic_20", ""
+        )
+
+        row["rs_xiu_20"] = rs.get(
+            "rs_xiu_20", ""
+        )
+
+        row["rs_measurement_date"] = rs.get(
+            "measurement_date", ""
+        )
+
+        row["rs_status"] = rs.get(
+            "status", ""
+        )
 
         writer.writerow(row)

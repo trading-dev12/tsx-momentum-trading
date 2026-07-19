@@ -14,6 +14,7 @@ from paper_trading.opening_price import get_market_open_price
 from paper_trading.pending_trades import PendingTradeQueue
 from paper_trading.portfolio import PaperPortfolio
 from paper_trading.position_manager import monitor_positions
+from research.enrichment_engine import enrich_trade
 
 
 PORTFOLIO_STATE_FILE = "paper_portfolio_state.json"
@@ -308,7 +309,9 @@ class PaperTradingEngine:
             "breakout": pending_trade["breakout"],
             "max_hold_days": max_hold_days,
         }
+        position["research"] = enrich_trade(position)
 
+        result = self.portfolio.open_position(position)
         result = self.portfolio.open_position(position)
 
         if result.get("success"):

@@ -60,6 +60,18 @@ FIELDNAMES = [
     "ma_trend_alignment",
     "ma_measurement_date",
     "ma_status",
+
+    # Sector Strength research
+    "sector",
+    "sector_etf",
+    "market_benchmark",
+    "sector_return_20",
+    "market_return_20",
+    "sector_strength_20",
+    "sector_status",
+    "sector_measurement_date",
+    "sector_strength_status",
+
 ]
 
 
@@ -275,6 +287,46 @@ def save_trade(trade, file_path=JOURNAL_FILE):
     )
 
     row["ma_status"] = moving_average_context.get(
+        "status", ""
+    )
+      # Flatten the Sector Strength research data.
+    sector_strength = research.get(
+        "sector_strength", {}
+    )
+
+    row["sector"] = sector_strength.get(
+        "sector", ""
+    )
+
+    row["sector_etf"] = sector_strength.get(
+        "sector_etf", ""
+    )
+
+    row["market_benchmark"] = sector_strength.get(
+        "market_benchmark", ""
+    )
+
+    row["sector_return_20"] = sector_strength.get(
+        "sector_return_20", ""
+    )
+
+    row["market_return_20"] = sector_strength.get(
+        "market_return_20", ""
+    )
+
+    row["sector_strength_20"] = sector_strength.get(
+        "sector_strength_20", ""
+    )
+
+    row["sector_status"] = sector_strength.get(
+        "sector_status", ""
+    )
+
+    row["sector_measurement_date"] = sector_strength.get(
+        "measurement_date", ""
+    )
+
+    row["sector_strength_status"] = sector_strength.get(
         "status", ""
     )
     with open(

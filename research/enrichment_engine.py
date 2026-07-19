@@ -6,12 +6,16 @@ Historical Trade Enrichment Engine
 from research.market_regime import (
     calculate_market_regime,
 )
-from research.relative_strength import (
-    calculate_relative_strength,
-)
 from research.moving_average_context import (
     calculate_moving_average_context,
 )
+from research.relative_strength import (
+    calculate_relative_strength,
+)
+from research.sector_strength import (
+    calculate_sector_strength,
+)
+
 
 def enrich_trade(signal):
     """
@@ -32,8 +36,12 @@ def enrich_trade(signal):
         "market_regime": calculate_market_regime(
             measurement_date=signal_date,
         ),
-         "moving_average_context": calculate_moving_average_context(
+        "moving_average_context": calculate_moving_average_context(
             symbol=symbol,
             measurement_date=signal_date,
-         ),    
-   }
+        ),
+        "sector_strength": calculate_sector_strength(
+            symbol=symbol,
+            measurement_date=signal_date,
+        ),
+    }

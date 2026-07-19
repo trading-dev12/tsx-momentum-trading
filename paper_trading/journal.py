@@ -46,6 +46,20 @@ FIELDNAMES = [
     "market_regime_sma_50_vs_sma_200_percent",
     "market_regime_measurement_date",
     "market_regime_status",
+
+     # Moving Average Context research
+    "ma_close",
+    "ma_sma_20",
+    "ma_sma_50",
+    "ma_sma_200",
+    "ma_close_vs_sma20_percent",
+    "ma_close_vs_sma50_percent",
+    "ma_close_vs_sma200_percent",
+    "ma_sma20_vs_sma50_percent",
+    "ma_sma50_vs_sma200_percent",
+    "ma_trend_alignment",
+    "ma_measurement_date",
+    "ma_status",
 ]
 
 
@@ -201,7 +215,68 @@ def save_trade(trade, file_path=JOURNAL_FILE):
     row["market_regime_status"] = market_regime.get(
         "status", ""
     )
+     # Flatten the Moving Average Context research data.
+    moving_average_context = research.get(
+        "moving_average_context", {}
+    )
 
+    row["ma_close"] = moving_average_context.get(
+        "close", ""
+    )
+
+    row["ma_sma_20"] = moving_average_context.get(
+        "sma_20", ""
+    )
+
+    row["ma_sma_50"] = moving_average_context.get(
+        "sma_50", ""
+    )
+
+    row["ma_sma_200"] = moving_average_context.get(
+        "sma_200", ""
+    )
+
+    row["ma_close_vs_sma20_percent"] = (
+        moving_average_context.get(
+            "close_vs_sma20_percent", ""
+        )
+    )
+
+    row["ma_close_vs_sma50_percent"] = (
+        moving_average_context.get(
+            "close_vs_sma50_percent", ""
+        )
+    )
+
+    row["ma_close_vs_sma200_percent"] = (
+        moving_average_context.get(
+            "close_vs_sma200_percent", ""
+        )
+    )
+
+    row["ma_sma20_vs_sma50_percent"] = (
+        moving_average_context.get(
+            "sma20_vs_sma50_percent", ""
+        )
+    )
+
+    row["ma_sma50_vs_sma200_percent"] = (
+        moving_average_context.get(
+            "sma50_vs_sma200_percent", ""
+        )
+    )
+
+    row["ma_trend_alignment"] = moving_average_context.get(
+        "trend_alignment", ""
+    )
+
+    row["ma_measurement_date"] = moving_average_context.get(
+        "measurement_date", ""
+    )
+
+    row["ma_status"] = moving_average_context.get(
+        "status", ""
+    )
     with open(
         file_path,
         "a",

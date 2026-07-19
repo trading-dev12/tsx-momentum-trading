@@ -2712,3 +2712,129 @@ Add live system monitoring enhancements.
 Continue Momentum validation.
 Continue 52-week breakout shadow-mode data collection.
 Begin historical trade enrichment engine after live validation milestone.
+## 2026-07-19
+
+### Project Direction Update
+
+Established the Historical Trade Enrichment Engine as the next major development milestone after the current 200-trade validation.
+
+Key design decisions:
+
+- Trading logic remains frozen during validation.
+- Collect research variables without affecting entries or exits.
+- Record raw institutional footprint metrics instead of creating a weighted score.
+- Build a shared enrichment engine for all current and future strategies.
+- Use collected evidence to determine factor importance rather than assigning subjective weights.
+
+Long-term objective:
+Transform Northstar Quant from a trading platform into a quantitative research platform capable of discovering statistically significant trading edges.
+## 2026-07-19 – Historical Trade Enrichment Engine (Phase 1)
+
+### Objective
+Begin transforming Northstar Quant from a paper-trading platform into a quantitative research platform by enriching every completed trade with additional market context for later statistical analysis.
+
+### Completed
+
+#### Research Enrichment Engine
+- Created `research/enrichment_engine.py`.
+- Integrated the enrichment engine into the paper trading workflow.
+- Every newly opened trade now passes through the research pipeline before being stored.
+
+#### Relative Strength Module
+Created `research/relative_strength.py`.
+
+Implemented 20-day Relative Strength calculations versus:
+- XIC
+- XIU
+
+Features:
+- Uses adjusted close prices.
+- Uses historical benchmark data.
+- Measures only through the signal date.
+- Prevents look-ahead bias.
+- Returns structured research metadata.
+
+#### Paper Trading Integration
+Modified `paper_trading/paper_engine.py`.
+
+Research data is now attached to every new position as:
+This information remains with the trade throughout its lifecycle.
+
+#### Journal Upgrade
+Expanded `paper_trade_journal.csv` to include:
+
+- stock_return_20
+- xic_return_20
+- xiu_return_20
+- rs_xic_20
+- rs_xiu_20
+- rs_measurement_date
+- rs_status
+
+Updated `paper_trading/journal.py` to flatten nested research data into CSV columns.
+
+#### Journal Migration
+Migrated the existing journal to the new schema.
+
+- Existing trades preserved.
+- New research columns added.
+- Backup created before migration.
+
+#### Validation
+
+Verified:
+
+- Relative Strength calculations
+- Research persistence
+- Journal output
+- CSV migration
+- Paper trading integration
+
+Created a temporary journal and confirmed research values are written correctly.
+
+#### Quality Assurance
+
+Completed successfully:
+
+- 13/13 automated tests passed.
+- Trading Pipeline Validator PASS.
+- Cash reconciliation PASS.
+- Journal reconciliation PASS.
+- Portfolio reconciliation PASS.
+- Pending trade validation PASS.
+- Automatic EOD validation PASS.
+
+#### Runtime Verification
+
+Confirmed:
+
+- Trading Workstation launches successfully.
+- Mobile Dashboard launches successfully.
+- Automatic Paper Execution completes without errors.
+- Benchmark files (XIC/XIU) available for future Relative Strength calculations.
+
+### Repository
+
+Committed:
+
+Add 20-day relative strength trade enrichment
+
+Commit:
+7c0a829
+
+Pushed successfully to GitHub.
+
+### Current Project Status
+
+Northstar Quant is now capable of collecting structured quantitative research information alongside every paper trade.
+
+This establishes the foundation for future enrichment modules including:
+
+- Market Regime
+- Sector Strength
+- Moving Average Context
+- Gap Analysis
+- ATR Percentile
+- Volatility Regime
+
+The platform is considered operational and ready for the next market session.

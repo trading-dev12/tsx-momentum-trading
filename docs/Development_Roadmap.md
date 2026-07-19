@@ -201,3 +201,145 @@ Whether two strategies are highly correlated.
 When to reduce exposure because several strategies are signaling the same market risk.
 
 This moves beyond individual trades to managing the portfolio as a whole.
+Northstar Quant – Next Major Milestone
+Historical Trade Enrichment Engine
+Objective
+
+Transform Northstar Quant from a trading platform into a quantitative research platform by recording rich contextual data for every completed trade.
+
+Important Principle
+
+Do not change the trading strategy during the 200-trade validation.
+
+The momentum strategy must continue making decisions exactly as it does today so the validation remains statistically clean.
+
+Instead, we will collect additional research data in the background.
+
+Philosophy
+
+Northstar Quant will follow one core principle:
+
+Never trust assumptions when you can collect evidence.
+
+Rather than guessing which factors matter, the platform will measure everything and let the data determine which factors have predictive value.
+
+What Will Be Recorded
+
+Every completed trade will be enriched with additional market context.
+
+Market Context
+Market regime
+TSX trend
+Volatility regime
+Market breadth
+VIX (or Canadian equivalent if applicable)
+Relative Strength
+Relative Strength vs XIC
+Relative Strength vs XIU
+Relative Strength ranking
+Sector Analysis
+Sector
+Sector Relative Strength
+Sector trend
+Sector momentum
+Trend Structure
+Distance above/below:
+20 SMA
+50 SMA
+200 SMA
+Trend age
+Consecutive higher highs
+Consecutive higher lows
+Volume Analysis
+Relative Volume
+Average Volume
+Dollar Volume
+20-day volume trend
+Accumulation days (20)
+Distribution days (20)
+Institutional Footprint Metrics
+
+Instead of creating an Institutional Footprint Score immediately, Northstar Quant will record the raw measurements:
+
+Relative Volume
+Relative Strength
+Sector Strength
+Accumulation
+Trend quality
+Liquidity
+Distance from 52-week high
+Close location within daily range
+
+The platform will not assign weights during validation.
+
+Why No Institutional Footprint Score?
+
+A score requires assumptions.
+
+Example:
+
+RVOL = 25%
+Relative Strength = 20%
+Sector Strength = 15%
+
+Those weights are opinions.
+
+Northstar Quant will instead collect the raw data first.
+
+Later, the research engine will determine statistically which variables deserve the most weight.
+
+Evidence determines the score—not us.
+
+Research Questions the Platform Will Answer
+
+After hundreds of completed trades, Northstar Quant will answer questions such as:
+
+Do trades with stronger institutional footprints outperform?
+Does sector strength increase expectancy?
+Is Relative Strength more important than RVOL?
+Does distance from the 200-day moving average matter?
+Which market regime produces the highest expectancy?
+Which combination of variables creates the highest Profit Factor?
+Long-Term Vision
+
+Eventually the platform will be able to discover findings like:
+
+Momentum trades with:
+
+Institutional Footprint > 85
+Strong sector momentum
+Bull market regime
+
+Produced the highest expectancy and Profit Factor.
+
+Those conclusions will come from real trading evidence rather than intuition.
+
+Development Priority
+Phase 1 (Current)
+Continue paper trading
+Complete 200-trade validation
+Keep trading rules frozen
+Phase 2 (Next Major Project)
+
+Historical Trade Enrichment Engine
+
+Record all contextual variables for every completed trade.
+
+Phase 3
+
+Research Dashboard
+
+Visualize and filter enriched trade data.
+
+Phase 4
+
+Edge Discovery Engine
+
+Automatically rank variables by:
+
+Expectancy
+Profit Factor
+Win Rate
+Drawdown
+Trade Count
+Statistical significance

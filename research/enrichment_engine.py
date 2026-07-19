@@ -3,6 +3,9 @@ Northstar Quant
 Historical Trade Enrichment Engine
 """
 
+from research.market_regime import (
+    calculate_market_regime,
+)
 from research.relative_strength import (
     calculate_relative_strength,
 )
@@ -22,6 +25,9 @@ def enrich_trade(signal):
     return {
         "relative_strength": calculate_relative_strength(
             symbol=symbol,
+            measurement_date=signal_date,
+        ),
+        "market_regime": calculate_market_regime(
             measurement_date=signal_date,
         ),
     }

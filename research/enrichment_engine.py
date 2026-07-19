@@ -18,7 +18,9 @@ from research.relative_strength import (
 from research.sector_strength import (
     calculate_sector_strength,
 )
-
+from research.volatility_regime import (
+    calculate_volatility_regime,
+)
 
 def enrich_trade(signal):
     """
@@ -48,6 +50,10 @@ def enrich_trade(signal):
             measurement_date=signal_date,
         ),
         "sector_strength": calculate_sector_strength(
+            symbol=symbol,
+            measurement_date=signal_date,
+        ),
+         "volatility_regime": calculate_volatility_regime(
             symbol=symbol,
             measurement_date=signal_date,
         ),

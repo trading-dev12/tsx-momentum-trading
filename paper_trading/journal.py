@@ -85,6 +85,16 @@ FIELDNAMES = [
     "gap_measurement_date",
     "gap_analysis_status",
 
+    # Volatility Regime research
+    "volatility_close",
+    "atr_14",
+    "atr_percent",
+    "realized_volatility_20",
+    "volatility_percentile_252",
+    "volatility_regime",
+    "volatility_measurement_date",
+    "volatility_regime_status",
+
 ]
 
 
@@ -391,7 +401,42 @@ def save_trade(trade, file_path=JOURNAL_FILE):
     row["gap_analysis_status"] = gap_analysis.get(
         "status", ""
     )
+     # Flatten the Volatility Regime research data.
+    volatility_regime = research.get(
+        "volatility_regime", {}
+    )
 
+    row["volatility_close"] = volatility_regime.get(
+        "close", ""
+    )
+
+    row["atr_14"] = volatility_regime.get(
+        "atr_14", ""
+    )
+
+    row["atr_percent"] = volatility_regime.get(
+        "atr_percent", ""
+    )
+
+    row["realized_volatility_20"] = volatility_regime.get(
+        "realized_volatility_20", ""
+    )
+
+    row["volatility_percentile_252"] = volatility_regime.get(
+        "volatility_percentile_252", ""
+    )
+
+    row["volatility_regime"] = volatility_regime.get(
+        "volatility_regime", ""
+    )
+
+    row["volatility_measurement_date"] = volatility_regime.get(
+        "measurement_date", ""
+    )
+
+    row["volatility_regime_status"] = volatility_regime.get(
+        "status", ""
+    )
     with open(
         file_path,
         "a",

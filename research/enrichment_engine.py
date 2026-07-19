@@ -9,6 +9,9 @@ from research.market_regime import (
 from research.moving_average_context import (
     calculate_moving_average_context,
 )
+from research.gap_analysis import (
+    calculate_gap_analysis,
+)
 from research.relative_strength import (
     calculate_relative_strength,
 )
@@ -37,6 +40,10 @@ def enrich_trade(signal):
             measurement_date=signal_date,
         ),
         "moving_average_context": calculate_moving_average_context(
+            symbol=symbol,
+            measurement_date=signal_date,
+        ),
+        "gap_analysis": calculate_gap_analysis(
             symbol=symbol,
             measurement_date=signal_date,
         ),

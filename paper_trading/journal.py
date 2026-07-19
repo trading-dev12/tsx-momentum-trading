@@ -72,6 +72,19 @@ FIELDNAMES = [
     "sector_measurement_date",
     "sector_strength_status",
 
+    # Gap Analysis research
+    "previous_close",
+    "previous_high",
+    "previous_low",
+    "signal_open",
+    "gap_percent",
+    "gap_direction",
+    "gap_bucket",
+    "open_vs_previous_high_percent",
+    "open_vs_previous_low_percent",
+    "gap_measurement_date",
+    "gap_analysis_status",
+
 ]
 
 
@@ -289,7 +302,7 @@ def save_trade(trade, file_path=JOURNAL_FILE):
     row["ma_status"] = moving_average_context.get(
         "status", ""
     )
-      # Flatten the Sector Strength research data.
+    # Flatten the Sector Strength research data.
     sector_strength = research.get(
         "sector_strength", {}
     )
@@ -329,6 +342,56 @@ def save_trade(trade, file_path=JOURNAL_FILE):
     row["sector_strength_status"] = sector_strength.get(
         "status", ""
     )
+
+    # Flatten the Gap Analysis research data.
+    gap_analysis = research.get(
+        "gap_analysis", {}
+    )
+
+    row["previous_close"] = gap_analysis.get(
+        "previous_close", ""
+    )
+
+    row["previous_high"] = gap_analysis.get(
+        "previous_high", ""
+    )
+
+    row["previous_low"] = gap_analysis.get(
+        "previous_low", ""
+    )
+
+    row["signal_open"] = gap_analysis.get(
+        "signal_open", ""
+    )
+
+    row["gap_percent"] = gap_analysis.get(
+        "gap_percent", ""
+    )
+
+    row["gap_direction"] = gap_analysis.get(
+        "gap_direction", ""
+    )
+
+    row["gap_bucket"] = gap_analysis.get(
+        "gap_bucket", ""
+    )
+
+    row["open_vs_previous_high_percent"] = gap_analysis.get(
+        "open_vs_previous_high_percent", ""
+    )
+
+    row["open_vs_previous_low_percent"] = gap_analysis.get(
+        "open_vs_previous_low_percent", ""
+    )
+
+    row["gap_measurement_date"] = gap_analysis.get(
+        "measurement_date", ""
+    )
+
+    row["gap_analysis_status"] = gap_analysis.get(
+        "status", ""
+    )
+
     with open(
         file_path,
         "a",

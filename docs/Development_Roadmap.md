@@ -343,3 +343,63 @@ Win Rate
 Drawdown
 Trade Count
 Statistical significance
+Phase 2 — Historical Trade Enrichment Engine
+
+Status: Core enrichment modules completed
+
+The enrichment engine records the market and stock conditions that existed on the signal date for every paper trade. These fields are research-only and do not currently alter trade-entry or trade-management decisions.
+
+Completed modules
+
+Relative Strength versus XIC and XIU
+
+Market Regime
+
+Moving Average Context
+
+Sector Strength
+
+Gap Analysis
+
+Volatility Regime
+
+Research dimensions now recorded
+Stock relative strength versus broad TSX benchmarks
+Broad-market trend regime
+Price position versus 20-day, 50-day and 200-day moving averages
+Sector performance versus the market
+Signal-day opening gap characteristics
+ATR as a percentage of price
+20-day realized volatility
+Volatility percentile and regime
+Remaining Phase 2 work
+
+Confirm all live trade-creation paths attach the complete enrichment payload
+
+Confirm enrichment fields appear correctly in future real paper-trade journal rows
+
+Review missing-data and unavailable-status rates after live collection begins
+
+Build a master enriched trade dataset for analysis
+
+Document the final enrichment schema and field definitions
+
+Next major phase
+Phase 3 — Edge Discovery and Statistical Analysis
+
+Planned capabilities:
+
+Calculate Profit Factor
+Calculate expectancy
+Calculate win rate
+Calculate average gain and average loss
+Calculate maximum drawdown
+Track trade count and sample size
+Group performance by individual research factors
+Test combinations of research factors
+Rank promising conditions
+Separate strategy performance by market regime
+Apply minimum sample-size and statistical-confidence safeguards
+Prevent weak or overfit combinations from being treated as proven edges
+
+New research ideas should remain in the backlog until the current validation and data-collection milestones are complete.

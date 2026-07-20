@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="900" viewBox="0 0 1400 900">
+  <rect width="1400" height="900" fill="#0f172a"/>
+  <text x="700" y="70" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="34" font-weight="700" fill="#f8fafc">TSX Momentum Trading App</text>
+  <text x="700" y="105" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="18" fill="#cbd5e1">High-level system overview</text>
+
+  <rect x="80" y="140" width="220" height="110" rx="16" fill="#1e293b" stroke="#38bdf8" stroke-width="2"/>
+  <text x="190" y="182" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="600" fill="#f8fafc">Market Data</text>
+  <text x="190" y="214" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="16" fill="#cbd5e1">Yahoo / historical feeds</text>
+
+  <rect x="360" y="140" width="240" height="110" rx="16" fill="#1e293b" stroke="#34d399" stroke-width="2"/>
+  <text x="480" y="182" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="600" fill="#f8fafc">Core Services</text>
+  <text x="480" y="214" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="16" fill="#cbd5e1">Market context, hours, data manager</text>
+
+  <rect x="660" y="140" width="240" height="110" rx="16" fill="#1e293b" stroke="#f59e0b" stroke-width="2"/>
+  <text x="780" y="182" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="600" fill="#f8fafc">Scanner &amp; Signals</text>
+  <text x="780" y="214" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="16" fill="#cbd5e1">Watchlists, strategies, alerts</text>
+
+  <rect x="980" y="140" width="240" height="110" rx="16" fill="#1e293b" stroke="#f472b6" stroke-width="2"/>
+  <text x="1100" y="182" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="600" fill="#f8fafc">Execution Layer</text>
+  <text x="1100" y="214" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="16" fill="#cbd5e1">Paper trading / positions / journal</text>
+
+  <path d="M300 195 L360 195" stroke="#94a3b8" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+  <path d="M600 195 L660 195" stroke="#94a3b8" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+  <path d="M900 195 L980 195" stroke="#94a3b8" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+
+  <rect x="250" y="330" width="260" height="140" rx="20" fill="#111827" stroke="#38bdf8" stroke-width="2"/>
+  <text x="380" y="370" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="600" fill="#f8fafc">Desktop GUI</text>
+  <text x="380" y="405" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="16" fill="#cbd5e1">Trading workstation</text>
+  <text x="380" y="431" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="16" fill="#cbd5e1">Live monitoring &amp; controls</text>
+
+  <rect x="570" y="330" width="260" height="140" rx="20" fill="#111827" stroke="#34d399" stroke-width="2"/>
+  <text x="700" y="370" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="600" fill="#f8fafc">Mobile Dashboard</text>
+  <text x="700" y="405" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="16" fill="#cbd5e1">Compact view</text>
+  <text x="700" y="431" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="16" fill="#cbd5e1">Alerts and status</text>
+
+  <rect x="890" y="330" width="260" height="140" rx="20" fill="#111827" stroke="#f59e0b" stroke-width="2"/>
+  <text x="1020" y="370" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="600" fill="#f8fafc">Notifications</text>
+  <text x="1020" y="405" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="16" fill="#cbd5e1">Telegram / event updates</text>
+  <text x="1020" y="431" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="16" fill="#cbd5e1">Signal delivery</text>
+
+  <path d="M780 250 L780 330" stroke="#94a3b8" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+  <path d="M700 470 L700 560" stroke="#94a3b8" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+
+  <rect x="520" y="560" width="360" height="150" rx="24" fill="#111827" stroke="#f472b6" stroke-width="2"/>
+  <text x="700" y="610" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="24" font-weight="600" fill="#f8fafc">Main Entry Point</text>
+  <text x="700" y="645" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="18" fill="#cbd5e1">main.py → launches the trading workstation</text>
+
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#94a3b8"/>
+    </marker>
+  </defs>
+</svg>

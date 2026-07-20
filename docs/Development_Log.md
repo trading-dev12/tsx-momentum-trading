@@ -2838,3 +2838,91 @@ This establishes the foundation for future enrichment modules including:
 - Volatility Regime
 
 The platform is considered operational and ready for the next market session.
+2026-07-19 — Volatility Regime Research Enrichment Completed
+
+Completed the Volatility Regime enrichment module for Northstar Quant.
+
+New module
+
+Created:
+
+research/volatility_regime.py
+
+The module measures the volatility environment of each stock using only information available through the signal date, preventing look-ahead bias.
+
+Research fields recorded
+volatility_close
+atr_14
+atr_percent
+realized_volatility_20
+volatility_percentile_252
+volatility_regime
+volatility_measurement_date
+volatility_regime_status
+Volatility classifications
+
+The module classifies each trade into one of four regimes:
+
+LOW
+NORMAL
+HIGH
+EXTREME
+
+The regime is based on the percentile rank of current 20-day realized volatility compared with the stock’s recent historical volatility.
+
+Integration completed
+
+Updated:
+
+research/enrichment_engine.py
+paper_trading/journal.py
+
+Every newly journalled paper trade now permanently records its Volatility Regime research data alongside the other enrichment factors.
+
+Verification completed
+
+Standalone module verification:
+
+CNR.TO
+Measurement date: 2026-07-17
+ATR 14: 2.74
+ATR percent: 1.5143%
+Realized volatility 20: 19.4881%
+Volatility percentile 252: 43.254%
+Volatility regime: NORMAL
+Status: AVAILABLE
+
+Temporary journal write test confirmed that all eight volatility fields were written correctly.
+
+Full test suite:
+
+13 tests passed
+
+Trading Pipeline Validator:
+
+Overall status: PASS
+Portfolio and cash reconciliation passed
+Journal completeness passed
+No duplicate open positions
+No duplicate closed trades
+No pending/open conflicts
+
+Validation report:
+
+validation_reports/2026/07/2026-07-19_pipeline_validation_183317.json
+
+Git
+
+Commit:
+
+ba40491 Add volatility regime research enrichment
+
+Successfully pushed to GitHub.
+
+Phase 2 enrichment modules now completed
+Relative Strength
+Market Regime
+Moving Average Context
+Sector Strength
+Gap Analysis
+Volatility Regime

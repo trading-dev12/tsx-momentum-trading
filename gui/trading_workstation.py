@@ -3,6 +3,7 @@ import socket
 import subprocess
 import sys
 from pathlib import Path
+import logging
 
 from shlex import quote
 import tkinter as tk
@@ -27,6 +28,14 @@ from paper_trading.automatic_eod import (
 )
 from gui.system_health_panel import (
     SystemHealthPanel,
+)
+LOG_FOLDER = Path(__file__).resolve().parent.parent / "logs"
+LOG_FOLDER.mkdir(exist_ok=True)
+
+logging.basicConfig(
+    filename=LOG_FOLDER / "workstation.log",
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(message)s",
 )
 
 class TradingWorkstation:
@@ -278,6 +287,7 @@ class TradingWorkstation:
                 return
 
         self.is_refreshing = True
+        logging.info("Refresh started")
         self.refresh_button.config(state="disabled", text="Refreshing...")
         self.status_label.config(text="Refreshing data...")
 
@@ -347,9 +357,12 @@ class TradingWorkstation:
     def load_data(self):
         try:
             settings = load_settings()
+            print(f"[{datetime.now()}] load_data() started")
             watchlist = load_all_watchlists()
             market = score_market_context()
             quotes = get_quotes(watchlist)
+            
+            print(f"[{datetime.now()}] Quotes downloaded: {len(quotes)}")
 
             self.root.after(
                 0,
@@ -997,16 +1010,36 @@ class TradingWorkstation:
         )
 
         for trade in closed_trades:
-            messagebox.showinfo(
-                "Paper Trade Closed",
-                (
-                    f"{trade['symbol']} was closed automatically.\n\n"
-                    f"Exit Price: ${trade['exit_price']:.2f}\n"
-                    f"Reason: {trade['exit_reason']}\n"
-                    f"Profit/Loss: ${trade['profit_loss']:.2f}\n"
-                    f"Return: {trade['profit_loss_percent']:.2f}%"
-                ),
+            telegram_message = (
+                "Northstar Quant — Paper Trade Closed\n\n"
+                f"Symbol: {trade['symbol']}\n"
+                f"Exit Price: ${trade['exit_price']:.2f}\n"
+                f"Reason: {trade['exit_reason']}\n"
+                f"Profit/Loss: ${trade['profit_loss']:.2f}\n"
+                f"Return: {trade['profit_loss_percent']:.2f}%"
             )
+
+            def send_closed_trade_telegram_alert(
+                message=telegram_message,
+            ):
+                try:
+                    result = send_telegram_message(message)
+
+                    if not result.get("success"):
+                        print(
+                            "Telegram closed-trade alert warning: "
+                            f"{result.get('message', '')}"
+                        )
+                except Exception as error:
+                    print(
+                        "Unexpected Telegram closed-trade alert error: "
+                            f"{error}"
+                    )
+
+    threading.Thread(
+        target=send_closed_trade_telegram_alert,
+        daemon=True,
+    ).start()
     def update_paper_portfolio_panel(self):
         current_prices = {}
 

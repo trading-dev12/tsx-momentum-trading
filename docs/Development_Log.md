@@ -2926,3 +2926,21 @@ Moving Average Context
 Sector Strength
 Gap Analysis
 Volatility Regime
+## 2026-07-20 – Reliability Improvements
+
+### Scanner Stability
+- Identified a potential GUI freeze caused by modal paper-trade close dialogs.
+- Replaced blocking close notification with asynchronous Telegram notification.
+- Prevents automatic refresh cycle from stalling while workstation is unattended.
+
+### Closed Trade Notifications
+- Added automatic Telegram alerts for paper trades closed by stop loss, target, or time exit.
+- Uses background thread to avoid blocking the GUI.
+
+### Diagnostics
+- Added persistent workstation logging.
+- Created logs/workstation.log for refresh events, trade events, Telegram status, and future diagnostics.
+- Began replacing console prints with logging for long-term troubleshooting.
+
+Status:
+Ready for live paper-trading validation during the next market session.

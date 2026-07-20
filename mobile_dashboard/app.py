@@ -18,7 +18,6 @@ from paper_trading.portfolio import PaperPortfolio
 
 
 app = Flask(__name__)
-app = Flask(__name__)
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
@@ -360,6 +359,7 @@ def dashboard():
     position_rows = []
 
     total_open_pl = 0.0
+    total_open_pl_display = "$0.00"
 
     for position in open_positions:
         entry_price = float(
@@ -786,6 +786,119 @@ def dashboard():
                 }
             </section>
 
+            
+
+            <section class="grid">
+                <div class="metric">
+                    <div class="metric-label">
+                        Portfolio Value
+                    </div>
+
+                    <div class="metric-value">
+                        ${summary["portfolio_value"]:,.2f}
+                    </div>
+                </div>
+                <div class="metric">
+    <div class="metric-label">
+        Realized P/L
+    </div>
+
+    <div
+        class="metric-value"
+        style="color: {realized_pl_color};"
+    >
+        {realized_pl_display}
+    </div>
+</div>
+                <div class="metric">
+                    <div class="metric-label">
+                        Total Open P/L
+                    </div>
+
+                    <div
+                        class="metric-value"
+                        style="color: {total_open_pl_color};"
+                    >
+                        {total_open_pl_display}
+                    </div>
+                </div>
+
+                <div class="metric">
+                    <div class="metric-label">
+                        Cash
+                    </div>
+
+                    <div class="metric-value">
+                        ${summary["cash"]:,.2f}
+                    </div>
+                </div>
+
+                <div class="metric">
+                    <div class="metric-label">
+                        Exposure
+                    </div>
+
+                    <div class="metric-value">
+                        {summary["portfolio_exposure"]:.2f}%
+                    </div>
+                </div>
+
+                <div class="metric">
+                    <div class="metric-label">
+                        Total Return
+                    </div>
+
+                    <div class="metric-value">
+                        {summary["total_return"]:.2f}%
+                    </div>
+                </div>
+
+                <div class="metric">
+                    <div class="metric-label">
+                        Open Positions
+                    </div>
+
+                    <div class="metric-value">
+                        {summary["open_positions"]}
+                    </div>
+                </div>
+
+                <div class="metric">
+                    <div class="metric-label">
+                        Closed Trades
+                    </div>
+
+                    <div class="metric-value">
+                        {summary["closed_trades"]}
+                    </div>
+                </div>
+            </section>
+
+            <section class="table-card">
+                <h2>Open Positions</h2>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Symbol</th>
+                            <th>Strategy</th>
+                            <th>Entry Date</th>
+                            <th>Entry</th>
+                            <th>Current</th>
+                            <th>Open P/L</th>
+                            <th>Shares</th>
+                            <th>Stop</th>
+                            <th>Target</th>
+                            <th>Position Value</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {open_positions_html}
+                    </tbody>
+                </table>
+            </section>
+
             <section class="health-card">
                 <h2>System Health</h2>
 
@@ -901,117 +1014,6 @@ def dashboard():
                     because no persistent scanner heartbeat
                     currently exists.
                 </div>
-            </section>
-
-            <section class="grid">
-                <div class="metric">
-                    <div class="metric-label">
-                        Portfolio Value
-                    </div>
-
-                    <div class="metric-value">
-                        ${summary["portfolio_value"]:,.2f}
-                    </div>
-                </div>
-                <div class="metric">
-    <div class="metric-label">
-        Realized P/L
-    </div>
-
-    <div
-        class="metric-value"
-        style="color: {realized_pl_color};"
-    >
-        {realized_pl_display}
-    </div>
-</div>
-                <div class="metric">
-                    <div class="metric-label">
-                        Total Open P/L
-                    </div>
-
-                    <div
-                        class="metric-value"
-                        style="color: {total_open_pl_color};"
-                    >
-                        {total_open_pl_display}
-                    </div>
-                </div>
-
-                <div class="metric">
-                    <div class="metric-label">
-                        Cash
-                    </div>
-
-                    <div class="metric-value">
-                        ${summary["cash"]:,.2f}
-                    </div>
-                </div>
-
-                <div class="metric">
-                    <div class="metric-label">
-                        Exposure
-                    </div>
-
-                    <div class="metric-value">
-                        {summary["portfolio_exposure"]:.2f}%
-                    </div>
-                </div>
-
-                <div class="metric">
-                    <div class="metric-label">
-                        Total Return
-                    </div>
-
-                    <div class="metric-value">
-                        {summary["total_return"]:.2f}%
-                    </div>
-                </div>
-
-                <div class="metric">
-                    <div class="metric-label">
-                        Open Positions
-                    </div>
-
-                    <div class="metric-value">
-                        {summary["open_positions"]}
-                    </div>
-                </div>
-
-                <div class="metric">
-                    <div class="metric-label">
-                        Closed Trades
-                    </div>
-
-                    <div class="metric-value">
-                        {summary["closed_trades"]}
-                    </div>
-                </div>
-            </section>
-
-            <section class="table-card">
-                <h2>Open Positions</h2>
-
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Symbol</th>
-                            <th>Strategy</th>
-                            <th>Entry Date</th>
-                            <th>Entry</th>
-                            <th>Current</th>
-                            <th>Open P/L</th>
-                            <th>Shares</th>
-                            <th>Stop</th>
-                            <th>Target</th>
-                            <th>Position Value</th>
-                        </tr>
-                    </thead>
-
-                    <tbody>
-                        {open_positions_html}
-                    </tbody>
-                </table>
             </section>
 
             <div class="footer">

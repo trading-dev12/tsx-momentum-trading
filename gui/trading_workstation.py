@@ -1011,7 +1011,7 @@ class TradingWorkstation:
 
         for trade in closed_trades:
             telegram_message = (
-                "Northstar Quant — Paper Trade Closed\n\n"
+                "Northstar Quant - Paper Trade Closed\n\n"
                 f"Symbol: {trade['symbol']}\n"
                 f"Exit Price: ${trade['exit_price']:.2f}\n"
                 f"Reason: {trade['exit_reason']}\n"
@@ -1033,13 +1033,13 @@ class TradingWorkstation:
                 except Exception as error:
                     print(
                         "Unexpected Telegram closed-trade alert error: "
-                            f"{error}"
+                        f"{error}"
                     )
 
-    threading.Thread(
-        target=send_closed_trade_telegram_alert,
-        daemon=True,
-    ).start()
+            threading.Thread(
+                target=send_closed_trade_telegram_alert,
+                daemon=True,
+            ).start()
     def update_paper_portfolio_panel(self):
         current_prices = {}
 

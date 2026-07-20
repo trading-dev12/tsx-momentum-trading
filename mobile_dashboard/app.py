@@ -73,7 +73,7 @@ def manifest():
 @app.get("/service-worker.js")
 def service_worker():
 
-    print("***** USING UPDATED APP.PY *****")
+
 
     javascript = """
 const CACHE_NAME = "northstar-quant-v2";
@@ -104,7 +104,7 @@ self.addEventListener("fetch", function(event) {
 
     return response
 
-def load_portfolio_data():
+def load_portfolio_data(current_prices=None):
     """
     Load current portfolio information in read-only fashion.
     """
@@ -114,7 +114,7 @@ def load_portfolio_data():
     )
 
     return {
-    "summary": portfolio.summary(),
+    "summary": portfolio.summary(current_prices),
     "open_positions": list(
         portfolio.open_positions
     ),
@@ -223,12 +223,15 @@ def dashboard():
     """
 
     try:
-        portfolio_data = load_portfolio_data()
         latest_price_data = load_latest_prices()
 
         current_prices = latest_price_data[
             "prices"
-        ]
+    ]
+
+        portfolio_data = load_portfolio_data(
+            current_prices
+    )
 
         prices_generated_at = latest_price_data[
             "generated_at"
@@ -390,8 +393,8 @@ def dashboard():
             )
         )
 
-        position_value = entry_price * shares
-
+        position_value = current_price * shares
+     
         open_pl = (
             current_price - entry_price
         ) * shares

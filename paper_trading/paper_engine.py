@@ -409,11 +409,15 @@ class PaperTradingEngine:
             try:
                 result = send_telegram_message(message)
 
+                print(f"Telegram Result: {result}")
+
                 if not result.get("success"):
                     print(
                         "Telegram trade alert warning: "
                         f"{result.get('message', '')}"
                     )
+                else:
+                        print("Telegram trade alert sent successfully.")
             except Exception as error:
                 print(
                     "Unexpected Telegram trade alert error: "

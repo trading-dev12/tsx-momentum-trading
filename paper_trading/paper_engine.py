@@ -312,7 +312,7 @@ class PaperTradingEngine:
         position["research"] = enrich_trade(position)
 
         result = self.portfolio.open_position(position)
-        result = self.portfolio.open_position(position)
+        
 
         if result.get("success"):
             self.pending_trades.remove_trade(symbol)

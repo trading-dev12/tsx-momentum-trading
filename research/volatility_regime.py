@@ -36,11 +36,14 @@ def unavailable_result(
     return {
         "symbol": symbol,
         "close": None,
+        "volatility_close": None,
         "atr_14": None,
         "atr_percent": None,
         "realized_volatility_20": None,
         "volatility_percentile_252": None,
         "volatility_regime": "UNAVAILABLE",
+        "volatility_measurement_date": measurement_date,
+        "volatility_regime_status": "UNAVAILABLE",
         "measurement_date": measurement_date,
         "status": "UNAVAILABLE",
         "reason": reason,
@@ -490,7 +493,11 @@ def calculate_volatility_regime(
 
     return {
         "symbol": normalized_symbol,
-        "close": round(
+         "close": round(
+            latest_close,
+            4,
+        ),
+        "volatility_close": round(
             latest_close,
             4,
         ),
@@ -510,7 +517,11 @@ def calculate_volatility_regime(
             float(volatility_percentile),
             4,
         ),
-        "volatility_regime": volatility_regime,
+         "volatility_regime": volatility_regime,
+        "volatility_measurement_date": (
+            normalized_measurement_date
+        ),
+        "volatility_regime_status": "AVAILABLE",
         "measurement_date": (
             normalized_measurement_date
         ),

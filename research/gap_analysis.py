@@ -40,6 +40,8 @@ def unavailable_result(
         "gap_bucket": "UNAVAILABLE",
         "open_vs_previous_high_percent": None,
         "open_vs_previous_low_percent": None,
+        "gap_measurement_date": measurement_date,
+        "gap_analysis_status": "UNAVAILABLE",
         "measurement_date": measurement_date,
         "status": "UNAVAILABLE",
         "reason": reason,
@@ -344,6 +346,10 @@ def calculate_gap_analysis(
             open_vs_previous_low_percent,
             4,
         ),
+        "gap_measurement_date": (
+            normalized_measurement_date
+        ),
+        "gap_analysis_status": "AVAILABLE",
         "measurement_date": (
             normalized_measurement_date
         ),

@@ -375,6 +375,13 @@ class PaperTradingEngine:
         position = {
             "symbol": symbol,
             "strategy": signal.get("strategy", "MOMENTUM"),
+            "signal_date": signal.get(
+                "signal_date",
+                signal.get(
+                    "date",
+                    "2026-07-09",
+                ),
+            ),
             "entry_date": signal.get(
                 "date",
                 "2026-07-09",
@@ -396,7 +403,8 @@ class PaperTradingEngine:
                 10,
             ),
         }
-
+        position["research"] = enrich_trade(position)
+        
         result = self.portfolio.open_position(position)
 
         if result.get("success"):

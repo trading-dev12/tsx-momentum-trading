@@ -1,0 +1,97 @@
+{
+  "schema_version": "1.0",
+  "enabled": true,
+  "historical_rows_policy": "warning",
+  "current_rows_start_date": "2026-07-21",
+  "current_rows_policy": "fail",
+  "status_success_values": [
+    "AVAILABLE"
+  ],
+  "research_groups": {
+    "relative_strength": {
+      "required_fields": [
+        "stock_return_20",
+        "xic_return_20",
+        "xiu_return_20",
+        "rs_xic_20",
+        "rs_xiu_20",
+        "rs_measurement_date",
+        "rs_status"
+      ],
+      "status_field": "rs_status"
+    },
+    "market_regime": {
+      "required_fields": [
+        "market_regime",
+        "market_regime_benchmark",
+        "market_regime_close",
+        "market_regime_sma_50",
+        "market_regime_sma_200",
+        "market_regime_close_vs_sma_200_percent",
+        "market_regime_sma_50_vs_sma_200_percent",
+        "market_regime_measurement_date",
+        "market_regime_status"
+      ],
+      "status_field": "market_regime_status"
+    },
+    "moving_average_context": {
+      "required_fields": [
+        "ma_close",
+        "ma_sma_20",
+        "ma_sma_50",
+        "ma_sma_200",
+        "ma_close_vs_sma20_percent",
+        "ma_close_vs_sma50_percent",
+        "ma_close_vs_sma200_percent",
+        "ma_sma20_vs_sma50_percent",
+        "ma_sma50_vs_sma200_percent",
+        "ma_trend_alignment",
+        "ma_measurement_date",
+        "ma_status"
+      ],
+      "status_field": "ma_status"
+    },
+    "sector_strength": {
+      "required_fields": [
+        "sector",
+        "sector_etf",
+        "market_benchmark",
+        "sector_return_20",
+        "market_return_20",
+        "sector_strength_20",
+        "sector_measurement_date",
+        "sector_strength_status"
+      ],
+      "status_field": "sector_strength_status"
+    },
+    "gap_analysis": {
+      "required_fields": [
+        "previous_close",
+        "previous_high",
+        "previous_low",
+        "signal_open",
+        "gap_percent",
+        "gap_direction",
+        "gap_bucket",
+        "open_vs_previous_high_percent",
+        "open_vs_previous_low_percent",
+        "gap_measurement_date",
+        "gap_analysis_status"
+      ],
+      "status_field": "gap_analysis_status"
+    },
+    "volatility_regime": {
+      "required_fields": [
+        "volatility_close",
+        "atr_14",
+        "atr_percent",
+        "realized_volatility_20",
+        "volatility_percentile_252",
+        "volatility_regime",
+        "volatility_measurement_date",
+        "volatility_regime_status"
+      ],
+      "status_field": "volatility_regime_status"
+    }
+  }
+}

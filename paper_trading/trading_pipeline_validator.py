@@ -15,9 +15,70 @@ DEFAULT_JOURNAL_FILE = Path("paper_trade_journal.csv")
 DEFAULT_PENDING_FILE = Path("pending_trades.csv")
 DEFAULT_EOD_STATE_FILE = Path("automatic_eod_state.json")
 DEFAULT_VALIDATION_REPORTS_DIR = Path("validation_reports")
+DEFAULT_RESEARCH_VALIDATION_FILE = Path(
+    "config/research_validation.json"
+)
 REPORT_VERSION = "1.0"
 
+def load_research_validation_config(
+    config_file: Path = DEFAULT_RESEARCH_VALIDATION_FILE,
+) -> dict[str, Any]:
+    if not config_file.exists():
+        raise FileNotFoundError(
+            f"Research-validation configuration not found: {config_file}"
+        )
 
+    with config_file.open(
+        "r",
+        encoding="utf-8",
+    ) as file:
+        config = json.load(file)
+
+    if not isinstance(config, dict):
+        raise ValueError(
+            "Research-validation configuration must contain a JSON object."
+        )
+
+    research_groups = config.get("research_groups")
+
+    if not isinstance(research_groups, dict) or not research_groups:
+        raise ValueError(
+            "Research-validation configuration must contain "
+            "a non-empty research_groups object."
+        )
+
+    for group_name, group_config in research_groups.items():
+        if not isinstance(group_config, dict):
+            raise ValueError(
+                f"Research group {group_name!r} must contain an object."
+            )
+
+        required_fields = group_config.get("required_fields")
+
+        if not isinstance(required_fields, list) or not required_fields:
+            raise ValueError(
+                f"Research group {group_name!r} must contain "
+                "a non-empty required_fields list."
+            )
+
+        if not all(
+            isinstance(field_name, str) and field_name.strip()
+            for field_name in required_fields
+        ):
+            raise ValueError(
+                f"Research group {group_name!r} contains an invalid "
+                "required field."
+            )
+
+        status_field = group_config.get("status_field")
+
+        if not isinstance(status_field, str) or not status_field.strip():
+            raise ValueError(
+                f"Research group {group_name!r} must contain "
+                "a valid status_field."
+            )
+
+    return config
 @dataclass
 class ValidationResult:
     name: str
@@ -77,8 +138,219 @@ def load_portfolio(path: Path) -> dict[str, Any]:
 def load_journal(path: Path) -> list[dict[str, str]]:
     with path.open("r", encoding="utf-8-sig", newline="") as file:
         return list(csv.DictReader(file))
+    
+def is_blank(value: Any) -> bool:
+    if value is None:
+        return True
+    return str(value).strip() == ""
+def validate_research_completeness(
+    journal_rows: list[dict[str, str]],
+    research_config: dict[str, Any],
+    report: ValidationReport,
+) -> None:
+    if not research_config.get("enabled", True):
+        report.add_warning(
+            "Research completeness",
+            "Research validation is disabled in configuration.",
+        )
+        return
 
+    if not journal_rows:
+        report.add_pass(
+            "Research completeness",
+            "Journal contains no completed trades to validate.",
+        )
+        return
 
+    start_date_text = str(
+        research_config.get("current_rows_start_date", "")
+    ).strip()
+
+    try:
+        current_rows_start_date = datetime.fromisoformat(
+            start_date_text
+        ).date()
+    except ValueError:
+        report.add_fail(
+            "Research completeness",
+            (
+                "current_rows_start_date must use YYYY-MM-DD format. "
+                f"Received: {start_date_text or 'BLANK'}"
+            ),
+        )
+        return
+
+    research_groups = research_config["research_groups"]
+
+    allowed_statuses = {
+        str(value).strip().upper()
+        for value in research_config.get(
+            "status_success_values",
+            ["AVAILABLE"],
+        )
+        if str(value).strip()
+    }
+
+    historical_incomplete: list[str] = []
+    current_incomplete: list[str] = []
+
+    for row_number, row in enumerate(journal_rows, start=2):
+        symbol = str(row.get("symbol", "")).strip() or "UNKNOWN"
+        entry_date_text = (
+            str(row.get("entry_date", "")).strip()
+        )
+
+        row_problems: list[str] = []
+
+        for group_name, group_config in research_groups.items():
+            required_fields = group_config["required_fields"]
+
+            missing_fields = [
+                field_name
+                for field_name in required_fields
+                if is_blank(row.get(field_name))
+            ]
+
+            if missing_fields:
+                row_problems.append(
+                    f"{group_name}: missing "
+                    f"{', '.join(missing_fields)}"
+                )
+                continue
+
+            status_field = group_config["status_field"]
+
+            status_value = str(
+                row.get(status_field, "")
+            ).strip().upper()
+
+            if allowed_statuses and status_value not in allowed_statuses:
+                row_problems.append(
+                    f"{group_name}: "
+                    f"{status_field}={status_value or 'BLANK'}"
+                )
+
+        if not row_problems:
+            continue
+
+        formatted_problem = (
+            f"row {row_number} "
+            f"({symbol}, {entry_date_text or 'UNKNOWN'}): "
+            + "; ".join(row_problems)
+        )
+
+        try:
+            entry_date = datetime.fromisoformat(
+                entry_date_text
+            ).date()
+        except ValueError:
+            current_incomplete.append(
+                formatted_problem
+                + "; entry_date is invalid or blank"
+            )
+            continue
+
+        if entry_date < current_rows_start_date:
+            historical_incomplete.append(formatted_problem)
+        else:
+            current_incomplete.append(formatted_problem)
+
+    preview_limit = 3
+
+    if historical_incomplete:
+        preview = " | ".join(
+            historical_incomplete[:preview_limit]
+        )
+
+        remaining = len(historical_incomplete) - preview_limit
+
+        if remaining > 0:
+            preview += (
+                f" | plus {remaining} additional historical rows"
+            )
+
+        message = (
+            f"{len(historical_incomplete)} historical journal rows "
+            f"before {current_rows_start_date.isoformat()} have "
+            f"incomplete research data. {preview}"
+        )
+
+        historical_policy = str(
+            research_config.get(
+                "historical_rows_policy",
+                "warning",
+            )
+        ).strip().lower()
+
+        if historical_policy == "fail":
+            report.add_fail(
+                "Historical research completeness",
+                message,
+            )
+        elif historical_policy == "ignore":
+            report.add_pass(
+                "Historical research completeness",
+                (
+                    f"Ignored {len(historical_incomplete)} incomplete "
+                    "historical journal rows under configuration policy."
+                ),
+            )
+        else:
+            report.add_warning(
+                "Historical research completeness",
+                message,
+            )
+    else:
+        report.add_pass(
+            "Historical research completeness",
+            "No incomplete historical research rows detected.",
+        )
+
+    if current_incomplete:
+        preview = " | ".join(
+            current_incomplete[:preview_limit]
+        )
+
+        remaining = len(current_incomplete) - preview_limit
+
+        if remaining > 0:
+            preview += (
+                f" | plus {remaining} additional current rows"
+            )
+
+        message = (
+            f"{len(current_incomplete)} current journal rows dated "
+            f"{current_rows_start_date.isoformat()} or later have "
+            f"incomplete research data. {preview}"
+        )
+
+        current_policy = str(
+            research_config.get(
+                "current_rows_policy",
+                "fail",
+            )
+        ).strip().lower()
+
+        if current_policy == "warning":
+            report.add_warning(
+                "Current research completeness",
+                message,
+            )
+        else:
+            report.add_fail(
+                "Current research completeness",
+                message,
+            )
+    else:
+        report.add_pass(
+            "Current research completeness",
+            (
+                "All journal rows dated "
+                f"{current_rows_start_date.isoformat()} or later "
+                f"contain complete data for "
+                f"{len(research_groups)} research groups."
+            ),
+        )
 def numbers_match(
     first: Any,
     second: Any,
@@ -805,6 +1077,24 @@ def run_validation(
     except Exception as error:
         report.add_fail("Automatic EOD state file", str(error))
         return report, portfolio, journal_rows, pending_rows, None
+    
+    try:
+        research_config = load_research_validation_config()
+        report.add_pass(
+            "Research-validation configuration",
+            (
+                "Loaded "
+                f"{len(research_config['research_groups'])} "
+                "research groups from "
+                f"{DEFAULT_RESEARCH_VALIDATION_FILE}."
+            ),
+        )
+    except Exception as error:
+        report.add_fail(
+            "Research-validation configuration",
+            str(error),
+        )
+        return report, portfolio, journal_rows, pending_rows, eod_state
 
     validate_portfolio_structure(portfolio, report)
 
@@ -832,6 +1122,11 @@ def run_validation(
 
         validate_exact_journal_duplicates(
             journal_rows,
+            report,
+        )
+        validate_research_completeness(
+            journal_rows,
+            research_config,
             report,
         )
 

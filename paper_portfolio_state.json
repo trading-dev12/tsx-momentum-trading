@@ -1,6 +1,6 @@
 {
     "starting_cash": 500000,
-    "cash": 485488.9399510902,
+    "cash": 487191.4228317752,
     "open_positions": [
         {
             "symbol": "PPL.TO",
@@ -78,21 +78,6 @@
             "strategy": "MOMENTUM"
         },
         {
-            "symbol": "EQB.TO",
-            "signal_date": "2026-07-15",
-            "entry_date": "2026-07-16",
-            "entry_price": 149.895,
-            "shares": 12,
-            "stop_price": 141.87357339041574,
-            "target_price": 169.94856652396066,
-            "atr": 4.010713304792132,
-            "tmqs": 92.35,
-            "rvol": 2.2789146341463415,
-            "breakout": "STRONG BREAKOUT",
-            "max_hold_days": 10,
-            "strategy": "MOMENTUM"
-        },
-        {
             "symbol": "DSG.TO",
             "strategy": "MOMENTUM",
             "signal_date": "2026-07-16",
@@ -148,6 +133,26 @@
             "profit_loss": -97.81576756068625,
             "profit_loss_percent": -4.257746611792938,
             "strategy": "MOMENTUM"
+        },
+        {
+            "symbol": "EQB.TO",
+            "signal_date": "2026-07-15",
+            "entry_date": "2026-07-16",
+            "entry_price": 149.895,
+            "shares": 12,
+            "stop_price": 141.87357339041574,
+            "target_price": 169.94856652396066,
+            "atr": 4.010713304792132,
+            "tmqs": 92.35,
+            "rvol": 2.2789146341463415,
+            "breakout": "STRONG BREAKOUT",
+            "max_hold_days": 10,
+            "strategy": "MOMENTUM",
+            "exit_price": 141.87357339041574,
+            "exit_date": "2026-07-20",
+            "exit_reason": "Stop hit",
+            "profit_loss": -96.25711931501132,
+            "profit_loss_percent": -5.3513636943088665
         }
     ]
 }

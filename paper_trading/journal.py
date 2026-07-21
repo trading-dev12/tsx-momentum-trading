@@ -153,25 +153,10 @@ def ensure_journal_schema(file_path, fieldnames):
 
     os.replace(temporary_path, file_path)
 
-
-def save_trade(trade, file_path=JOURNAL_FILE):
-    ensure_journal_schema(
-        file_path=file_path,
-        fieldnames=FIELDNAMES,
-    )
-
-    file_exists = (
-        os.path.exists(file_path)
-        and os.path.getsize(file_path) > 0
-    )
-
-    row = {}
-
-    # Copy the existing trade fields.
-    for field in FIELDNAMES:
-        row[field] = trade.get(field, "")
-
-    research = trade.get("research", {})
+def flatten_research_into_row(row, research):
+    """
+    Flatten research engine output into a journal row.
+    """
 
     # Flatten the Relative Strength research data.
     rs = research.get("relative_strength", {})
@@ -202,6 +187,33 @@ def save_trade(trade, file_path=JOURNAL_FILE):
 
     row["rs_status"] = rs.get(
         "status", ""
+    )
+    
+    return row
+
+
+def save_trade(trade, file_path=JOURNAL_FILE):
+    ensure_journal_schema(
+        file_path=file_path,
+        fieldnames=FIELDNAMES,
+    )
+
+    file_exists = (
+        os.path.exists(file_path)
+        and os.path.getsize(file_path) > 0
+    )
+
+    row = {}
+
+    # Copy the existing trade fields.
+    for field in FIELDNAMES:
+        row[field] = trade.get(field, "")
+
+    research = trade.get("research", {})
+
+    flatten_research_into_row(
+        row=row,
+        research=research,
     )
 
     # Flatten the Market Regime research data.

@@ -8,7 +8,7 @@ so application refreshes or restarts do not repeat the scan.
 The service runs in a background daemon thread so it does not
 block the Trading Workstation.
 """
-
+from utilities.backup_manager import create_backup
 from datetime import datetime
 import json
 import os
@@ -346,6 +346,19 @@ def run_automatic_eod_cycle(
     summary["mean_reversion_shadow"] = (
         mean_reversion_result
     )
+    try:
+        backup_result = create_backup()
+    except Exception as error:
+        backup_result = {
+            "success": False,
+            "enabled": True,
+            "backup_path": None,
+            "copied": 0,
+            "skipped": 0,
+            "errors": [str(error)],
+        }
+
+    summary["backup"] = backup_result
 
     if validation_result["report_path"]:
         print(
@@ -361,6 +374,7 @@ def run_automatic_eod_cycle(
     has_eod_warning = (
         summary["errors"] > 0
         or validation_result["status"] != "PASS"
+        or not backup_result["success"]
     )
 
     telegram_heading = (
@@ -378,7 +392,13 @@ def run_automatic_eod_cycle(
         f"IGNORE: {summary['ignored']}\n"
         f"Errors: {summary['errors']}\n"
         f"Pipeline Validation: "
-        f"{validation_result['status']}\n\n"
+        f"{validation_result['status']}\n"
+        f"Backup: "
+        f"{'SUCCESS' if backup_result['success'] else 'FAILED'}\n"
+        f"Backup Items Copied: "
+        f"{backup_result['copied']}\n"
+        f"Backup Errors: "
+        f"{len(backup_result['errors'])}\n\n"
         "Pending signals are ready for next-day execution."
     )
 

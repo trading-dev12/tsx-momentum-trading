@@ -1,10 +1,16 @@
 {
-  "project_name": "TSX Momentum Trading Scanner",
-  "version": "0.3",
-  "market": "TSX",
-  "currency": "CAD",
-  "scanner_refresh_seconds": 60,
-  "max_risk_per_trade_percent": 1.0,
-  "max_daily_loss_percent": 2.0,
-  "watchlist_file": "watchlists/tsx_watchlist.csv"
+    "project_name": "Northstar Quant",
+    "version": "1.0",
+    "market": "TSX",
+    "currency": "CAD",
+
+    "scanner_refresh_seconds": 60,
+
+    "max_risk_per_trade_percent": 1.0,
+    "max_daily_loss_percent": 2.0,
+
+    "watchlist_file": "watchlists/tsx_watchlist.csv",
+
+    "backup_root": "Northstar_Backups",
+    "backup_after_eod": true
 }

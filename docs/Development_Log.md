@@ -2944,3 +2944,171 @@ Volatility Regime
 
 Status:
 Ready for live paper-trading validation during the next market session.
+Development Log — July 21, 2026
+Mean Reversion Research Strategy Completed
+
+A third independent strategy was added to the Northstar Quant research platform.
+
+The Mean Reversion strategy is operating in research-only shadow mode. It cannot open paper trades, alter Momentum decisions, or contaminate the Momentum journal.
+
+Components added
+strategies/mean_reversion_strategy.py
+Contains the Mean Reversion decision rules.
+strategies/mean_reversion_adapter.py
+Converts scanner market data into the format required by the strategy.
+scanner/mean_reversion_scanner.py
+Scans the complete TSX watchlist and records READY, WATCH, IGNORE, and ERROR results.
+core/market_data.py
+Extended to calculate and return Mean Reversion indicators, including:
+SMA 20
+RSI 2
+RSI 14
+Lower Bollinger Band
+paper_trading/automatic_eod.py
+Extended so the Mean Reversion shadow scanner runs during the automatic EOD workflow.
+Architecture
+
+The strategies remain isolated:
+
+Momentum
+└── Paper trading and execution
+
+52-Week Breakout
+└── Research-only shadow scanning
+
+Mean Reversion
+└── Research-only shadow scanning
+
+Only Momentum is permitted to queue or execute paper trades.
+
+Validation performed
+
+The Mean Reversion scanner successfully processed the full 53-stock watchlist:
+
+READY:   0
+WATCH:  16
+IGNORE: 37
+ERRORS:  0
+
+Results were successfully saved to:
+
+research/mean_reversion_results/2026-07-21.csv
+
+The 52-Week Breakout scanner was also tested during the same verification:
+
+READY:   0
+WATCH:   0
+IGNORE: 53
+ERRORS:  0
+
+All active Mean Reversion modules and the automatic EOD module compiled successfully.
+
+Repository cleanup
+
+Accidental duplicate files were identified and removed:
+
+research/mean_reversion_strategy.py
+strategies/mean_reversion_scanner.py
+tore paper_tradingautomatic_eod.py
+
+The active implementation path is:
+
+paper_trading/automatic_eod.py
+    ↓
+scanner/mean_reversion_scanner.py
+    ↓
+strategies/mean_reversion_adapter.py
+strategies/mean_reversion_strategy.py
+Git protection
+
+.gitignore was updated to exclude:
+
+.env.txt
+*.bak
+research/mean_reversion_results/
+
+This prevents local credentials, temporary journal backups, and generated Mean Reversion reports from being accidentally committed.
+
+Git commit
+
+The completed Mean Reversion implementation was committed and pushed to GitHub:
+
+Commit: 0633458
+Message: Add Mean Reversion research engine and nightly shadow scanning
+Branch: main
+Remote: origin/main
+Current platform status
+
+Northstar Quant now contains:
+
+Momentum paper-trading strategy
+52-Week Breakout shadow research strategy
+Mean Reversion shadow research strategy
+Automatic EOD scanning
+Automatic next-day Momentum execution
+Trade journaling
+Relative-strength enrichment
+Market-regime enrichment
+Moving-average context
+Telegram notifications
+Mobile dashboard
+Secure remote monitoring
+Pipeline validation
+GitHub source-code backup
+Next Development Task — Automatic Nightly Data Backup
+Objective
+
+Protect the project’s accumulated research and trading data independently from the source-code backup on GitHub.
+
+GitHub protects the program code, but runtime information is intentionally not fully stored there. The nightly backup system will preserve the information the platform learns over time.
+
+Planned backup contents
+
+The backup system should include important files and folders such as:
+
+paper_trade_journal.csv
+paper_portfolio_state.json
+automatic_eod_state.json
+research/52_week_results/
+research/mean_reversion_results/
+validation_reports/
+data/
+
+The exact paths will be verified before implementation so missing or renamed files are handled safely.
+
+Planned backup design
+
+A dedicated Python backup module will:
+
+Create a dated backup folder.
+Copy all existing critical data files.
+Preserve the original folder structure.
+Skip optional files that do not exist without crashing.
+produce a clear success or failure summary.
+Avoid overwriting prior backup history.
+Run automatically after the EOD research workflow.
+Report backup status without disrupting trading operations if a backup destination is temporarily unavailable.
+
+Proposed structure:
+
+Northstar_Backups/
+└── 2026-07-21/
+    ├── paper_trade_journal.csv
+    ├── paper_portfolio_state.json
+    ├── automatic_eod_state.json
+    ├── research/
+    ├── validation_reports/
+    └── data/
+Safety requirements
+Backup failures must not stop Momentum scanning or paper trading.
+Source files must never be moved or deleted.
+The first implementation must be tested manually before automatic EOD integration.
+Backup destination configuration must remain local and should not expose credentials.
+Generated backups must not be committed to Git.
+The completed system must be compiled, tested, committed, and pushed.
+Status
+Planning:       COMPLETE
+Implementation: NOT STARTED
+Testing:        NOT STARTED
+EOD integration: NOT STARTED
+Git commit:     NOT STARTED

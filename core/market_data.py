@@ -109,6 +109,101 @@ def get_52_week_breakout_metrics(symbol):
         print(f"52-week metrics unavailable for {symbol}: {error}")
         return empty_metrics
 
+
+def get_mean_reversion_metrics(symbol):
+    """
+    Return completed-session indicators required by the research-only
+    mean reversion strategy.
+
+    Today's partial daily candle is excluded.
+    """
+
+    empty_metrics = {
+        "sma_20": 0.0,
+        "rsi_2": 0.0,
+        "rsi_14": 0.0,
+        "bollinger_lower": 0.0,
+    }
+
+    try:
+        yahoo_symbol = symbol if symbol.endswith(".TO") else symbol + ".TO"
+
+        today = datetime.now(ZoneInfo("America/Toronto")).date()
+        start_date = today - timedelta(days=120)
+
+        history = yf.Ticker(yahoo_symbol).history(
+            start=start_date.isoformat(),
+            end=today.isoformat(),
+            interval="1d",
+            auto_adjust=False,
+        )
+
+        if history is None or history.empty:
+            return empty_metrics
+
+        if "Close" not in history.columns:
+            return empty_metrics
+
+        closes = history["Close"].dropna()
+
+        if len(closes) < 20:
+            return empty_metrics
+
+        sma_20 = float(
+            closes.rolling(window=20).mean().iloc[-1]
+        )
+
+        standard_deviation_20 = float(
+            closes.rolling(window=20).std().iloc[-1]
+        )
+
+        bollinger_lower = sma_20 - (2 * standard_deviation_20)
+
+        price_change = closes.diff()
+        gains = price_change.clip(lower=0)
+        losses = -price_change.clip(upper=0)
+
+        def calculate_rsi(period):
+            average_gain = gains.ewm(
+                alpha=1 / period,
+                adjust=False,
+                min_periods=period,
+            ).mean()
+
+            average_loss = losses.ewm(
+                alpha=1 / period,
+                adjust=False,
+                min_periods=period,
+            ).mean()
+
+            latest_gain = average_gain.iloc[-1]
+            latest_loss = average_loss.iloc[-1]
+
+            if latest_loss == 0:
+                return 100.0
+
+            relative_strength = latest_gain / latest_loss
+
+            return 100 - (
+                100 / (1 + relative_strength)
+            )
+
+        rsi_2 = float(calculate_rsi(2))
+        rsi_14 = float(calculate_rsi(14))
+
+        return {
+            "sma_20": round(sma_20, 4),
+            "rsi_2": round(rsi_2, 4),
+            "rsi_14": round(rsi_14, 4),
+            "bollinger_lower": round(bollinger_lower, 4),
+        }
+
+    except Exception as error:
+    
+        print(f"Mean reversion metrics unavailable for {symbol}: {error}")
+        return empty_metrics
+
+
 def get_rvol_status(relative_volume):
     if relative_volume >= 2:
         return "HIGH"
@@ -198,6 +293,7 @@ def get_live_quote(symbol):
         average_volume = get_average_volume(symbol)
         atr = calculate_live_atr(symbol)
         breakout_metrics = get_52_week_breakout_metrics(symbol)
+        mean_reversion_metrics = get_mean_reversion_metrics(symbol)
 
         if average_volume > 0:
             relative_volume = round(volume / average_volume, 2)
@@ -218,6 +314,10 @@ def get_live_quote(symbol):
             "prior_52_week_high": breakout_metrics["prior_52_week_high"],
             "sma_50": breakout_metrics["sma_50"],
             "sma_200": breakout_metrics["sma_200"],
+            "sma_20": mean_reversion_metrics["sma_20"],
+            "rsi_2": mean_reversion_metrics["rsi_2"],
+            "rsi_14": mean_reversion_metrics["rsi_14"],
+            "bollinger_lower": mean_reversion_metrics["bollinger_lower"],
             "atr": atr,
             "rvol_status": get_rvol_status(relative_volume),
             "status": "Live Data",

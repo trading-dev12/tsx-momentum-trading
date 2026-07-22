@@ -230,3 +230,11 @@ validation_reports/
 
 # Runtime-generated dashboard data
 data/runtime/
+# Local environment files
+.env.txt
+
+# Local backup files
+*.bak
+
+# Generated Mean Reversion research results
+research/mean_reversion_results/

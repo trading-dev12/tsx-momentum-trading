@@ -238,3 +238,5 @@ data/runtime/
 
 # Generated Mean Reversion research results
 research/mean_reversion_results/
+# Local nightly backups
+Northstar_Backups/

@@ -3321,3 +3321,22 @@ Current Platform Status
 ✅ Pipeline Validator
 
 ✅ 13/13 Automated Tests Passing
+## 2026-07-23
+
+### Signal Journal Added
+- Added a new `paper_signal_journal.csv` research dataset.
+- Every Momentum READY signal is now recorded before entering the paper trading queue.
+- Added duplicate protection so repeated EOD scans cannot create duplicate signal records.
+- This creates a permanent research record independent of trade execution.
+
+### Automatic EOD Improvements
+- Automatic EOD now performs a fresh production scan before using cached live snapshot data.
+- Live snapshot is now only used as a fallback if the production scan cannot be completed.
+- Fixes an issue where valid READY signals could be omitted from the pending trade queue.
+
+### Research Platform Improvements
+- Platform architecture now permanently records:
+  - Strategy opportunities
+  - Queue decisions
+  - Paper trade execution
+- Provides a stronger foundation for future AI research, edge analysis, and strategy comparison.

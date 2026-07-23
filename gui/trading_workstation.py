@@ -55,7 +55,7 @@ class TradingWorkstation:
         self.countdown_seconds = self.refresh_interval_seconds
         self.is_refreshing = False
         self.latest_quotes = []
-        self.previous_ready_symbols = set()
+        self.previous_ready_symbols = None
         self.last_successful_refresh = None
         self.paper_engine = PaperTradingEngine(
             starting_cash=500000,
@@ -579,6 +579,10 @@ class TradingWorkstation:
         current_ready_symbols = {
             q["symbol"] for q in quotes if q["decision"] == "READY"
         }
+
+        if self.previous_ready_symbols is None:
+            self.previous_ready_symbols = current_ready_symbols
+            return
 
         new_ready_symbols = (
             current_ready_symbols

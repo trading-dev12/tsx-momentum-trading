@@ -40,6 +40,7 @@ logging.basicConfig(
 
 class TradingWorkstation:
     def __init__(self, root):
+        self.notified_ready_symbols = set()
         self.root = root
         self.root.title("TSX Momentum Pro")
         self.root.geometry("1450x760")
@@ -582,11 +583,12 @@ class TradingWorkstation:
 
         if self.previous_ready_symbols is None:
             self.previous_ready_symbols = current_ready_symbols
+            self.notified_ready_symbols.update(current_ready_symbols)
             return
 
         new_ready_symbols = (
             current_ready_symbols
-            - self.previous_ready_symbols
+            - self.notified_ready_symbols
         )
 
         if new_ready_symbols:
@@ -662,7 +664,7 @@ class TradingWorkstation:
                 daemon=True,
             ).start()
 
-        self.previous_ready_symbols = current_ready_symbols
+        self.notified_ready_symbols.update(new_ready_symbols)
 
     def show_trade_checklist(self, event):
         selected = self.tree.selection()

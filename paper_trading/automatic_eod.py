@@ -366,9 +366,10 @@ def run_automatic_eod_cycle(
     from paper_trading.signal_journal import record_ready_signals
 
     record_ready_signals(
-        results,
+        results["ready"],
         current_datetime.date(),
     )
+    
     queue_summary = paper_engine.queue_eod_signals(
         results
     )

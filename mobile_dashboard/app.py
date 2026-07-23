@@ -161,7 +161,7 @@ def load_latest_validation_report():
 
     report_files = list(
         VALIDATION_REPORTS_FOLDER.rglob(
-            "*_pipeline_validation.json"
+            "*_pipeline_validation*.json"
         )
     )
 

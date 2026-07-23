@@ -340,7 +340,7 @@ def run_automatic_eod_cycle(
                 "Automatic EOD scan is not due."
             ),
         }
-
+    
     live_quotes = []
 
     if live_snapshot_provider is not None:
@@ -349,20 +349,22 @@ def run_automatic_eod_cycle(
         except Exception:
             live_quotes = []
 
-    if live_quotes:
-        results = build_scan_results_from_live_snapshot(
-            live_quotes,
-            current_date,
-        )
-    else:
+    try:
         results = scan_provider(
             current_datetime=current_datetime,
         )
+    except Exception:
+        if live_quotes:
+            results = build_scan_results_from_live_snapshot(
+                live_quotes,
+                current_date,
+            )
+        else:
+            raise
 
     queue_summary = paper_engine.queue_eod_signals(
         results
     )
-
     save_last_run_date(
         current_date,
         state_file=state_file,

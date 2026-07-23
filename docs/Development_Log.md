@@ -3264,3 +3264,60 @@ Northstar Quant now includes:
 ✅ GitHub Version Control
 
 Current development focus has shifted from feature construction to operational reliability and long-term data collection in preparation for Edge Analyzer development.
+Development Log
+
+Date: July 22, 2026
+
+Version 3.6 – EOD Reliability & Multi-Strategy Planning
+Completed
+Live Snapshot Integration
+Modified the Automatic EOD pipeline to use the workstation's live market snapshot when available instead of recalculating signals independently.
+Added automatic fallback to the historical Yahoo scan if a live snapshot is unavailable.
+Eliminates inconsistencies where a stock could trigger a live READY alert but fail to enter the next-day paper trading queue.
+Automatic EOD Service
+Updated Automatic EOD worker and service to accept live snapshot providers.
+Connected the Trading Workstation directly to the Automatic EOD pipeline.
+Test Suite Improvements
+Mocked Telegram notifications during automated testing.
+Prevented pytest from sending production Telegram messages.
+Eliminated false July 16 EOD notifications caused by validation tests.
+Validation
+All compilation checks successful.
+Full regression suite passed.
+13/13 tests passing.
+Repository
+Clean Git commit created:
+6fb95e3
+Improve EOD signal consistency and isolate Telegram tests
+Successfully pushed to GitHub.
+Current Platform Status
+
+✅ Momentum Strategy
+
+✅ 52-Week Breakout Research Strategy
+
+✅ Mean Reversion Research Strategy
+
+✅ Automatic Paper Trading
+
+✅ Automatic EOD Processing
+
+✅ Automatic Next-Day Execution
+
+✅ Telegram Notifications
+
+✅ Mobile Dashboard
+
+✅ Remote Monitoring
+
+✅ Historical Trade Enrichment
+
+✅ Relative Strength vs XIC/XIU
+
+✅ Market Regime Detection
+
+✅ Moving Average Context
+
+✅ Pipeline Validator
+
+✅ 13/13 Automated Tests Passing

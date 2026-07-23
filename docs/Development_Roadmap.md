@@ -403,3 +403,129 @@ Apply minimum sample-size and statistical-confidence safeguards
 Prevent weak or overfit combinations from being treated as proven edges
 
 New research ideas should remain in the backlog until the current validation and data-collection milestones are complete.
+Development Roadmap
+Current Milestone
+Phase 1 — Production Validation
+
+Objective
+
+Verify the complete Momentum production workflow after the EOD reliability improvements.
+
+Validation checklist:
+
+Live READY signal generated
+Automatic EOD reports identical READY signal
+Pending queue populated correctly
+Automatic next-day execution successful
+Dashboard updates correctly
+Telegram notifications verified
+Phase 2 — Version 4.0
+Multi-Strategy Paper Trading
+
+Promote the remaining research strategies into fully independent paper-trading systems.
+
+Momentum
+
+Current Status
+
+Scanner ✅
+Paper Trading ✅
+Journal ✅
+Dashboard ✅
+52-Week Breakout
+
+To Build
+
+Independent Paper Trading Engine
+Independent Pending Queue
+Independent Portfolio
+Independent Journal
+Dashboard Integration
+Telegram Notifications
+Performance Statistics
+Mean Reversion
+
+To Build
+
+Independent Paper Trading Engine
+Independent Pending Queue
+Independent Portfolio
+Independent Journal
+Dashboard Integration
+Telegram Notifications
+Performance Statistics
+Phase 3
+Unified Multi-Strategy Dashboard
+
+Create a portfolio overview displaying all strategies simultaneously.
+
+Example:
+
+Momentum
+Open Trades
+Closed Trades
+Return
+Profit Factor
+
+52 Week Breakout
+Open Trades
+Closed Trades
+Return
+Profit Factor
+
+Mean Reversion
+Open Trades
+Closed Trades
+Return
+Profit Factor
+Phase 4
+Comparative Analytics
+
+Develop tools to compare strategy performance objectively.
+
+Metrics include:
+
+Win Rate
+Profit Factor
+Expectancy
+Maximum Drawdown
+Average Hold Time
+Sector Performance
+Market Regime Performance
+Relative Strength Performance
+Phase 5
+Strategy Optimizer
+
+Build a research engine capable of identifying statistically significant improvements.
+
+Examples:
+
+ATR optimization
+Relative Strength thresholds
+Volatility regime filters
+Sector rotation
+Position sizing
+Time-based exits
+Phase 6
+Portfolio Allocation Engine
+
+Allocate capital dynamically based on each strategy's proven performance.
+
+Example:
+
+Momentum
+$4,000
+
+Mean Reversion
+$3,500
+
+52 Week Breakout
+$2,500
+
+Allocation will be driven by objective performance metrics rather than equal weighting.
+
+Long-Term Vision
+
+Northstar Quant is evolving from a single momentum scanner into a multi-strategy quantitative research and paper-trading platform.
+
+The objective is to operate multiple independent TSX strategies in parallel, collect statistically meaningful evidence for each, and deploy real capital only after demonstrating a sustainable edge. Each strategy will maintain separate journals, portfolios, and performance statistics, allowing evidence-based capital allocation rather than relying on subjective judgment.

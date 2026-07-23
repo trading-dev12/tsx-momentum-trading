@@ -35,6 +35,8 @@ from paper_trading.trading_pipeline_validator import (
     save_validation_report,
 )
 
+from paper_trading.signal_journal import record_ready_signals
+
 AUTO_EOD_STATE_FILE = "automatic_eod_state.json"
 DEFAULT_CHECK_SECONDS = 60
 
@@ -361,7 +363,12 @@ def run_automatic_eod_cycle(
             )
         else:
             raise
+    from paper_trading.signal_journal import record_ready_signals
 
+    record_ready_signals(
+        results,
+        current_datetime.date(),
+    )
     queue_summary = paper_engine.queue_eod_signals(
         results
     )

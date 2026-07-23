@@ -42,7 +42,17 @@ def fake_shadow_scan_runner():
         "report_path": "research/52_week_results/test.csv",
     }
 
-def test_automatic_eod_validation(tmp_path):
+def test_automatic_eod_validation(
+    tmp_path,
+    monkeypatch,
+):
+    monkeypatch.setattr(
+        "paper_trading.automatic_eod.send_telegram_message",
+        lambda message: {
+            "success": True,
+            "message": "Telegram mocked during test.",
+        },
+    )    
     state_file = tmp_path / "automatic_eod_state.json"
 
     summary = run_automatic_eod_cycle(

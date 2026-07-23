@@ -71,8 +71,11 @@ class TradingWorkstation:
         self.automatic_eod_thread = (
             start_automatic_eod_service(
                 self.paper_engine,
+                live_snapshot_provider=lambda: list(
+                    self.latest_quotes
+                ),
+            )
         )
-    )
 
         self.market_label = tk.Label(
             root,

@@ -249,11 +249,68 @@ def run_mean_reversion_shadow_scan():
         "errors": len(results["errors"]),
         "report_path": report_path,
     }
+
+
+def build_scan_results_from_live_snapshot(
+    live_quotes,
+    signal_date,
+):
+    """
+    Convert live workstation quotes into the standard EOD
+    signal format used by the paper-trading queue.
+    """
+
+    results = {
+        "ready": [],
+        "watch": [],
+        "ignore": [],
+        "errors": [],
+    }
+
+    for quote in live_quotes:
+        try:
+            signal = {
+                "symbol": quote["symbol"],
+                "strategy": "MOMENTUM",
+                "signal_date": signal_date,
+                "close": float(quote["price"]),
+                "atr": float(quote["atr"]),
+                "tmqs": float(quote["tmqs"]),
+                "rvol": float(
+                    quote["relative_volume"]
+                ),
+                "breakout": quote["breakout_status"],
+                "decision": quote["decision"],
+                "reason": quote.get("reason", ""),
+            }
+
+            decision = signal["decision"]
+
+            if decision == "READY":
+                results["ready"].append(signal)
+            elif decision == "WATCH":
+                results["watch"].append(signal)
+            else:
+                results["ignore"].append(signal)
+
+        except Exception as error:
+            results["errors"].append(
+                {
+                    "symbol": quote.get(
+                        "symbol",
+                        "UNKNOWN",
+                    ),
+                    "message": str(error),
+                }
+            )
+
+    return results
 def run_automatic_eod_cycle(
     paper_engine,
     current_datetime=None,
     state_file=AUTO_EOD_STATE_FILE,
     scan_provider=scan_eod_signals,
+    live_snapshot_provider=None,
     validation_runner=run_pipeline_validation,
     shadow_scan_runner=run_52_week_shadow_scan,
     mean_reversion_runner=run_mean_reversion_shadow_scan,
@@ -284,9 +341,23 @@ def run_automatic_eod_cycle(
             ),
         }
 
-    results = scan_provider(
-        current_datetime=current_datetime,
-    )
+    live_quotes = []
+
+    if live_snapshot_provider is not None:
+        try:
+            live_quotes = live_snapshot_provider()
+        except Exception:
+            live_quotes = []
+
+    if live_quotes:
+        results = build_scan_results_from_live_snapshot(
+            live_quotes,
+            current_date,
+        )
+    else:
+        results = scan_provider(
+            current_datetime=current_datetime,
+        )
 
     queue_summary = paper_engine.queue_eod_signals(
         results
@@ -453,6 +524,7 @@ def automatic_eod_worker(
     paper_engine,
     check_seconds=DEFAULT_CHECK_SECONDS,
     stop_event=None,
+    live_snapshot_provider=None,
 ):
     """
     Continuously check whether the daily EOD scan is due.
@@ -465,6 +537,7 @@ def automatic_eod_worker(
         try:
             run_automatic_eod_cycle(
                 paper_engine=paper_engine,
+                live_snapshot_provider=live_snapshot_provider,
             )
 
         except Exception as error:
@@ -479,6 +552,7 @@ def automatic_eod_worker(
 def start_automatic_eod_service(
     paper_engine,
     check_seconds=DEFAULT_CHECK_SECONDS,
+    live_snapshot_provider=None,
 ):
     """
     Start the automatic EOD service in a daemon thread.
@@ -489,11 +563,13 @@ def start_automatic_eod_service(
         kwargs={
             "paper_engine": paper_engine,
             "check_seconds": check_seconds,
+            "live_snapshot_provider": (
+                live_snapshot_provider
+            ),
         },
         daemon=True,
         name="automatic-eod-service",
     )
-
     thread.start()
 
     return thread

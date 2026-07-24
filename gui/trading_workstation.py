@@ -64,14 +64,32 @@ class TradingWorkstation:
             fixed_risk_amount=100.0,
             max_open_positions=100,
         )
+
+        self.breakout_52week_engine = PaperTradingEngine(
+            starting_cash=500000,
+            portfolio_state_file="paper_portfolio_state_52week.json",
+            pending_trades_file="pending_trades_52week.csv",
+            journal_file="paper_trade_journal_52week.csv",
+            risk_model="fixed",
+            fixed_risk_amount=100.0,
+            max_open_positions=100,
+        )
         self.automatic_execution_thread = (
             start_automatic_execution_service(
                 self.paper_engine,
             )
         )
+
+        self.breakout_52week_execution_thread = (
+            start_automatic_execution_service(
+                self.breakout_52week_engine,
+            )
+        )
+        
         self.automatic_eod_thread = (
             start_automatic_eod_service(
                 self.paper_engine,
+                breakout_52week_engine=self.breakout_52week_engine,
                 live_snapshot_provider=lambda: list(
                     self.latest_quotes
                 ),
@@ -236,7 +254,7 @@ class TradingWorkstation:
         )
         portfolio_title = tk.Label(
             checklist_frame,
-            text="════════  TRADER CONTROL CENTER  ════════",
+            text="â•â•â•â•â•â•â•â•  TRADER CONTROL CENTER  â•â•â•â•â•â•â•â•",
             font=("Arial", 14, "bold"),
             anchor="w",
         )

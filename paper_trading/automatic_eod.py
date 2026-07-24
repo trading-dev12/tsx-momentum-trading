@@ -213,16 +213,29 @@ def run_pipeline_validation(
                 f"{error}"
             ),
         }
-def run_52_week_shadow_scan():
+def run_52_week_shadow_scan(paper_engine=None):
     """
-    Run the 52-week strategy in research-only shadow mode.
+    Run the 52-week breakout scan.
 
-    This function does not queue or execute any paper trades.
+    Results are always saved for research. READY signals are
+    queued only when a dedicated paper engine is supplied.
     """
 
     watchlist = load_all_watchlists()
     results = scan_52_week_breakouts(watchlist)
     report_path = save_52_week_results(results)
+
+    queue_summary = {
+        "attempted": 0,
+        "added": 0,
+        "rejected": 0,
+        "results": [],
+    }
+
+    if paper_engine is not None:
+        queue_summary = paper_engine.queue_eod_signals(
+            results
+        )
 
     return {
         "success": True,
@@ -230,8 +243,12 @@ def run_52_week_shadow_scan():
         "watch": len(results["watch"]),
         "ignored": len(results["ignore"]),
         "errors": len(results["errors"]),
+        "queued": queue_summary["added"],
+        "duplicates": queue_summary["rejected"],
+        "queue_summary": queue_summary,
         "report_path": report_path,
     }
+
 def run_mean_reversion_shadow_scan():
     """
     Run the Mean Reversion strategy in research-only shadow mode.
@@ -309,6 +326,7 @@ def build_scan_results_from_live_snapshot(
     return results
 def run_automatic_eod_cycle(
     paper_engine,
+    breakout_52week_engine=None,
     current_datetime=None,
     state_file=AUTO_EOD_STATE_FILE,
     scan_provider=scan_eod_signals,
@@ -398,7 +416,16 @@ def run_automatic_eod_cycle(
     summary["validation"] = validation_result
 
     try:
-        shadow_result = shadow_scan_runner()
+        try:
+            shadow_result = shadow_scan_runner(
+                paper_engine=breakout_52week_engine,
+            )
+        except TypeError as error:
+            if "paper_engine" not in str(error):
+                raise
+
+            shadow_result = shadow_scan_runner()
+
     except Exception as error:
         shadow_result = {
             "success": False,
@@ -532,6 +559,7 @@ def run_automatic_eod_cycle(
 
 def automatic_eod_worker(
     paper_engine,
+    breakout_52week_engine=None,
     check_seconds=DEFAULT_CHECK_SECONDS,
     stop_event=None,
     live_snapshot_provider=None,
@@ -547,8 +575,9 @@ def automatic_eod_worker(
         try:
             run_automatic_eod_cycle(
                 paper_engine=paper_engine,
+                breakout_52week_engine=breakout_52week_engine,
                 live_snapshot_provider=live_snapshot_provider,
-            )
+        )
 
         except Exception as error:
             print(
@@ -558,9 +587,9 @@ def automatic_eod_worker(
 
         stop_event.wait(check_seconds)
 
-
 def start_automatic_eod_service(
     paper_engine,
+    breakout_52week_engine=None,
     check_seconds=DEFAULT_CHECK_SECONDS,
     live_snapshot_provider=None,
 ):
@@ -572,6 +601,7 @@ def start_automatic_eod_service(
         target=automatic_eod_worker,
         kwargs={
             "paper_engine": paper_engine,
+            "breakout_52week_engine": breakout_52week_engine,
             "check_seconds": check_seconds,
             "live_snapshot_provider": (
                 live_snapshot_provider

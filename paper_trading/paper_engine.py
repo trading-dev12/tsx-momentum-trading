@@ -9,7 +9,7 @@ automatic next-day execution, and risk-based sizing.
 import threading
 
 from notifications.telegram_notifier import send_telegram_message
-from paper_trading.journal import save_trade
+from paper_trading.journal import JOURNAL_FILE, save_trade
 from paper_trading.opening_price import get_market_open_price
 from paper_trading.pending_trades import PendingTradeQueue
 from paper_trading.portfolio import PaperPortfolio
@@ -31,6 +31,7 @@ class PaperTradingEngine:
     starting_cash=10000,
     portfolio_state_file=PORTFOLIO_STATE_FILE,
     pending_trades_file=PENDING_TRADES_FILE,
+    journal_file=JOURNAL_FILE,
     risk_per_trade_percent=DEFAULT_RISK_PER_TRADE_PERCENT,
     risk_model="percent",
     fixed_risk_amount=100.0,
@@ -47,6 +48,8 @@ class PaperTradingEngine:
         self.pending_trades = PendingTradeQueue(
             file_path=pending_trades_file,
         )
+
+        self.journal_file = journal_file
 
         self.risk_per_trade_percent = float(
             risk_per_trade_percent
@@ -532,7 +535,7 @@ class PaperTradingEngine:
         )
 
         for trade in closed_trades:
-            save_trade(trade)
+            save_trade(trade, file_path=self.journal_file)
             self._notify_trade_closed(trade)
 
         return closed_trades
@@ -552,7 +555,7 @@ class PaperTradingEngine:
         )
 
         if result.get("success"):
-            save_trade(result["trade"])
+            save_trade(result["trade"], file_path=self.journal_file)
             self._notify_trade_closed(result["trade"])
 
         return result
@@ -608,4 +611,3 @@ class PaperTradingEngine:
 
     def summary(self):
         return self.portfolio.summary()
-    

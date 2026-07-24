@@ -52,6 +52,10 @@ def scan_52_week_breakouts(watchlist):
                 "symbol": symbol,
                 "strategy": "52_WEEK_BREAKOUT",
                 "decision": strategy_result.decision.value,
+                "signal_date": datetime.now().strftime("%Y-%m-%d"),
+                "close": quote.get("price", 0),
+                "atr": quote.get("atr", 0),
+                "tmqs": quote.get("tmqs", 0),
                 "reason": strategy_result.reason,
                 "price": quote.get("price", 0),
                 "prior_52_week_high": quote.get(

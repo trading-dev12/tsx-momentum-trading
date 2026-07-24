@@ -24,6 +24,11 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 PORTFOLIO_STATE_FILE = (
     PROJECT_ROOT / "paper_portfolio_state.json"
 )
+
+BREAKOUT_52WEEK_PORTFOLIO_STATE_FILE = (
+    PROJECT_ROOT / "paper_portfolio_state_52week.json"
+)
+
 PENDING_TRADES_FILE = (
     PROJECT_ROOT / "pending_trades.csv"
 )
@@ -104,13 +109,16 @@ self.addEventListener("fetch", function(event) {
 
     return response
 
-def load_portfolio_data(current_prices=None):
+def load_portfolio_data(
+    current_prices=None,
+    state_file=PORTFOLIO_STATE_FILE,
+):
     """
     Load current portfolio information in read-only fashion.
     """
 
     portfolio = PaperPortfolio(
-        state_file=str(PORTFOLIO_STATE_FILE),
+        state_file=str(state_file),
     )
 
     return {
@@ -230,8 +238,13 @@ def dashboard():
     ]
 
         portfolio_data = load_portfolio_data(
-            current_prices
-    )
+            current_prices,
+        )
+
+        breakout_52week_portfolio_data = load_portfolio_data(
+            current_prices,
+            state_file=BREAKOUT_52WEEK_PORTFOLIO_STATE_FILE,
+        )
 
         prices_generated_at = latest_price_data[
             "generated_at"
@@ -246,6 +259,18 @@ def dashboard():
         closed_trades = portfolio_data[
             "closed_trades"
         ]
+
+        breakout_52week_summary = (
+            breakout_52week_portfolio_data["summary"]
+        )
+
+        breakout_52week_open_positions = (
+            breakout_52week_portfolio_data["open_positions"]
+        )
+
+        breakout_52week_closed_trades = (
+            breakout_52week_portfolio_data["closed_trades"]
+        )
 
         data_status = "LIVE DATA AVAILABLE"
         error_message = ""
@@ -269,6 +294,20 @@ def dashboard():
 
         open_positions = []
         closed_trades = []
+
+        breakout_52week_summary = {
+            "starting_cash": 0.0,
+            "cash": 0.0,
+            "open_position_value": 0.0,
+            "portfolio_exposure": 0.0,
+            "portfolio_value": 0.0,
+            "total_return": 0.0,
+            "open_positions": 0,
+            "closed_trades": 0,
+        }
+
+        breakout_52week_open_positions = []
+        breakout_52week_closed_trades = []
 
         data_status = "PORTFOLIO DATA UNAVAILABLE"
         error_message = str(error)
@@ -509,6 +548,155 @@ def dashboard():
         </tr>
         """
 
+    breakout_52week_position_rows = []
+
+    breakout_52week_total_open_pl = 0.0
+    breakout_52week_total_open_pl_display = "$0.00"
+
+    for position in breakout_52week_open_positions:
+        entry_price = float(
+            position.get("entry_price", 0)
+        )
+
+        shares = int(
+            position.get("shares", 0)
+        )
+
+        stop_price = float(
+            position.get("stop_price", 0)
+        )
+
+        target_price = float(
+            position.get("target_price", 0)
+        )
+
+        symbol = position.get(
+            "symbol",
+            "--",
+        )
+
+        current_price = float(
+            current_prices.get(
+                symbol,
+                entry_price,
+            )
+        )
+
+        position_value = current_price * shares
+
+        open_pl = (
+            current_price - entry_price
+        ) * shares
+
+        breakout_52week_total_open_pl += open_pl
+
+        open_pl_display = (
+            f"-${abs(open_pl):,.2f}"
+            if open_pl < 0
+            else f"${open_pl:,.2f}"
+        )
+
+        open_pl_color = (
+            "#198754"
+            if open_pl > 0
+            else "#dc3545"
+            if open_pl < 0
+            else "#6c757d"
+        )
+
+        breakout_52week_position_rows.append(
+            f"""
+            <tr>
+                <td>
+                    <strong>
+                        {position.get("symbol", "--")}
+                    </strong>
+                </td>
+
+                <td>
+                    {position.get("strategy", "--")}
+                </td>
+
+                <td>
+                    {position.get("entry_date", "--")}
+                </td>
+
+                <td>
+                    ${entry_price:,.2f}
+                </td>
+
+                <td>
+                    ${current_price:,.2f}
+                </td>
+
+                <td style="color: {open_pl_color}; font-weight: bold;">
+                    {open_pl_display}
+                </td>
+
+                <td>
+                    {shares}
+                </td>
+
+                <td>
+                    ${stop_price:,.2f}
+                </td>
+
+                <td>
+                    ${target_price:,.2f}
+                </td>
+
+                <td>
+                    ${position_value:,.2f}
+                </td>
+            </tr>
+            """
+        )
+
+        breakout_52week_total_open_pl_display = (
+            f"-${abs(breakout_52week_total_open_pl):,.2f}"
+            if breakout_52week_total_open_pl < 0
+            else f"${breakout_52week_total_open_pl:,.2f}"
+        )
+
+    breakout_52week_total_open_pl_color = (
+        "#198754"
+        if breakout_52week_total_open_pl > 0
+        else "#dc3545"
+        if breakout_52week_total_open_pl < 0
+        else "#ffffff"
+    )
+
+    breakout_52week_realized_pl = sum(
+        float(trade.get("profit_loss", 0) or 0)
+        for trade in breakout_52week_closed_trades
+    )
+
+    breakout_52week_realized_pl_display = (
+        f"-${abs(breakout_52week_realized_pl):,.2f}"
+        if breakout_52week_realized_pl < 0
+        else f"${breakout_52week_realized_pl:,.2f}"
+    )
+
+    breakout_52week_realized_pl_color = (
+        "#198754"
+        if breakout_52week_realized_pl > 0
+        else "#dc3545"
+        if breakout_52week_realized_pl < 0
+        else "#ffffff"
+    )
+
+    if breakout_52week_position_rows:
+        breakout_52week_open_positions_html = "".join(
+            breakout_52week_position_rows
+        )
+    else:
+        breakout_52week_open_positions_html = """
+        <tr>
+            <td colspan="10">
+                No open positions.
+            </td>
+        </tr>
+        """
     refreshed_at = datetime.now().strftime(
         "%Y-%m-%d %H:%M:%S"
     )    
@@ -902,6 +1090,126 @@ def dashboard():
                 </table>
             </section>
 
+            <section class="status-card">
+                <h2>52-Week Breakout Strategy</h2>
+
+                <div class="footer">
+                    Independent paper-trading portfolio
+                </div>
+            </section>
+
+            <section class="grid">
+                <div class="metric">
+                    <div class="metric-label">
+                        Portfolio Value
+                    </div>
+
+                    <div class="metric-value">
+                        ${breakout_52week_summary["portfolio_value"]:,.2f}
+                    </div>
+                </div>
+
+                <div class="metric">
+                    <div class="metric-label">
+                        Realized P/L
+                    </div>
+
+                    <div
+                        class="metric-value"
+                        style="color: {breakout_52week_realized_pl_color};"
+                    >
+                        {breakout_52week_realized_pl_display}
+                    </div>
+                </div>
+
+                <div class="metric">
+                    <div class="metric-label">
+                        Total Open P/L
+                    </div>
+
+                    <div
+                        class="metric-value"
+                        style="color: {breakout_52week_total_open_pl_color};"
+                    >
+                        {breakout_52week_total_open_pl_display}
+                    </div>
+                </div>
+
+                <div class="metric">
+                    <div class="metric-label">
+                        Cash
+                    </div>
+
+                    <div class="metric-value">
+                        ${breakout_52week_summary["cash"]:,.2f}
+                    </div>
+                </div>
+
+                <div class="metric">
+                    <div class="metric-label">
+                        Exposure
+                    </div>
+
+                    <div class="metric-value">
+                        {breakout_52week_summary["portfolio_exposure"]:.2f}%
+                    </div>
+                </div>
+
+                <div class="metric">
+                    <div class="metric-label">
+                        Total Return
+                    </div>
+
+                    <div class="metric-value">
+                        {breakout_52week_summary["total_return"]:.2f}%
+                    </div>
+                </div>
+
+                <div class="metric">
+                    <div class="metric-label">
+                        Open Positions
+                    </div>
+
+                    <div class="metric-value">
+                        {breakout_52week_summary["open_positions"]}
+                    </div>
+                </div>
+
+                <div class="metric">
+                    <div class="metric-label">
+                        Closed Trades
+                    </div>
+
+                    <div class="metric-value">
+                        {breakout_52week_summary["closed_trades"]}
+                    </div>
+                </div>
+            </section>
+
+            <section class="table-card">
+                <h2>52-Week Breakout Open Positions</h2>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Symbol</th>
+                            <th>Strategy</th>
+                            <th>Entry Date</th>
+                            <th>Entry</th>
+                            <th>Current</th>
+                            <th>Open P/L</th>
+                            <th>Shares</th>
+                            <th>Stop</th>
+                            <th>Target</th>
+                            <th>Position Value</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {breakout_52week_open_positions_html}
+                    </tbody>
+                </table>
+            </section>
             <section class="health-card">
                 <h2>System Health</h2>
 
@@ -1021,7 +1329,7 @@ def dashboard():
 
             <div class="footer">
                 Dashboard refreshed: {refreshed_at}
-                · Auto-refreshes every 60 seconds
+                Ãƒâ€šÃ‚Â· Auto-refreshes every 60 seconds
             </div>
     <script>
             if ("serviceWorker" in navigator) {{

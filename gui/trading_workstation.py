@@ -254,7 +254,7 @@ class TradingWorkstation:
         )
         portfolio_title = tk.Label(
             checklist_frame,
-            text="â•â•â•â•â•â•â•â•  TRADER CONTROL CENTER  â•â•â•â•â•â•â•â•",
+            text="TRADE CONTROL CENTER",
             font=("Arial", 14, "bold"),
             anchor="w",
         )
@@ -1113,9 +1113,21 @@ class TradingWorkstation:
             latest_prices_file
         )
 
-        text = build_paper_dashboard_text(
+        momentum_text = build_paper_dashboard_text(
             self.paper_engine,
             current_prices,
+        )
+
+        breakout_52week_text = build_paper_dashboard_text(
+            self.breakout_52week_engine,
+            current_prices,
+        )
+
+        text = (
+            ">>> MOMENTUM STRATEGY <<<\n"
+            + momentum_text
+            + "\n\n>>> 52-WEEK BREAKOUT STRATEGY <<<\n"
+            + breakout_52week_text
         )
 
         self.paper_portfolio_text.config(state="normal")

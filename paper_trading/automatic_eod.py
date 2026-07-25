@@ -454,6 +454,51 @@ def run_automatic_eod_cycle(
         }
 
     summary["breakout_52week_shadow"] = shadow_result
+
+    breakout_telegram_heading = (
+        "52-WEEK BREAKOUT EOD WARNING"
+        if (
+            not shadow_result.get("success", False)
+            or shadow_result.get("errors", 0) > 0
+        )
+        else "52-WEEK BREAKOUT EOD SCAN COMPLETED"
+    )
+    breakout_telegram_message = (
+        f"{breakout_telegram_heading}\n\n"
+        f"Date: {current_date}\n"
+        f"READY: {shadow_result.get('ready', 0)}\n"
+        f"Queued: {shadow_result.get('queued', 0)}\n"
+        f"Duplicates: "
+        f"{shadow_result.get('duplicates', 0)}\n"
+        f"WATCH: {shadow_result.get('watch', 0)}\n"
+        f"IGNORE: {shadow_result.get('ignored', 0)}\n"
+        f"Errors: {shadow_result.get('errors', 0)}\n\n"
+        "READY signals are queued for next-day execution."
+    )
+
+    try:
+        breakout_telegram_result = send_telegram_message(
+            breakout_telegram_message
+        )
+    except Exception as error:
+        breakout_telegram_result = {
+            "success": False,
+            "message": (
+                "Unexpected 52-week Telegram error: "
+                f"{error}"
+            ),
+        }
+
+    summary["breakout_52week_telegram"] = (
+        breakout_telegram_result
+    )
+
+    if not breakout_telegram_result["success"]:
+        print(
+            "52-week Telegram notification warning: "
+            f"{breakout_telegram_result['message']}"
+        )
+
     try:
         mean_reversion_result = mean_reversion_runner(
             paper_engine=mean_reversion_engine,
@@ -472,6 +517,53 @@ def run_automatic_eod_cycle(
     summary["mean_reversion_shadow"] = (
         mean_reversion_result
     )
+
+    mean_reversion_telegram_heading = (
+        "MEAN REVERSION EOD WARNING"
+        if (
+            not mean_reversion_result.get("success", False)
+            or mean_reversion_result.get("errors", 0) > 0
+        )
+        else "MEAN REVERSION EOD SCAN COMPLETED"
+    )
+    mean_reversion_telegram_message = (
+        f"{mean_reversion_telegram_heading}\n\n"
+        f"Date: {current_date}\n"
+        f"READY: {mean_reversion_result.get('ready', 0)}\n"
+        f"Queued: {mean_reversion_result.get('queued', 0)}\n"
+        f"Duplicates: "
+        f"{mean_reversion_result.get('duplicates', 0)}\n"
+        f"WATCH: {mean_reversion_result.get('watch', 0)}\n"
+        f"IGNORE: {mean_reversion_result.get('ignored', 0)}\n"
+        f"Errors: {mean_reversion_result.get('errors', 0)}\n\n"
+        "READY signals are queued for next-day execution."
+    )
+
+    try:
+        mean_reversion_telegram_result = (
+            send_telegram_message(
+                mean_reversion_telegram_message
+            )
+        )
+    except Exception as error:
+        mean_reversion_telegram_result = {
+            "success": False,
+            "message": (
+                "Unexpected Mean Reversion Telegram error: "
+                f"{error}"
+            ),
+        }
+
+    summary["mean_reversion_telegram"] = (
+        mean_reversion_telegram_result
+    )
+
+    if not mean_reversion_telegram_result["success"]:
+        print(
+            "Mean Reversion Telegram notification warning: "
+            f"{mean_reversion_telegram_result['message']}"
+        )
+
     try:
         backup_result = create_backup()
     except Exception as error:

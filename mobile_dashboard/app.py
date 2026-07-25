@@ -29,6 +29,10 @@ BREAKOUT_52WEEK_PORTFOLIO_STATE_FILE = (
     PROJECT_ROOT / "paper_portfolio_state_52week.json"
 )
 
+MEAN_REVERSION_PORTFOLIO_STATE_FILE = (
+    PROJECT_ROOT / "paper_portfolio_state_mean_reversion.json"
+)
+
 PENDING_TRADES_FILE = (
     PROJECT_ROOT / "pending_trades.csv"
 )
@@ -112,12 +116,14 @@ self.addEventListener("fetch", function(event) {
 def load_portfolio_data(
     current_prices=None,
     state_file=PORTFOLIO_STATE_FILE,
+    starting_cash=10000,
 ):
     """
     Load current portfolio information in read-only fashion.
     """
 
     portfolio = PaperPortfolio(
+        starting_cash=starting_cash,
         state_file=str(state_file),
     )
 
@@ -244,6 +250,13 @@ def dashboard():
         breakout_52week_portfolio_data = load_portfolio_data(
             current_prices,
             state_file=BREAKOUT_52WEEK_PORTFOLIO_STATE_FILE,
+            starting_cash=500000,
+        )
+
+        mean_reversion_portfolio_data = load_portfolio_data(
+            current_prices,
+            state_file=MEAN_REVERSION_PORTFOLIO_STATE_FILE,
+            starting_cash=500000,
         )
 
         prices_generated_at = latest_price_data[
@@ -270,6 +283,19 @@ def dashboard():
 
         breakout_52week_closed_trades = (
             breakout_52week_portfolio_data["closed_trades"]
+        )
+
+
+        mean_reversion_summary = (
+            mean_reversion_portfolio_data["summary"]
+        )
+
+        mean_reversion_open_positions = (
+            mean_reversion_portfolio_data["open_positions"]
+        )
+
+        mean_reversion_closed_trades = (
+            mean_reversion_portfolio_data["closed_trades"]
         )
 
         data_status = "LIVE DATA AVAILABLE"
@@ -308,6 +334,20 @@ def dashboard():
 
         breakout_52week_open_positions = []
         breakout_52week_closed_trades = []
+
+        mean_reversion_summary = {
+            "starting_cash": 0.0,
+            "cash": 0.0,
+            "open_position_value": 0.0,
+            "portfolio_exposure": 0.0,
+            "portfolio_value": 0.0,
+            "total_return": 0.0,
+            "open_positions": 0,
+            "closed_trades": 0,
+        }
+
+        mean_reversion_open_positions = []
+        mean_reversion_closed_trades = []
 
         data_status = "PORTFOLIO DATA UNAVAILABLE"
         error_message = str(error)
@@ -433,7 +473,7 @@ def dashboard():
         )
 
         position_value = current_price * shares
-     
+
         open_pl = (
             current_price - entry_price
         ) * shares
@@ -697,6 +737,156 @@ def dashboard():
             </td>
         </tr>
         """
+    mean_reversion_position_rows = []
+
+    mean_reversion_total_open_pl = 0.0
+    mean_reversion_total_open_pl_display = "$0.00"
+
+    for position in mean_reversion_open_positions:
+        entry_price = float(
+            position.get("entry_price", 0)
+        )
+
+        shares = int(
+            position.get("shares", 0)
+        )
+
+        stop_price = float(
+            position.get("stop_price", 0)
+        )
+
+        target_price = float(
+            position.get("target_price", 0)
+        )
+
+        symbol = position.get(
+            "symbol",
+            "--",
+        )
+
+        current_price = float(
+            current_prices.get(
+                symbol,
+                entry_price,
+            )
+        )
+
+        position_value = current_price * shares
+
+        open_pl = (
+            current_price - entry_price
+        ) * shares
+
+        mean_reversion_total_open_pl += open_pl
+
+        open_pl_display = (
+            f"-${abs(open_pl):,.2f}"
+            if open_pl < 0
+            else f"${open_pl:,.2f}"
+        )
+
+        open_pl_color = (
+            "#198754"
+            if open_pl > 0
+            else "#dc3545"
+            if open_pl < 0
+            else "#6c757d"
+        )
+
+        mean_reversion_position_rows.append(
+            f"""
+            <tr>
+                <td>
+                    <strong>
+                        {position.get("symbol", "--")}
+                    </strong>
+                </td>
+
+                <td>
+                    {position.get("strategy", "--")}
+                </td>
+
+                <td>
+                    {position.get("entry_date", "--")}
+                </td>
+
+                <td>
+                    ${entry_price:,.2f}
+                </td>
+
+                <td>
+                    ${current_price:,.2f}
+                </td>
+
+                <td style="color: {open_pl_color}; font-weight: bold;">
+                    {open_pl_display}
+                </td>
+
+                <td>
+                    {shares}
+                </td>
+
+                <td>
+                    ${stop_price:,.2f}
+                </td>
+
+                <td>
+                    ${target_price:,.2f}
+                </td>
+
+                <td>
+                    ${position_value:,.2f}
+                </td>
+            </tr>
+            """
+        )
+
+        mean_reversion_total_open_pl_display = (
+            f"-${abs(mean_reversion_total_open_pl):,.2f}"
+            if mean_reversion_total_open_pl < 0
+            else f"${mean_reversion_total_open_pl:,.2f}"
+        )
+
+    mean_reversion_total_open_pl_color = (
+        "#198754"
+        if mean_reversion_total_open_pl > 0
+        else "#dc3545"
+        if mean_reversion_total_open_pl < 0
+        else "#ffffff"
+    )
+
+    mean_reversion_realized_pl = sum(
+        float(trade.get("profit_loss", 0) or 0)
+        for trade in mean_reversion_closed_trades
+    )
+
+    mean_reversion_realized_pl_display = (
+        f"-${abs(mean_reversion_realized_pl):,.2f}"
+        if mean_reversion_realized_pl < 0
+        else f"${mean_reversion_realized_pl:,.2f}"
+    )
+
+    mean_reversion_realized_pl_color = (
+        "#198754"
+        if mean_reversion_realized_pl > 0
+        else "#dc3545"
+        if mean_reversion_realized_pl < 0
+        else "#ffffff"
+    )
+
+    if mean_reversion_position_rows:
+        mean_reversion_open_positions_html = "".join(
+            mean_reversion_position_rows
+        )
+    else:
+        mean_reversion_open_positions_html = """
+        <tr>
+            <td colspan="10">
+                No open positions.
+            </td>
+        </tr>
+        """
+
     refreshed_at = datetime.now().strftime(
         "%Y-%m-%d %H:%M:%S"
     )    
@@ -748,7 +938,7 @@ def dashboard():
             * {{
                 box-sizing: border-box;
             }}
-            
+
 
             body {{
                 margin: 0;
@@ -977,7 +1167,7 @@ def dashboard():
                 }
             </section>
 
-            
+
 
             <section class="grid">
                 <div class="metric">
@@ -1210,8 +1400,132 @@ def dashboard():
                     </tbody>
                 </table>
             </section>
+             <section class="status-card">
+                <h2>Mean Reversion Strategy</h2>
+
+                <div class="footer">
+                    Independent paper-trading portfolio
+                </div>
+            </section>
+
+            <section class="grid">
+                <div class="metric">
+                    <div class="metric-label">
+                        Portfolio Value
+                    </div>
+
+                    <div class="metric-value">
+                        ${mean_reversion_summary["portfolio_value"]:,.2f}
+                    </div>
+                </div>
+
+                <div class="metric">
+                    <div class="metric-label">
+                        Realized P/L
+                    </div>
+
+                    <div
+                        class="metric-value"
+                        style="color: {mean_reversion_realized_pl_color};"
+                    >
+                        {mean_reversion_realized_pl_display}
+                    </div>
+                </div>
+
+                <div class="metric">
+                    <div class="metric-label">
+                        Total Open P/L
+                    </div>
+
+                    <div
+                        class="metric-value"
+                        style="color: {mean_reversion_total_open_pl_color};"
+                    >
+                        {mean_reversion_total_open_pl_display}
+                    </div>
+                </div>
+
+                <div class="metric">
+                    <div class="metric-label">
+                        Cash
+                    </div>
+
+                    <div class="metric-value">
+                        ${mean_reversion_summary["cash"]:,.2f}
+                    </div>
+                </div>
+
+                <div class="metric">
+                    <div class="metric-label">
+                        Exposure
+                    </div>
+
+                    <div class="metric-value">
+                        {mean_reversion_summary["portfolio_exposure"]:.2f}%
+                    </div>
+                </div>
+
+                <div class="metric">
+                    <div class="metric-label">
+                        Total Return
+                    </div>
+
+                    <div class="metric-value">
+                        {mean_reversion_summary["total_return"]:.2f}%
+                    </div>
+                </div>
+
+                <div class="metric">
+                    <div class="metric-label">
+                        Open Positions
+                    </div>
+
+                    <div class="metric-value">
+                        {mean_reversion_summary["open_positions"]}
+                    </div>
+                </div>
+
+                <div class="metric">
+                    <div class="metric-label">
+                        Closed Trades
+                    </div>
+
+                    <div class="metric-value">
+                        {mean_reversion_summary["closed_trades"]}
+                    </div>
+                </div>
+            </section>
+
+            <section class="table-card">
+                <h2>Mean Reversion Open Positions</h2>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Symbol</th>
+                            <th>Strategy</th>
+                            <th>Entry Date</th>
+                            <th>Entry</th>
+                            <th>Current</th>
+                            <th>Open P/L</th>
+                            <th>Shares</th>
+                            <th>Stop</th>
+                            <th>Target</th>
+                            <th>Position Value</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {mean_reversion_open_positions_html}
+                    </tbody>
+                </table>
+            </section>
+
             <section class="health-card">
                 <h2>System Health</h2>
+
+            <section class="status-card">
+
 
                 <div class="health-grid">
                     <div class="health-item">

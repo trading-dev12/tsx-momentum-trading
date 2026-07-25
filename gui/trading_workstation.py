@@ -1141,11 +1141,18 @@ class TradingWorkstation:
             current_prices,
         )
 
+        mean_reversion_text = build_paper_dashboard_text(
+            self.mean_reversion_engine,
+            current_prices,
+        )
+
         text = (
             ">>> MOMENTUM STRATEGY <<<\n"
             + momentum_text
             + "\n\n>>> 52-WEEK BREAKOUT STRATEGY <<<\n"
             + breakout_52week_text
+            + "\n\n>>> MEAN REVERSION STRATEGY <<<\n"
+            + mean_reversion_text
         )
 
         self.paper_portfolio_text.config(state="normal")

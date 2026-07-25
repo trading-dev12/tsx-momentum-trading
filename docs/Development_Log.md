@@ -3353,3 +3353,43 @@ Tomorrow's market session is the real validation. If we get through the day with
 one market open message,
 no repeated READY alerts,
 and a correct EOD summary,then the production reliability fixes can be considered validated.
+
+## 2026-07-25
+
+### Mean Reversion Independent Paper-Trading Pipeline
+- Added a dedicated Mean Reversion `PaperTradingEngine`.
+- Added separate strategy files:
+  - `paper_portfolio_state_mean_reversion.json`
+  - `pending_trades_mean_reversion.csv`
+  - `paper_trade_journal_mean_reversion.csv`
+- Added an independent automatic execution service.
+- Integrated Mean Reversion signals into the automatic EOD workflow.
+- Preserved complete separation from Momentum and 52-Week Breakout results.
+- Confirmed the complete queue, execution, close, portfolio, and journal workflow with an isolated integration test.
+
+### Mean Reversion Dashboards
+- Added a dedicated Mean Reversion section to the mobile dashboard.
+- Added portfolio value, cash, exposure, return, realized P/L, open P/L, open positions, and closed trades.
+- Set the separate Mean Reversion paper bankroll to $500,000.
+- Corrected the 52-Week Breakout dashboard bankroll to $500,000.
+- Added Mean Reversion portfolio analytics to the desktop Trading Workstation.
+- Visually confirmed the desktop section displays correctly.
+
+### Remote Dashboard Reliability
+- Diagnosed the phone connection issue as the Waitress server not remaining active.
+- Started Waitress as a background process listening on `0.0.0.0:5000`.
+- Confirmed the service was listening on port 5000.
+- Confirmed successful access through the Tailscale address with HTTP status 200.
+- Restored working remote dashboard access.
+
+### Validation and Source Control
+- `mobile_dashboard/app.py` compiled successfully.
+- `gui/trading_workstation.py` compiled successfully.
+- `git diff --check` passed.
+- Mobile dashboard route returned HTTP 200.
+- Mean Reversion mobile and desktop sections were verified.
+- Commits pushed:
+  - `5355b7b` Add independent mean reversion paper trading pipeline
+  - `aabf1da` Add mean reversion mobile dashboard portfolio
+  - `2d7679a` Add mean reversion desktop dashboard
+- Repository finished clean and synchronized with GitHub.

@@ -1,4 +1,4 @@
-import json
+﻿import json
 import socket
 import subprocess
 import sys
@@ -74,6 +74,17 @@ class TradingWorkstation:
             fixed_risk_amount=100.0,
             max_open_positions=100,
         )
+
+        self.mean_reversion_engine = PaperTradingEngine(
+            starting_cash=500000,
+            portfolio_state_file="paper_portfolio_state_mean_reversion.json",
+            pending_trades_file="pending_trades_mean_reversion.csv",
+            journal_file="paper_trade_journal_mean_reversion.csv",
+            risk_model="fixed",
+            fixed_risk_amount=100.0,
+            max_open_positions=100,
+        )
+
         self.automatic_execution_thread = (
             start_automatic_execution_service(
                 self.paper_engine,
@@ -85,11 +96,18 @@ class TradingWorkstation:
                 self.breakout_52week_engine,
             )
         )
+
+        self.mean_reversion_execution_thread = (
+            start_automatic_execution_service(
+                self.mean_reversion_engine,
+            )
+        )
         
         self.automatic_eod_thread = (
             start_automatic_eod_service(
                 self.paper_engine,
                 breakout_52week_engine=self.breakout_52week_engine,
+                mean_reversion_engine=self.mean_reversion_engine,
                 live_snapshot_provider=lambda: list(
                     self.latest_quotes
                 ),

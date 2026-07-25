@@ -249,23 +249,38 @@ def run_52_week_shadow_scan(paper_engine=None):
         "report_path": report_path,
     }
 
-def run_mean_reversion_shadow_scan():
+def run_mean_reversion_shadow_scan(paper_engine=None):
     """
-    Run the Mean Reversion strategy in research-only shadow mode.
+    Run the Mean Reversion scan.
 
-    This function does not queue or execute any paper trades.
+    Results are always saved for research. READY signals are
+    queued only when a dedicated paper engine is supplied.
     """
 
     watchlist = load_all_watchlists()
     results = scan_mean_reversion(watchlist)
     report_path = save_mean_reversion_results(results)
 
+    queue_summary = {
+        "attempted": 0,
+        "added": 0,
+        "rejected": 0,
+        "results": [],
+    }
+
+    if paper_engine is not None:
+        queue_summary = paper_engine.queue_eod_signals(
+            results
+        )
+
     return {
         "success": True,
         "ready": len(results["ready"]),
         "watch": len(results["watch"]),
         "ignored": len(results["ignore"]),
-        "errors": len(results["errors"]),
+        "queued": queue_summary["added"],
+        "duplicates": queue_summary["rejected"],
+        "queue_summary": queue_summary,
         "report_path": report_path,
     }
 
@@ -327,6 +342,7 @@ def build_scan_results_from_live_snapshot(
 def run_automatic_eod_cycle(
     paper_engine,
     breakout_52week_engine=None,
+    mean_reversion_engine=None,
     current_datetime=None,
     state_file=AUTO_EOD_STATE_FILE,
     scan_provider=scan_eod_signals,
@@ -439,7 +455,9 @@ def run_automatic_eod_cycle(
 
     summary["breakout_52week_shadow"] = shadow_result
     try:
-        mean_reversion_result = mean_reversion_runner()
+        mean_reversion_result = mean_reversion_runner(
+            paper_engine=mean_reversion_engine,
+        )
     except Exception as error:
         mean_reversion_result = {
             "success": False,
@@ -560,6 +578,7 @@ def run_automatic_eod_cycle(
 def automatic_eod_worker(
     paper_engine,
     breakout_52week_engine=None,
+    mean_reversion_engine=None,
     check_seconds=DEFAULT_CHECK_SECONDS,
     stop_event=None,
     live_snapshot_provider=None,
@@ -576,6 +595,7 @@ def automatic_eod_worker(
             run_automatic_eod_cycle(
                 paper_engine=paper_engine,
                 breakout_52week_engine=breakout_52week_engine,
+                mean_reversion_engine=mean_reversion_engine,
                 live_snapshot_provider=live_snapshot_provider,
         )
 
@@ -590,6 +610,7 @@ def automatic_eod_worker(
 def start_automatic_eod_service(
     paper_engine,
     breakout_52week_engine=None,
+    mean_reversion_engine=None,
     check_seconds=DEFAULT_CHECK_SECONDS,
     live_snapshot_provider=None,
 ):
@@ -602,6 +623,7 @@ def start_automatic_eod_service(
         kwargs={
             "paper_engine": paper_engine,
             "breakout_52week_engine": breakout_52week_engine,
+            "mean_reversion_engine": mean_reversion_engine,
             "check_seconds": check_seconds,
             "live_snapshot_provider": (
                 live_snapshot_provider

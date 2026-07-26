@@ -3393,3 +3393,75 @@ and a correct EOD summary,then the production reliability fixes can be considere
   - `aabf1da` Add mean reversion mobile dashboard portfolio
   - `2d7679a` Add mean reversion desktop dashboard
 - Repository finished clean and synchronized with GitHub.
+
+
+## 2026-07-26
+
+### Multi-Strategy Telegram EOD Reporting
+- Added separate Telegram EOD summaries for the 52-Week Breakout and Mean Reversion strategies.
+- Each strategy now reports its own READY, WATCH, and ignored totals.
+- Confirmed both Telegram test notifications were received successfully.
+- Preserved complete separation between Momentum, 52-Week Breakout, and Mean Reversion reporting.
+
+### Closed-Market Scanner Reliability
+- Diagnosed repeated Yahoo Finance rate-limit errors caused by the scanner continuing to refresh while the TSX was closed.
+- Added a market-session guard so automatic scanning only runs while the TSX is open.
+- Weekend and pre-market launches now display `Automatic scanning: PAUSED`.
+- Corrected the market-status comparison from `PRE_MARKET` to `PRE-MARKET`.
+- Manual scanner refresh remains available.
+- Trading rules, risk settings, entries, exits, stops, and targets were not changed.
+
+### Trade Control Center Restoration
+- Changed workstation startup so all three local paper portfolios load even when the market is closed.
+- Restored the last-known price snapshot from the July 25 backup.
+- Recovered 53 saved prices for weekend portfolio valuation.
+- Restored open-position prices, open P/L, stops, targets, and trade status in the desktop Control Center.
+- Added protection so an empty scanner result can no longer overwrite a valid saved-price snapshot.
+- When no live quotes are available, the workstation now uses the most recent saved prices.
+
+### Multi-Strategy Desktop Dashboard Repair
+- Restored the missing Strategy column in the scanner table.
+- Integrated Momentum, 52-Week Breakout, and Mean Reversion scanner rows into the desktop workstation.
+- Added normalized quote handling so each strategy can display through the shared table format.
+- Diagnosed a structural regression where most of `update_dashboard()` had accidentally become unreachable after `return normalized`.
+- Rebuilt the function boundary so Market Health, scanner totals, best candidate, table rows, alerts, and portfolio updates execute again.
+- Added full scan results to the 52-Week Breakout and Mean Reversion EOD return values for desktop use.
+- Compiled successfully and confirmed the existing trading logic was unchanged.
+
+### Strategy Performance Analytics
+- Added the new `analytics` package.
+- Added `StrategyAnalytics` for individual strategy journals.
+- Added calculations for:
+  - Total trades
+  - Winning and losing trades
+  - Win rate
+  - Realized P/L
+  - Average win and average loss
+  - Largest win and largest loss
+  - Profit factor
+  - Expectancy
+- Added two isolated automated tests covering normal trade results and an empty journal.
+- Full automated test suite increased from 13 to 15 tests.
+- Final result: 15/15 tests passing.
+
+### Generated Research File Handling
+- Added `research/52_week_results/` to `.gitignore`.
+- Daily 52-Week Breakout CSV outputs remain available locally but no longer appear as untracked Git files.
+
+### Validation and Source Control
+- `gui/trading_workstation.py` compiled successfully.
+- `git diff --check` passed.
+- Full automated test suite passed: 15 tests.
+- Commits pushed:
+  - `4371b33` Add Telegram EOD summaries for breakout and mean reversion
+  - `f0ac59d` Fix multi-strategy dashboard and pause closed-market scanning
+  - `807e21a` Add strategy performance analytics
+  - `4570ddc` Ignore generated 52-week research results
+- Repository finished clean and synchronized with GitHub.
+
+### Next Market-Session Validation
+- Verify the first live scan and automatic 30-second refresh during TSX market hours.
+- Confirm all three strategy rows populate correctly during a successful scan.
+- Add a saved full-scanner and Market Health snapshot so closed-market launches show the last completed scan instead of a blank table.
+- Change the top-level scanner status from `RUNNING` to `PAUSED` whenever the TSX is closed.
+- Add TSX holiday awareness to the market-hours service.

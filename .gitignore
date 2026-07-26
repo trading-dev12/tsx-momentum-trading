@@ -240,3 +240,6 @@ data/runtime/
 research/mean_reversion_results/
 # Local nightly backups
 Northstar_Backups/
+
+# Generated 52-week breakout research results
+research/52_week_results/

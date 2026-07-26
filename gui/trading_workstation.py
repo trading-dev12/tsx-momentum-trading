@@ -24,6 +24,8 @@ from paper_trading.automatic_execution import (
     start_automatic_execution_service,
 )
 from paper_trading.automatic_eod import (
+    run_52_week_shadow_scan,
+    run_mean_reversion_shadow_scan,
     start_automatic_eod_service,
 )
 from gui.system_health_panel import (
@@ -102,7 +104,7 @@ class TradingWorkstation:
                 self.mean_reversion_engine,
             )
         )
-        
+
         self.automatic_eod_thread = (
             start_automatic_eod_service(
                 self.paper_engine,
@@ -167,6 +169,7 @@ class TradingWorkstation:
         columns = (
             "rank",
             "symbol",
+            "strategy",
             "price",
             "tmqs",
             "confidence",
@@ -184,6 +187,7 @@ class TradingWorkstation:
         headings = {
             "rank": "#",
             "symbol": "Symbol",
+            "strategy": "Strategy",
             "price": "Price",
             "tmqs": "TMQS",
             "confidence": "Confidence",
@@ -201,6 +205,7 @@ class TradingWorkstation:
 
         self.tree.column("rank", width=45, anchor="center")
         self.tree.column("symbol", width=85, anchor="center")
+        self.tree.column("strategy", width=125, anchor="center")
         self.tree.column("price", width=90, anchor="center")
         self.tree.column("tmqs", width=70, anchor="center")
         self.tree.column("confidence", width=90, anchor="center")
@@ -318,7 +323,19 @@ class TradingWorkstation:
         )
         self.status_label.pack(fill="x", padx=10, pady=5)
 
-        self.refresh_data()
+        self.update_paper_portfolio_panel()
+
+        startup_session = get_tsx_market_status()
+        if startup_session["is_open"]:
+            self.refresh_data()
+        else:
+            self.status_label.config(
+                text=(
+                    f"{startup_session['message']} | "
+                    "Automatic scanning paused."
+                )
+            )
+
         self.update_countdown()
 
     def refresh_data(self):
@@ -401,12 +418,40 @@ class TradingWorkstation:
             watchlist = load_all_watchlists()
             market = score_market_context()
             quotes = get_quotes(watchlist)
-            
-            print(f"[{datetime.now()}] Quotes downloaded: {len(quotes)}")
+
+            breakout_scan = run_52_week_shadow_scan()
+            mean_reversion_scan = run_mean_reversion_shadow_scan()
+
+            breakout_quotes = (
+                breakout_scan["results"]["ready"]
+                + breakout_scan["results"]["watch"]
+            )
+            mean_reversion_quotes = (
+                mean_reversion_scan["results"]["ready"]
+                + mean_reversion_scan["results"]["watch"]
+            )
+
+            combined_quotes = list(quotes)
+
+            combined_quotes.extend(
+                self.normalize_strategy_quote(quote)
+                for quote in breakout_quotes
+            )
+            combined_quotes.extend(
+                self.normalize_strategy_quote(quote)
+                for quote in mean_reversion_quotes
+            )
+
+            print(
+                f"[{datetime.now()}] Scanner rows loaded: "
+                f"Momentum {len(quotes)} | "
+                f"52-Week {len(breakout_quotes)} | "
+                f"Mean Reversion {len(mean_reversion_quotes)}"
+            )
 
             self.root.after(
                 0,
-                lambda: self.update_dashboard(market, quotes),
+                lambda: self.update_dashboard(market, combined_quotes),
             )
 
         except Exception as error:
@@ -416,7 +461,7 @@ class TradingWorkstation:
             )
     def display_eod_results(self, results):
         self.current_view = "EOD"
-        
+
         eod_quotes = results["ready"] + results["watch"]
         queue_summary = self.paper_engine.queue_eod_signals(results)
 
@@ -483,7 +528,8 @@ class TradingWorkstation:
                 values=(
                     rank,
                     quote["symbol"],
-                    f"{quote['close']:.2f}",
+                    quote.get("strategy", "MOMENTUM"),
+                    f"{quote['price']:.2f}",
                     quote["tmqs"],
                     "--",
                     f"{quote['rvol']:.2f}x",
@@ -496,11 +542,75 @@ class TradingWorkstation:
                 ),
                 tags=(quote["decision"],),
             )
+    def normalize_strategy_quote(self, quote):
+        strategy = quote.get("strategy", "MOMENTUM")
+        price = float(
+            quote.get(
+                "price",
+                quote.get("close", 0),
+            )
+            or 0
+        )
+
+        if strategy == "52_WEEK_BREAKOUT":
+            return {
+                "symbol": quote["symbol"],
+                "strategy": strategy,
+                "price": price,
+                "close": price,
+                "tmqs": float(quote.get("tmqs", 0) or 0),
+                "confidence_score": 0,
+                "relative_volume": float(
+                    quote.get("rvol", 0) or 0
+                ),
+                "grades": {
+                    "RVOL": "N/A",
+                    "Momentum": "N/A",
+                    "Liquidity": "N/A",
+                },
+                "breakout_status": (
+                    "52-WEEK BREAKOUT"
+                    if quote.get("breakout")
+                    else "BELOW 52-WEEK HIGH"
+                ),
+                "decision": quote["decision"],
+                "reason": quote.get("reason", ""),
+            }
+
+        if strategy == "MEAN_REVERSION":
+            return {
+                "symbol": quote["symbol"],
+                "strategy": strategy,
+                "price": price,
+                "close": price,
+                "tmqs": 0.0,
+                "confidence_score": 0,
+                "relative_volume": 0.0,
+                "grades": {
+                    "RVOL": "N/A",
+                    "Momentum": "N/A",
+                    "Liquidity": "N/A",
+                },
+                "breakout_status": (
+                    f"RSI-2: "
+                    f"{float(quote.get('rsi_2', 0) or 0):.1f}"
+                ),
+                "decision": quote["decision"],
+                "reason": quote.get("reason", ""),
+            }
+
+        normalized = dict(quote)
+        normalized.setdefault("strategy", "MOMENTUM")
+        normalized.setdefault("price", price)
+        normalized.setdefault("close", price)
+        return normalized
+
     def update_dashboard(self, market, quotes):
         self.latest_quotes = quotes
         self.last_successful_refresh = (
             datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         )
+
         self.check_ready_alerts(quotes)
         self.monitor_paper_positions()
 
@@ -522,27 +632,72 @@ class TradingWorkstation:
         )
 
         total = len(quotes)
-        ready = sum(1 for q in quotes if q["decision"] == "READY")
-        watch = sum(1 for q in quotes if q["decision"] == "WATCH")
-        ignore = sum(1 for q in quotes if q["decision"] == "IGNORE")
-        average_tmqs = sum(q["tmqs"] for q in quotes) / total if total else 0
+        ready = sum(
+            1 for quote in quotes
+            if quote["decision"] == "READY"
+        )
+        watch = sum(
+            1 for quote in quotes
+            if quote["decision"] == "WATCH"
+        )
+        ignore = sum(
+            1 for quote in quotes
+            if quote["decision"] == "IGNORE"
+        )
 
-        ready_quotes = [q for q in quotes if q["decision"] == "READY"]
-        watch_quotes = [q for q in quotes if q["decision"] == "WATCH"]
+        average_tmqs = (
+            sum(
+                float(quote.get("tmqs", 0) or 0)
+                for quote in quotes
+            )
+            / total
+            if total
+            else 0
+        )
+
+        ready_quotes = [
+            quote for quote in quotes
+            if quote["decision"] == "READY"
+        ]
+        watch_quotes = [
+            quote for quote in quotes
+            if quote["decision"] == "WATCH"
+        ]
 
         if ready_quotes:
-            best = max(ready_quotes, key=lambda q: q["tmqs"])
+            best = max(
+                ready_quotes,
+                key=lambda quote: float(
+                    quote.get("tmqs", 0) or 0
+                ),
+            )
         elif watch_quotes:
-            best = max(watch_quotes, key=lambda q: q["tmqs"])
+            best = max(
+                watch_quotes,
+                key=lambda quote: float(
+                    quote.get("tmqs", 0) or 0
+                ),
+            )
         else:
-            best = max(quotes, key=lambda q: q["tmqs"]) if total else None
+            best = (
+                max(
+                    quotes,
+                    key=lambda quote: float(
+                        quote.get("tmqs", 0) or 0
+                    ),
+                )
+                if total
+                else None
+            )
 
         best_text = best["symbol"] if best else "N/A"
 
         self.summary_label.config(
             text=(
                 f"Stocks Scanned: {total} | "
-                f"READY: {ready} | WATCH: {watch} | IGNORE: {ignore} | "
+                f"READY: {ready} | "
+                f"WATCH: {watch} | "
+                f"IGNORE: {ignore} | "
                 f"Average TMQS: {average_tmqs:.1f} | "
                 f"Best Candidate: {best_text}"
             )
@@ -553,8 +708,16 @@ class TradingWorkstation:
         for rank, quote in enumerate(quotes, start=1):
             decision = quote["decision"]
             reason = quote.get("reason", "")
-            rvol_grade = quote.get("grades", {}).get("RVOL", "N/A")
+            grades = quote.get("grades", {})
+            rvol_grade = grades.get("RVOL", "N/A")
             confidence = quote.get("confidence_score", 0)
+            price = float(
+                quote.get(
+                    "close",
+                    quote.get("price", 0),
+                )
+                or 0
+            )
 
             self.tree.insert(
                 "",
@@ -563,24 +726,29 @@ class TradingWorkstation:
                 values=(
                     rank,
                     quote["symbol"],
-                    f"{quote['price']:.2f}",
-                    quote["tmqs"],
+                    quote.get("strategy", "MOMENTUM"),
+                    f"{price:.2f}",
+                    quote.get("tmqs", 0),
                     f"{confidence}%",
-                    f"{quote['relative_volume']:.2f}x",
+                    f"{float(quote.get('relative_volume', 0) or 0):.2f}x",
                     rvol_grade,
-                    quote["breakout_status"],
-                    quote["grades"]["Momentum"],
-                    quote["grades"]["Liquidity"],
+                    quote.get("breakout_status", "N/A"),
+                    grades.get("Momentum", "N/A"),
+                    grades.get("Liquidity", "N/A"),
                     decision,
                     reason,
                 ),
                 tags=(decision,),
             )
+
         self.update_paper_portfolio_panel()
 
         self.countdown_seconds = self.refresh_interval_seconds
         self.is_refreshing = False
-        self.refresh_button.config(state="normal", text="Refresh Scanner")
+        self.refresh_button.config(
+            state="normal",
+            text="Refresh Scanner",
+        )
 
     def update_best_trade_banner(self, best):
         if not best:
@@ -828,7 +996,7 @@ class TradingWorkstation:
                 ),
             )
             return
-    
+
 
         investment_amount = simpledialog.askfloat(
             "Paper Trade Position Size",
@@ -1110,26 +1278,57 @@ class TradingWorkstation:
             runtime_folder / "latest_prices.tmp"
         )
 
-        price_snapshot = {
-            "generated_at": datetime.now().isoformat(
-                timespec="seconds"
-            ),
-            "prices": current_prices,
-        }
+        if current_prices:
+            price_snapshot = {
+                "generated_at": datetime.now().isoformat(
+                    timespec="seconds"
+                ),
+                "prices": current_prices,
+            }
 
-        with temporary_file.open(
-            "w",
-            encoding="utf-8",
-        ) as file:
-            json.dump(
-                price_snapshot,
-                file,
-                indent=4,
+            with temporary_file.open(
+                "w",
+                encoding="utf-8",
+            ) as file:
+                json.dump(
+                    price_snapshot,
+                    file,
+                    indent=4,
+                )
+
+            temporary_file.replace(
+                latest_prices_file
             )
 
-        temporary_file.replace(
-            latest_prices_file
-        )
+        elif latest_prices_file.exists():
+            try:
+                with latest_prices_file.open(
+                    "r",
+                    encoding="utf-8",
+                ) as file:
+                    saved_snapshot = json.load(file)
+
+                saved_prices = saved_snapshot.get(
+                    "prices",
+                    {},
+                )
+
+                if saved_prices:
+                    current_prices = {
+                        symbol: float(price)
+                        for symbol, price in saved_prices.items()
+                    }
+
+            except (
+                OSError,
+                ValueError,
+                TypeError,
+                json.JSONDecodeError,
+            ) as error:
+                logging.warning(
+                    "Could not load saved price snapshot: %s",
+                    error,
+                )
 
         momentum_text = build_paper_dashboard_text(
             self.paper_engine,
@@ -1198,7 +1397,7 @@ class TradingWorkstation:
                 )
 
         self.paper_portfolio_text.config(state="disabled")
-    
+
     def update_system_health(self):
         scanner = (
             "REFRESHING"
@@ -1381,7 +1580,7 @@ class TradingWorkstation:
         if status == "OPEN":
             color = "#b6d7a8"
             self.open_paper_trade_button.config(state="normal")
-        elif status == "PRE_MARKET":
+        elif status == "PRE-MARKET":
             color = "#fff2cc"
             self.open_paper_trade_button.config(state="disabled")
         else:
@@ -1392,23 +1591,34 @@ class TradingWorkstation:
             text=f"TSX Session: {status} | {message}",
             bg=color,
         )
+
+        return session
+
     def update_countdown(self):
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        
-        self.update_market_session_status()
+
+        session = self.update_market_session_status()
         self.update_system_health()
+
         if self.is_refreshing:
             status = f"Refreshing data... | Time: {now}"
+        elif not session["is_open"]:
+            self.countdown_seconds = self.refresh_interval_seconds
+            status = (
+                f"Last Update: {now} | "
+                "Automatic scanning: PAUSED | "
+                f"{session['message']}"
+            )
         else:
             status = (
                 f"Last Update: {now} | "
-                f"Auto-refresh: ON | "
+                "Auto-refresh: ON | "
                 f"Next refresh in: {self.countdown_seconds}s"
             )
 
         self.status_label.config(text=status)
 
-        if not self.is_refreshing:
+        if session["is_open"] and not self.is_refreshing:
             self.countdown_seconds -= 1
 
             if self.countdown_seconds <= 0:

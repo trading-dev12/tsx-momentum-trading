@@ -239,6 +239,7 @@ def run_52_week_shadow_scan(paper_engine=None):
 
     return {
         "success": True,
+        "results": results,
         "ready": len(results["ready"]),
         "watch": len(results["watch"]),
         "ignored": len(results["ignore"]),
@@ -275,6 +276,7 @@ def run_mean_reversion_shadow_scan(paper_engine=None):
 
     return {
         "success": True,
+        "results": results,
         "ready": len(results["ready"]),
         "watch": len(results["watch"]),
         "ignored": len(results["ignore"]),

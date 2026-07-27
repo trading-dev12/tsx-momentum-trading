@@ -1,4 +1,4 @@
-﻿import json
+import json
 import socket
 import subprocess
 import sys
@@ -53,7 +53,7 @@ class TradingWorkstation:
     def __init__(self, root):
         self.notified_ready_symbols = set()
         self.root = root
-        self.root.title("TSX Momentum Pro")
+        self.root.title("Northstar Quant")
         self.root.geometry("1450x760")
         self.current_view = "LIVE"
 
@@ -1255,7 +1255,7 @@ class TradingWorkstation:
             ]
 
             message_lines = [
-                "TSX MOMENTUM PRO - NEW READY ALERT",
+                "NORTHSTAR QUANT - NEW READY ALERT",
                 "",
             ]
 
@@ -1828,7 +1828,7 @@ class TradingWorkstation:
             tag = None
 
             if stripped_line in {
-                "TSX MOMENTUM PRO",
+                "NORTHSTAR QUANT",
                 "PAPER TRADING ANALYTICS",
                 "PORTFOLIO",
                 "POSITION STATUS",

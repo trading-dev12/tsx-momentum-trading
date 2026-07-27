@@ -275,7 +275,7 @@ def build_paper_dashboard_text(
         )
 
     lines.append(header_divider)
-    lines.append("TSX MOMENTUM PRO")
+    lines.append("NORTHSTAR QUANT")
     lines.append("TRADING ANALYTICS")
     lines.append(header_divider)
 

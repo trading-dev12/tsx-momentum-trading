@@ -3465,3 +3465,89 @@ and a correct EOD summary,then the production reliability fixes can be considere
 - Add a saved full-scanner and Market Health snapshot so closed-market launches show the last completed scan instead of a blank table.
 - Change the top-level scanner status from `RUNNING` to `PAUSED` whenever the TSX is closed.
 - Add TSX holiday awareness to the market-hours service.
+2026-07-27 — Persistent Scanner Results During Market Closures
+Objective
+
+Prevent the Trading Workstation scanner table from appearing blank when the application is opened before market open, after market close, on weekends, or during market holidays.
+
+Problem Identified
+
+The workstation stored scanner results only in memory. When the application restarted while the TSX was closed:
+
+self.latest_quotes started as an empty list.
+Automatic scanning was paused because the market was closed.
+No previous scanner results were available to display.
+The scanner table, summary, and best-candidate banner remained blank.
+
+During testing, a separate issue was also discovered in the 52-week breakout scanner. Its CSV writer did not include several newer result fields, causing manual scanner refreshes to fail.
+
+Changes Completed
+Persistent Scanner Snapshot
+
+Updated:
+
+gui/trading_workstation.py
+
+Added a persistent scanner snapshot stored at:
+
+data/runtime/latest_scanner_snapshot.json
+
+The workstation now:
+
+Saves every successful live scanner result.
+Saves valid end-of-day scanner results.
+Uses an atomic temporary-file replacement to reduce the risk of corrupt snapshot files.
+Converts scanner values into JSON-safe formats before saving.
+Ignores empty results so a blank scan cannot erase the last valid snapshot.
+Safely handles missing, invalid, or corrupted snapshot files.
+Automatically restores the latest completed scan when the workstation starts while the TSX is closed.
+Clearly labels restored results as a saved scan and displays the original scan timestamp.
+Restores the scanner table, summary counts, average TMQS, and best-candidate banner.
+Avoids sending duplicate READY notifications when displaying saved results.
+Avoids running paper-trade monitoring actions during snapshot restoration.
+Replaces the saved display automatically when the next successful live scan completes.
+Additional Scanner Reliability Fix
+
+Updated:
+
+scanner/breakout_52week_scanner.py
+
+The 52-week breakout scan was failing while writing its daily CSV because result dictionaries contained fields that were missing from the CSV field list.
+
+Added the following fields:
+
+close
+atr
+tmqs
+signal_date
+
+This resolved the error:
+
+ValueError: dict contains fields not in fieldnames
+Error Logging Improvement
+
+Scanner refresh failures now write complete exception tracebacks to:
+
+logs/workstation.log
+
+This makes future scanner failures easier to diagnose instead of relying on a temporary on-screen error message.
+
+Validation Completed
+Compiled gui/trading_workstation.py successfully.
+Compiled scanner/breakout_52week_scanner.py successfully.
+git diff --check passed.
+Manual scanner refresh completed successfully.
+Scanner populated with 58 rows:
+53 Momentum
+5 Mean Reversion
+Snapshot file was successfully created.
+Workstation was closed and restarted while the TSX was closed.
+All 58 saved scanner rows restored automatically without manually refreshing.
+No duplicate READY alerts were triggered during restoration.
+Repository confirmed clean after commit and push.
+Git Commit
+f41bbf1 Persist scanner results across market closures
+Final Status
+PASS
+
+The Trading Workstation will no longer open with a blank scanner simply because the market is closed. The most recent valid scan remains visible until a newer successful scan replaces it.

@@ -1,0 +1,2 @@
+symbol,strategy,signal_date,signal_close,atr,tmqs,rvol,breakout,reason,status
+SLF.TO,52_WEEK_BREAKOUT,2026-07-27,117.19999694824219,1.73,100.0,1.8,True,New 52-week high with confirmed relative volume,PENDING

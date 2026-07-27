@@ -31,8 +31,17 @@ from paper_trading.automatic_eod import (
 from gui.system_health_panel import (
     SystemHealthPanel,
 )
-LOG_FOLDER = Path(__file__).resolve().parent.parent / "logs"
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+LOG_FOLDER = PROJECT_ROOT / "logs"
 LOG_FOLDER.mkdir(exist_ok=True)
+
+RUNTIME_FOLDER = PROJECT_ROOT / "data" / "runtime"
+RUNTIME_FOLDER.mkdir(parents=True, exist_ok=True)
+
+SCANNER_SNAPSHOT_FILE = (
+    RUNTIME_FOLDER / "latest_scanner_snapshot.json"
+)
 
 logging.basicConfig(
     filename=LOG_FOLDER / "workstation.log",
@@ -329,10 +338,21 @@ class TradingWorkstation:
         if startup_session["is_open"]:
             self.refresh_data()
         else:
+            snapshot_loaded = (
+                self.display_saved_scanner_snapshot()
+            )
+
+            snapshot_status = (
+                "Last completed scan restored."
+                if snapshot_loaded
+                else "No saved scanner snapshot available."
+            )
+
             self.status_label.config(
                 text=(
                     f"{startup_session['message']} | "
-                    "Automatic scanning paused."
+                    "Automatic scanning paused. | "
+                    f"{snapshot_status}"
                 )
             )
 
@@ -455,10 +475,297 @@ class TradingWorkstation:
             )
 
         except Exception as error:
+            logging.exception("Scanner refresh failed")
             self.root.after(
                 0,
                 lambda error=error: self.show_error(error),
             )
+    def display_saved_scanner_snapshot(self):
+        snapshot = self.load_scanner_snapshot()
+
+        if snapshot is None:
+            return False
+
+        quotes = snapshot["quotes"]
+        generated_at = snapshot["generated_at"].replace(
+            "T",
+            " ",
+        )
+        view = snapshot["view"]
+
+        self.latest_quotes = quotes
+        self.current_view = f"SAVED_{view}"
+
+        for row in self.tree.get_children():
+            self.tree.delete(row)
+
+        total = len(quotes)
+        ready = sum(
+            1
+            for quote in quotes
+            if quote.get("decision") == "READY"
+        )
+        watch = sum(
+            1
+            for quote in quotes
+            if quote.get("decision") == "WATCH"
+        )
+        ignore = sum(
+            1
+            for quote in quotes
+            if quote.get("decision") == "IGNORE"
+        )
+
+        average_tmqs = (
+            sum(
+                float(quote.get("tmqs", 0) or 0)
+                for quote in quotes
+            )
+            / total
+            if total
+            else 0
+        )
+
+        ready_quotes = [
+            quote
+            for quote in quotes
+            if quote.get("decision") == "READY"
+        ]
+        watch_quotes = [
+            quote
+            for quote in quotes
+            if quote.get("decision") == "WATCH"
+        ]
+
+        candidates = (
+            ready_quotes
+            or watch_quotes
+            or quotes
+        )
+
+        best = (
+            max(
+                candidates,
+                key=lambda quote: float(
+                    quote.get("tmqs", 0) or 0
+                ),
+            )
+            if candidates
+            else None
+        )
+
+        self.market_label.config(
+            text=(
+                "Market Health: Market Closed | "
+                f"Showing saved {view} scan from "
+                f"{generated_at}"
+            )
+        )
+
+        self.summary_label.config(
+            text=(
+                f"Saved {view} Scan | "
+                f"Stocks: {total} | "
+                f"READY: {ready} | "
+                f"WATCH: {watch} | "
+                f"IGNORE: {ignore} | "
+                f"Average TMQS: {average_tmqs:.1f}"
+            )
+        )
+
+        if best:
+            best_rvol = float(
+                best.get(
+                    "relative_volume",
+                    best.get("rvol", 0),
+                )
+                or 0
+            )
+            best_breakout = best.get(
+                "breakout_status",
+                best.get("breakout", "N/A"),
+            )
+            decision = best.get(
+                "decision",
+                "IGNORE",
+            )
+
+            if decision == "READY":
+                banner_color = "#b6d7a8"
+            elif decision == "WATCH":
+                banner_color = "#fff2cc"
+            else:
+                banner_color = "#f4cccc"
+
+            self.best_trade_label.config(
+                text=(
+                    f"Saved Best Candidate: "
+                    f"{best.get('symbol', 'N/A')} | "
+                    f"Decision: {decision} | "
+                    f"TMQS: {best.get('tmqs', 0)} | "
+                    f"RVOL: {best_rvol:.2f}x | "
+                    f"Breakout: {best_breakout} | "
+                    f"Reason: {best.get('reason', '')}"
+                ),
+                bg=banner_color,
+            )
+
+        for rank, quote in enumerate(
+            quotes,
+            start=1,
+        ):
+            decision = quote.get(
+                "decision",
+                "IGNORE",
+            )
+            grades = quote.get("grades", {})
+            price = float(
+                quote.get(
+                    "close",
+                    quote.get("price", 0),
+                )
+                or 0
+            )
+            rvol = float(
+                quote.get(
+                    "relative_volume",
+                    quote.get("rvol", 0),
+                )
+                or 0
+            )
+            breakout = quote.get(
+                "breakout_status",
+                quote.get("breakout", "N/A"),
+            )
+
+            self.tree.insert(
+                "",
+                "end",
+                iid=str(rank - 1),
+                values=(
+                    rank,
+                    quote.get("symbol", "N/A"),
+                    quote.get("strategy", "MOMENTUM"),
+                    f"{price:.2f}",
+                    quote.get("tmqs", 0),
+                    f"{quote.get('confidence_score', 0)}%",
+                    f"{rvol:.2f}x",
+                    grades.get("RVOL", "N/A"),
+                    breakout,
+                    grades.get("Momentum", "N/A"),
+                    grades.get("Liquidity", "N/A"),
+                    decision,
+                    quote.get("reason", ""),
+                ),
+                tags=(decision,),
+            )
+
+        self.update_paper_portfolio_panel()
+        return True
+
+    def load_scanner_snapshot(self):
+        if not SCANNER_SNAPSHOT_FILE.exists():
+            return None
+
+        try:
+            with open(
+                SCANNER_SNAPSHOT_FILE,
+                "r",
+                encoding="utf-8",
+            ) as file:
+                snapshot = json.load(file)
+
+        except (
+            OSError,
+            json.JSONDecodeError,
+        ) as error:
+            logging.warning(
+                "Could not load scanner snapshot: %s",
+                error,
+            )
+            return None
+
+        quotes = snapshot.get("quotes", [])
+
+        if not isinstance(quotes, list):
+            return None
+
+        quotes = [
+            quote
+            for quote in quotes
+            if isinstance(quote, dict)
+        ]
+
+        if not quotes:
+            return None
+
+        return {
+            "generated_at": snapshot.get(
+                "generated_at",
+                "Unknown",
+            ),
+            "view": snapshot.get("view", "LIVE"),
+            "quotes": quotes,
+        }
+
+    def save_scanner_snapshot(self, quotes, view):
+        if not quotes:
+            return
+
+        def make_json_safe(value):
+            if isinstance(value, dict):
+                return {
+                    str(key): make_json_safe(item)
+                    for key, item in value.items()
+                }
+
+            if isinstance(value, (list, tuple, set)):
+                return [
+                    make_json_safe(item)
+                    for item in value
+                ]
+
+            if hasattr(value, "item"):
+                try:
+                    return value.item()
+                except (TypeError, ValueError):
+                    pass
+
+            if value is None or isinstance(
+                value,
+                (str, int, float, bool),
+            ):
+                return value
+
+            return str(value)
+
+        snapshot = {
+            "generated_at": datetime.now().isoformat(
+                timespec="seconds"
+            ),
+            "view": view,
+            "quotes": make_json_safe(quotes),
+        }
+
+        temporary_file = SCANNER_SNAPSHOT_FILE.with_suffix(
+            ".tmp"
+        )
+
+        with open(
+            temporary_file,
+            "w",
+            encoding="utf-8",
+        ) as file:
+            json.dump(
+                snapshot,
+                file,
+                indent=4,
+            )
+
+        temporary_file.replace(
+            SCANNER_SNAPSHOT_FILE
+        )
+
     def display_eod_results(self, results):
         self.current_view = "EOD"
 
@@ -473,6 +780,10 @@ class TradingWorkstation:
             )
         )
         self.latest_quotes = eod_quotes
+        self.save_scanner_snapshot(
+            eod_quotes,
+            "EOD",
+        )
 
         for row in self.tree.get_children():
             self.tree.delete(row)
@@ -607,6 +918,10 @@ class TradingWorkstation:
 
     def update_dashboard(self, market, quotes):
         self.latest_quotes = quotes
+        self.save_scanner_snapshot(
+            quotes,
+            "LIVE",
+        )
         self.last_successful_refresh = (
             datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         )

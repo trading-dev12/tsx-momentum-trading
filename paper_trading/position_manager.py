@@ -10,7 +10,8 @@ from datetime import datetime, timedelta
 
 def count_trading_days(entry_date, current_date):
     """
-    Count weekdays after the entry date up to the current date.
+    Count weekdays from the entry date through the current date,
+    including the entry date as trading day 1.
 
     This currently excludes Saturdays and Sundays.
     TSX market holidays will be added separately.
@@ -19,17 +20,17 @@ def count_trading_days(entry_date, current_date):
     entry = datetime.strptime(entry_date, "%Y-%m-%d").date()
     current = datetime.strptime(current_date, "%Y-%m-%d").date()
 
-    if current <= entry:
+    if current < entry:
         return 0
 
     trading_days = 0
     day = entry
 
-    while day < current:
-        day += timedelta(days=1)
-
+    while day <= current:
         if day.weekday() < 5:
             trading_days += 1
+
+        day += timedelta(days=1)
 
     return trading_days
 
@@ -107,8 +108,17 @@ def monitor_positions(portfolio, current_prices, current_date):
             current_price,
             current_date,
         )
+        print(
+            f"{symbol}: exit={exit_signal['exit']} "
+            f"reason={exit_signal.get('exit_reason', 'None')}"
+        )
+
+    
 
         if exit_signal["exit"]:
+            print(
+                f"Closing {symbol} at {current_price}"
+            )
             result = portfolio.close_position(
                 symbol=symbol,
                 exit_price=exit_signal["exit_price"],

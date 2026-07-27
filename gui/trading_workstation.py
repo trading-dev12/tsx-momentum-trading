@@ -341,7 +341,8 @@ class TradingWorkstation:
             snapshot_loaded = (
                 self.display_saved_scanner_snapshot()
             )
-
+        if snapshot_loaded:
+            self.monitor_paper_positions()
             snapshot_status = (
                 "Last completed scan restored."
                 if snapshot_loaded
@@ -1660,6 +1661,18 @@ class TradingWorkstation:
             quote["symbol"]: quote["price"]
             for quote in self.latest_quotes
         }
+
+        print(
+            f"Monitoring "
+            f"{len(self.paper_engine.portfolio.open_positions)} "
+            f"open positions"
+        )
+
+        for position in self.paper_engine.portfolio.open_positions:
+            print(
+                position["symbol"],
+                position["symbol"] in current_prices,
+        )
 
         current_date = datetime.now().strftime("%Y-%m-%d")
 

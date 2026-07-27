@@ -3550,4 +3550,6 @@ f41bbf1 Persist scanner results across market closures
 Final Status
 PASS
 
-The Trading Workstation will no longer open with a blank scanner simply because the market is closed. The most recent valid scan remains visible until a newer successful scan replaces it.
+The Trading Workstation will no longer open with a blank scanner simply because the market is closed. The most recent valid scan remains visible until a newer successful scan replaces it.@'
+from pathlib import Path
+

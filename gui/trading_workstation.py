@@ -386,13 +386,60 @@ class TradingWorkstation:
 
         def worker():
             try:
-                results = scan_eod_signals()
+                momentum_results = scan_eod_signals()
+                breakout_scan = run_52_week_shadow_scan()
+                mean_reversion_scan = (
+                    run_mean_reversion_shadow_scan()
+                )
+
+                combined_results = {
+                    "ready": [],
+                    "watch": [],
+                    "ignore": [],
+                    "errors": [],
+                }
+
+                strategy_results = (
+                    momentum_results,
+                    breakout_scan["results"],
+                    mean_reversion_scan["results"],
+                )
+
+                for strategy_result in strategy_results:
+                    for decision_group in (
+                        "ready",
+                        "watch",
+                        "ignore",
+                    ):
+                        combined_results[
+                            decision_group
+                        ].extend(
+                            self.normalize_eod_quote(quote)
+                            for quote in strategy_result[
+                                decision_group
+                            ]
+                        )
+
+                    combined_results["errors"].extend(
+                        strategy_result.get(
+                            "errors",
+                            [],
+                        )
+                    )
 
                 def finish_scan():
-                    ready_count = len(results["ready"])
-                    watch_count = len(results["watch"])
-                    ignore_count = len(results["ignore"])
-                    error_count = len(results["errors"])
+                    ready_count = len(
+                        combined_results["ready"]
+                    )
+                    watch_count = len(
+                        combined_results["watch"]
+                    )
+                    ignore_count = len(
+                        combined_results["ignore"]
+                    )
+                    error_count = len(
+                        combined_results["errors"]
+                    )
 
                     self.status_label.config(
                         text=(
@@ -410,7 +457,12 @@ class TradingWorkstation:
                     )
                     self.is_refreshing = False
 
-                    self.display_eod_results(results)
+                    self.display_eod_results(
+                        combined_results,
+                        momentum_queue_results=(
+                            momentum_results
+                        ),
+                    )
                     print("Displaying EOD results...")
                     print("Finished displaying EOD results.")
 
@@ -766,11 +818,84 @@ class TradingWorkstation:
             SCANNER_SNAPSHOT_FILE
         )
 
-    def display_eod_results(self, results):
+    def normalize_eod_quote(self, quote):
+        strategy = quote.get(
+            "strategy",
+            "MOMENTUM",
+        )
+
+        price = float(
+            quote.get(
+                "price",
+                quote.get("close", 0),
+            )
+            or 0
+        )
+
+        rvol = float(
+            quote.get(
+                "rvol",
+                quote.get("relative_volume", 0),
+            )
+            or 0
+        )
+
+        breakout = quote.get(
+            "breakout",
+            quote.get("breakout_status", "N/A"),
+        )
+
+        if strategy == "MEAN_REVERSION":
+            rsi_2 = float(
+                quote.get("rsi_2", 0)
+                or 0
+            )
+            breakout = f"RSI-2: {rsi_2:.1f}"
+
+        return {
+            "symbol": quote.get("symbol", "UNKNOWN"),
+            "strategy": strategy,
+            "decision": quote.get(
+                "decision",
+                "IGNORE",
+            ),
+            "reason": quote.get("reason", ""),
+            "price": price,
+            "close": price,
+            "atr": float(
+                quote.get("atr", 0)
+                or 0
+            ),
+            "tmqs": float(
+                quote.get("tmqs", 0)
+                or 0
+            ),
+            "rvol": rvol,
+            "breakout": breakout,
+            "signal_date": quote.get(
+                "signal_date",
+                datetime.now().strftime("%Y-%m-%d"),
+            ),
+        }
+
+    def display_eod_results(
+        self,
+        results,
+        momentum_queue_results=None,
+    ):
         self.current_view = "EOD"
 
         eod_quotes = results["ready"] + results["watch"]
-        queue_summary = self.paper_engine.queue_eod_signals(results)
+
+        queue_results = (
+            momentum_queue_results
+            if momentum_queue_results is not None
+            else results
+        )
+
+        queue_summary = self.paper_engine.queue_eod_signals(
+            queue_results
+        )
 
         print(
             (
@@ -840,7 +965,13 @@ class TradingWorkstation:
                     rank,
                     quote["symbol"],
                     quote.get("strategy", "MOMENTUM"),
-                    f"{quote['price']:.2f}",
+                    f"{float(
+                        quote.get(
+                            "price",
+                            quote.get("close", 0),
+                        )
+                        or 0
+                    ):.2f}",
                     quote["tmqs"],
                     "--",
                     f"{quote['rvol']:.2f}x",
@@ -1572,7 +1703,14 @@ class TradingWorkstation:
         current_prices = {}
 
         for quote_data in self.latest_quotes:
-            current_prices[quote_data["symbol"]] = quote_data["price"]
+            symbol = quote_data.get("symbol")
+            price = quote_data.get(
+                "price",
+                quote_data.get("close"),
+            )
+
+            if symbol and price is not None:
+                current_prices[symbol] = float(price)
 
         runtime_folder = (
             Path(__file__).resolve().parent.parent

@@ -300,6 +300,62 @@ Is Relative Strength more important than RVOL?
 Does distance from the 200-day moving average matter?
 Which market regime produces the highest expectancy?
 Which combination of variables creates the highest Profit Factor?
+Phase 7
+Post-200-Trade US Market Expansion and Elite Opportunity Selection
+
+Objective
+
+After the initial 200-trade validation milestone, expand Northstar Quant into a larger liquid US stock universe so more qualified candidates compete for a limited number of portfolio positions.
+
+The purpose of the expansion is not simply to generate more trades. The purpose is to improve selectivity, tighten evidence-based entry requirements, and allow Northstar Quant to take only the strongest opportunities available across the TSX and US markets.
+
+Implementation Plan
+
+Build a US-market shadow scanner
+Create a controlled universe of liquid US large-cap and mid-cap stocks
+Backtest Momentum, 52-Week Breakout, and Mean Reversion independently on US data
+Maintain separate US portfolios, pending queues, journals, and performance statistics
+Add US exchange calendars, symbol handling, currency fields, and data-provider support
+Validate realistic liquidity, spread, slippage, and execution requirements
+Keep TSX and US research results separate until each market demonstrates a proven edge
+
+Elite Opportunity Selection
+
+Create an ELITE READY classification above the standard READY level
+Require every candidate to meet minimum eligibility standards
+Rank all qualified TSX and US candidates against one another
+Limit entries to the highest-ranked opportunities
+Apply maximum daily-entry, sector-exposure, and correlation limits
+Avoid taking marginal setups merely to remain active
+Allow unused capital to remain available when no elite setup exists
+
+Potential Ranking Factors
+
+Strategy score
+TMQS
+Relative volume
+Relative strength
+Sector strength
+Market regime
+Trend quality
+Breakout quality
+Volatility regime
+Liquidity
+Signal-day gap characteristics
+Historical performance of comparable setups
+
+Validation Requirements
+
+Do not optimize for win rate alone
+Prioritize expectancy, Profit Factor, drawdown, stability, and sample size
+Use unseen out-of-sample data before accepting tighter rules
+Continue forward paper trading after rules are frozen
+Prevent overfit filters from being classified as proven improvements
+Confirm that tighter requirements improve risk-adjusted results without reducing trade frequency below a useful level
+
+Long-Term Outcome
+
+Northstar Quant will evolve from taking every valid signal into an opportunity-ranking and capital-allocation system. A larger combined TSX and US universe will allow the platform to reject average setups and deploy capital only into the strongest evidence-supported opportunities.
 Long-Term Vision
 
 Eventually the platform will be able to discover findings like:
@@ -524,6 +580,62 @@ $2,500
 
 Allocation will be driven by objective performance metrics rather than equal weighting.
 
+Phase 7
+Post-200-Trade US Market Expansion and Elite Opportunity Selection
+
+Objective
+
+After the initial 200-trade validation milestone, expand Northstar Quant into a larger liquid US stock universe so more qualified candidates compete for a limited number of portfolio positions.
+
+The purpose of the expansion is not simply to generate more trades. The purpose is to improve selectivity, tighten evidence-based entry requirements, and allow Northstar Quant to take only the strongest opportunities available across the TSX and US markets.
+
+Implementation Plan
+
+Build a US-market shadow scanner
+Create a controlled universe of liquid US large-cap and mid-cap stocks
+Backtest Momentum, 52-Week Breakout, and Mean Reversion independently on US data
+Maintain separate US portfolios, pending queues, journals, and performance statistics
+Add US exchange calendars, symbol handling, currency fields, and data-provider support
+Validate realistic liquidity, spread, slippage, and execution requirements
+Keep TSX and US research results separate until each market demonstrates a proven edge
+
+Elite Opportunity Selection
+
+Create an ELITE READY classification above the standard READY level
+Require every candidate to meet minimum eligibility standards
+Rank all qualified TSX and US candidates against one another
+Limit entries to the highest-ranked opportunities
+Apply maximum daily-entry, sector-exposure, and correlation limits
+Avoid taking marginal setups merely to remain active
+Allow unused capital to remain available when no elite setup exists
+
+Potential Ranking Factors
+
+Strategy score
+TMQS
+Relative volume
+Relative strength
+Sector strength
+Market regime
+Trend quality
+Breakout quality
+Volatility regime
+Liquidity
+Signal-day gap characteristics
+Historical performance of comparable setups
+
+Validation Requirements
+
+Do not optimize for win rate alone
+Prioritize expectancy, Profit Factor, drawdown, stability, and sample size
+Use unseen out-of-sample data before accepting tighter rules
+Continue forward paper trading after rules are frozen
+Prevent overfit filters from being classified as proven improvements
+Confirm that tighter requirements improve risk-adjusted results without reducing trade frequency below a useful level
+
+Long-Term Outcome
+
+Northstar Quant will evolve from taking every valid signal into an opportunity-ranking and capital-allocation system. A larger combined TSX and US universe will allow the platform to reject average setups and deploy capital only into the strongest evidence-supported opportunities.
 Long-Term Vision
 
 Northstar Quant is evolving from a single momentum scanner into a multi-strategy quantitative research and paper-trading platform.

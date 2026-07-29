@@ -641,3 +641,22 @@ Long-Term Vision
 Northstar Quant is evolving from a single momentum scanner into a multi-strategy quantitative research and paper-trading platform.
 
 The objective is to operate multiple independent TSX strategies in parallel, collect statistically meaningful evidence for each, and deploy real capital only after demonstrating a sustainable edge. Each strategy will maintain separate journals, portfolios, and performance statistics, allowing evidence-based capital allocation rather than relying on subjective judgment.
+NEXT PRIORITY — NORTHSTAR DIAGNOSTICS V1
+
+Build a reusable diagnostics framework after confirming and committing the current position-sizing changes.
+
+Scope:
+- Shared diagnostics module
+- Standard event structure
+- Position-sizing diagnostics
+- Execution diagnostics
+- Scanner diagnostics
+- Refresh/watchdog diagnostics
+- EOD pipeline diagnostics
+- Console and file logging
+- Future System Health dashboard panel
+
+Current status:
+- Position-sizing diagnostic data is now captured
+- Both paper execution paths return descriptive sizing errors
+- Full pipeline test and clean commit required before framework work begins

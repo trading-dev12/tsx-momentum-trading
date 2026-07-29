@@ -66,6 +66,9 @@ class TradingWorkstation:
         self.refresh_interval_seconds = 30
         self.countdown_seconds = self.refresh_interval_seconds
         self.is_refreshing = False
+        self.refresh_timeout_ms = 240_000
+        self.refresh_sequence = 0
+        self.active_refresh_id = None
         self.latest_quotes = []
         self.previous_ready_symbols = None
         self.last_successful_refresh = None
@@ -335,14 +338,12 @@ class TradingWorkstation:
         self.update_paper_portfolio_panel()
 
         startup_session = get_tsx_market_status()
+
         if startup_session["is_open"]:
             self.refresh_data()
         else:
-            snapshot_loaded = (
-                self.display_saved_scanner_snapshot()
-            )
-        if snapshot_loaded:
-            self.monitor_paper_positions()
+            snapshot_loaded = self.display_saved_scanner_snapshot()
+
             snapshot_status = (
                 "Last completed scan restored."
                 if snapshot_loaded
@@ -357,21 +358,81 @@ class TradingWorkstation:
                 )
             )
 
+
+    
+
         self.update_countdown()
 
     def refresh_data(self):
         self.current_view = "LIVE"
+
         if self.is_refreshing:
-                return
+            return
 
+        self.refresh_sequence += 1
+        refresh_id = self.refresh_sequence
+
+        self.active_refresh_id = refresh_id
         self.is_refreshing = True
-        logging.info("Refresh started")
-        self.refresh_button.config(state="disabled", text="Refreshing...")
-        self.status_label.config(text="Refreshing data...")
 
-        thread = threading.Thread(target=self.load_data)
-        thread.daemon = True
+        logging.info(
+            "Scanner refresh %s started",
+            refresh_id,
+        )
+
+        self.refresh_button.config(
+            state="disabled",
+            text="Refreshing...",
+        )
+        self.status_label.config(
+            text="Refreshing scanner data...",
+        )
+
+        self.root.after(
+            self.refresh_timeout_ms,
+            lambda rid=refresh_id: (
+                self.handle_refresh_timeout(rid)
+            ),
+        )
+
+        thread = threading.Thread(
+            target=self.load_data,
+            args=(refresh_id,),
+            daemon=True,
+        )
         thread.start()
+
+    def handle_refresh_timeout(self, refresh_id):
+        if (
+            not self.is_refreshing
+            or self.active_refresh_id != refresh_id
+        ):
+            return
+
+        logging.error(
+            "Scanner refresh %s timed out after %.1f seconds",
+            refresh_id,
+            self.refresh_timeout_ms / 1000,
+        )
+
+        self.active_refresh_id = None
+        self.is_refreshing = False
+        self.countdown_seconds = (
+            self.refresh_interval_seconds
+        )
+
+        self.refresh_button.config(
+            state="normal",
+            text="Refresh Scanner",
+        )
+        self.status_label.config(
+            text=(
+                "Scanner refresh timed out. "
+                "The interface has been released and "
+                "will try again."
+            )
+        )
+
     def load_eod_data(self):
         if self.is_refreshing:
             return
@@ -484,21 +545,51 @@ class TradingWorkstation:
         thread.daemon = True
         thread.start()
 
-    def load_data(self):
+    def load_data(self, refresh_id):
         try:
-            settings = load_settings()
-            print(f"[{datetime.now()}] load_data() started")
+            logging.info(
+                "Scanner refresh %s: loading settings",
+                refresh_id,
+            )
+            load_settings()
+
+            logging.info(
+                "Scanner refresh %s: loading watchlist",
+                refresh_id,
+            )
             watchlist = load_all_watchlists()
+
+            logging.info(
+                "Scanner refresh %s: loading market context",
+                refresh_id,
+            )
             market = score_market_context()
+
+            logging.info(
+                "Scanner refresh %s: loading momentum quotes",
+                refresh_id,
+            )
             quotes = get_quotes(watchlist)
 
+            logging.info(
+                "Scanner refresh %s: running 52-week scan",
+                refresh_id,
+            )
             breakout_scan = run_52_week_shadow_scan()
-            mean_reversion_scan = run_mean_reversion_shadow_scan()
+
+            logging.info(
+                "Scanner refresh %s: running mean-reversion scan",
+                refresh_id,
+            )
+            mean_reversion_scan = (
+                run_mean_reversion_shadow_scan()
+            )
 
             breakout_quotes = (
                 breakout_scan["results"]["ready"]
                 + breakout_scan["results"]["watch"]
             )
+
             mean_reversion_quotes = (
                 mean_reversion_scan["results"]["ready"]
                 + mean_reversion_scan["results"]["watch"]
@@ -510,28 +601,119 @@ class TradingWorkstation:
                 self.normalize_strategy_quote(quote)
                 for quote in breakout_quotes
             )
+
             combined_quotes.extend(
                 self.normalize_strategy_quote(quote)
                 for quote in mean_reversion_quotes
             )
 
-            print(
-                f"[{datetime.now()}] Scanner rows loaded: "
-                f"Momentum {len(quotes)} | "
-                f"52-Week {len(breakout_quotes)} | "
-                f"Mean Reversion {len(mean_reversion_quotes)}"
+            logging.info(
+                (
+                    "Scanner refresh %s completed data loading | "
+                    "Momentum: %s | 52-Week: %s | "
+                    "Mean Reversion: %s"
+                ),
+                refresh_id,
+                len(quotes),
+                len(breakout_quotes),
+                len(mean_reversion_quotes),
             )
 
             self.root.after(
                 0,
-                lambda: self.update_dashboard(market, combined_quotes),
+                lambda rid=refresh_id,
+                loaded_market=market,
+                loaded_quotes=combined_quotes: (
+                    self.finish_refresh_success(
+                        rid,
+                        loaded_market,
+                        loaded_quotes,
+                    )
+                ),
             )
 
         except Exception as error:
-            logging.exception("Scanner refresh failed")
+            logging.exception(
+                "Scanner refresh %s failed",
+                refresh_id,
+            )
+
             self.root.after(
                 0,
-                lambda error=error: self.show_error(error),
+                lambda rid=refresh_id,
+                caught_error=error: (
+                    self.finish_refresh_error(
+                        rid,
+                        caught_error,
+                    )
+                ),
+            )
+
+    def finish_refresh_success(
+        self,
+        refresh_id,
+        market,
+        quotes,
+    ):
+        if self.active_refresh_id != refresh_id:
+            logging.warning(
+                "Ignoring stale scanner refresh %s",
+                refresh_id,
+            )
+            return
+
+        try:
+            self.update_dashboard(
+                market,
+                quotes,
+            )
+
+            self.active_refresh_id = None
+
+            self.status_label.config(
+                text=(
+                    "Scanner refresh completed successfully at "
+                    f"{datetime.now().strftime('%H:%M:%S')}."
+                )
+            )
+
+            self.root.after(
+                0,
+                self.run_position_monitor_safely,
+            )
+
+        except Exception as error:
+            logging.exception(
+                "Scanner refresh %s failed during display",
+                refresh_id,
+            )
+
+            self.finish_refresh_error(
+                refresh_id,
+                error,
+            )
+
+    def finish_refresh_error(
+        self,
+        refresh_id,
+        error,
+    ):
+        if self.active_refresh_id != refresh_id:
+            logging.warning(
+                "Ignoring stale scanner error from refresh %s",
+                refresh_id,
+            )
+            return
+
+        self.active_refresh_id = None
+        self.show_error(error)
+
+    def run_position_monitor_safely(self):
+        try:
+            self.monitor_paper_positions()
+        except Exception:
+            logging.exception(
+                "Position monitoring failed after scanner refresh"
             )
     def display_saved_scanner_snapshot(self):
         snapshot = self.load_scanner_snapshot()
@@ -1059,7 +1241,7 @@ class TradingWorkstation:
         )
 
         self.check_ready_alerts(quotes)
-        self.monitor_paper_positions()
+        
 
         for row in self.tree.get_children():
             self.tree.delete(row)
@@ -1672,7 +1854,7 @@ class TradingWorkstation:
             print(
                 position["symbol"],
                 position["symbol"] in current_prices,
-        )
+            )
 
         current_date = datetime.now().strftime("%Y-%m-%d")
 
@@ -1714,6 +1896,47 @@ class TradingWorkstation:
             ).start()
     def update_paper_portfolio_panel(self):
         current_prices = {}
+
+        open_position_symbols = {
+            position["symbol"]
+            for engine in (
+                self.paper_engine,
+                self.breakout_52week_engine,
+                self.mean_reversion_engine,
+            )
+            for position in engine.portfolio.open_positions
+        }
+
+        missing_symbols = sorted(
+            symbol
+            for symbol in open_position_symbols
+            if symbol not in current_prices
+        )
+
+        if missing_symbols:
+            try:
+                portfolio_quotes = get_quotes(missing_symbols)
+
+                for quote_data in portfolio_quotes:
+                    symbol = quote_data.get("symbol")
+                    price = quote_data.get(
+                        "price",
+                        quote_data.get("close"),
+                    )
+
+                    if symbol and price is not None:
+                        current_prices[symbol] = float(price)
+
+                logging.info(
+                    "Loaded portfolio prices for %s missing open positions",
+                    len(missing_symbols),
+                )
+
+            except Exception:
+                logging.exception(
+                    "Could not load prices for missing open positions: %s",
+                    ", ".join(missing_symbols),
+                )
 
         for quote_data in self.latest_quotes:
             symbol = quote_data.get("symbol")
@@ -2061,37 +2284,87 @@ class TradingWorkstation:
         return session
 
     def update_countdown(self):
-        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        try:
+            now = datetime.now()
+            heartbeat = now.strftime("%H:%M:%S")
 
-        session = self.update_market_session_status()
-        self.update_system_health()
+            session = self.update_market_session_status()
+            self.update_system_health()
 
-        if self.is_refreshing:
-            status = f"Refreshing data... | Time: {now}"
-        elif not session["is_open"]:
-            self.countdown_seconds = self.refresh_interval_seconds
-            status = (
-                f"Last Update: {now} | "
-                "Automatic scanning: PAUSED | "
-                f"{session['message']}"
-            )
-        else:
-            status = (
-                f"Last Update: {now} | "
-                "Auto-refresh: ON | "
-                f"Next refresh in: {self.countdown_seconds}s"
+            refresh_id = (
+                self.active_refresh_id
+                if self.active_refresh_id is not None
+                else "--"
             )
 
-        self.status_label.config(text=status)
+            worker_state = (
+                "RUNNING"
+                if self.is_refreshing
+                else "IDLE"
+            )
 
-        if session["is_open"] and not self.is_refreshing:
-            self.countdown_seconds -= 1
+            last_success = self.last_successful_refresh or "--"
 
-            if self.countdown_seconds <= 0:
-                self.refresh_data()
+            diagnostics = (
+                f"Heartbeat: {heartbeat} | "
+                f"Refresh ID: {refresh_id} | "
+                f"Worker: {worker_state} | "
+                f"Last Success: {last_success} | "
+                f"Countdown: {self.countdown_seconds}s"
+            )
 
-        self.root.after(1000, self.update_countdown)
+            if self.is_refreshing:
+                status = (
+                    f"{diagnostics} | "
+                    "Refreshing scanner data..."
+                )
 
+            elif not session["is_open"]:
+                self.countdown_seconds = self.refresh_interval_seconds
+
+                status = (
+                    f"{diagnostics} | "
+                    "Automatic scanning: PAUSED | "
+                    f"{session['message']}"
+                )
+
+            else:
+                status = (
+                    f"{diagnostics} | "
+                    "Auto-refresh: ON"
+                )
+
+            self.status_label.config(text=status)
+
+            if session["is_open"] and not self.is_refreshing:
+                self.countdown_seconds -= 1
+
+                if self.countdown_seconds <= 0:
+                    self.refresh_data()
+
+        except Exception:
+            logging.exception(
+                "Countdown and automatic refresh loop encountered an error"
+            )
+
+            try:
+                self.status_label.config(
+                    text=(
+                        "Automatic refresh recovered from an error. "
+                        "See log for details."
+                    )
+                )
+            except tk.TclError:
+                return
+
+        finally:
+            try:
+                self.root.after(
+                    1000,
+                    self.update_countdown,
+                )
+            except tk.TclError:
+                pass
     def format_percent(self, value):
         if value is None:
             return "N/A"

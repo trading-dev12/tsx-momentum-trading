@@ -63,6 +63,8 @@ class PaperTradingEngine:
             max_open_positions
         )
 
+        self.last_position_size_diagnostics = {}
+
     def queue_signal(self, signal):
         return self.pending_trades.add_trade(signal)
 
@@ -289,12 +291,14 @@ class PaperTradingEngine:
         )
 
         if shares <= 0:
+            diagnostics = self.last_position_size_diagnostics
             return {
                 "success": False,
-                "message": (
-                    "Position size is zero under the current "
-                    "risk and cash limits."
+                "message": diagnostics.get(
+                    "reason",
+                    "Position sizing rejected the trade.",
                 ),
+                "diagnostics": diagnostics,
             }
 
         position = {
@@ -367,12 +371,14 @@ class PaperTradingEngine:
         )
 
         if shares <= 0:
+            diagnostics = self.last_position_size_diagnostics
             return {
                 "success": False,
-                "message": (
-                    "Position size is zero under the current "
-                    "risk and cash limits."
+                "message": diagnostics.get(
+                    "reason",
+                    "Position sizing rejected the trade.",
                 ),
+                "diagnostics": diagnostics,
             }
 
         position = {
@@ -477,12 +483,30 @@ class PaperTradingEngine:
         entry_price = float(entry_price)
         stop_price = float(stop_price)
 
+        self.last_position_size_diagnostics = {
+            "entry_price": entry_price,
+            "stop_price": stop_price,
+            "requested_shares": requested_shares,
+            "decision": "REJECTED",
+            "reason": "",
+            "final_shares": 0,
+        }
+
         if entry_price <= 0:
+            self.last_position_size_diagnostics["reason"] = (
+                "Entry price must be greater than zero."
+            )
             return 0
 
         risk_per_share = entry_price - stop_price
+        self.last_position_size_diagnostics[
+            "risk_per_share"
+        ] = risk_per_share
 
         if risk_per_share <= 0:
+            self.last_position_size_diagnostics["reason"] = (
+                "Stop price must be below the entry price."
+            )
             return 0
 
         portfolio_value = self.portfolio.portfolio_value()
@@ -492,14 +516,25 @@ class PaperTradingEngine:
         else:
             risk_budget = portfolio_value * (
                 self.risk_per_trade_percent / 100
-            )   
+            )
+
         maximum_position_value = portfolio_value * (
             self.max_position_percent / 100
         )
 
-        shares_by_risk = int(
+        raw_shares_by_risk = int(
             risk_budget // risk_per_share
         )
+
+        minimum_one_share_override = (
+            self.risk_model == "fixed"
+            and raw_shares_by_risk == 0
+        )
+
+        if minimum_one_share_override:
+            shares_by_risk = 1
+        else:
+            shares_by_risk = raw_shares_by_risk
 
         shares_by_allocation = int(
             maximum_position_value // entry_price
@@ -515,13 +550,98 @@ class PaperTradingEngine:
             shares_by_cash,
         )
 
+        requested_share_limit = None
+
         if requested_shares is not None:
+            requested_share_limit = int(requested_shares)
             allowed_shares = min(
                 allowed_shares,
-                int(requested_shares),
+                requested_share_limit,
             )
 
-        return max(allowed_shares, 0)
+        final_shares = max(allowed_shares, 0)
+        actual_position_risk = (
+            final_shares * risk_per_share
+        )
+
+        limits = {
+            "risk": shares_by_risk,
+            "allocation": shares_by_allocation,
+            "cash": shares_by_cash,
+        }
+
+        if requested_share_limit is not None:
+            limits["requested"] = requested_share_limit
+
+        limiting_factor = min(
+            limits,
+            key=limits.get,
+        )
+
+        if final_shares <= 0:
+            decision = "REJECTED"
+
+            if shares_by_allocation <= 0:
+                reason = (
+                    "Entry price exceeds the maximum "
+                    "position allocation."
+                )
+            elif shares_by_cash <= 0:
+                reason = (
+                    "Available cash is insufficient to "
+                    "purchase one share."
+                )
+            elif requested_share_limit is not None and (
+                requested_share_limit <= 0
+            ):
+                reason = (
+                    "Requested share quantity must be "
+                    "greater than zero."
+                )
+            else:
+                reason = (
+                    "No shares are permitted under the "
+                    "current sizing limits."
+                )
+        elif minimum_one_share_override:
+            decision = "OVERRIDE"
+            reason = (
+                "Minimum one-share paper research override "
+                "applied because one share exceeds the "
+                "configured fixed-risk budget."
+            )
+        else:
+            decision = "ACCEPTED"
+            reason = (
+                "Position size accepted under the current "
+                "risk, allocation, and cash limits."
+            )
+
+        self.last_position_size_diagnostics = {
+            "entry_price": entry_price,
+            "stop_price": stop_price,
+            "risk_per_share": risk_per_share,
+            "portfolio_value": portfolio_value,
+            "available_cash": self.portfolio.cash,
+            "risk_model": self.risk_model,
+            "risk_budget": risk_budget,
+            "maximum_position_value": maximum_position_value,
+            "raw_shares_by_risk": raw_shares_by_risk,
+            "shares_by_risk": shares_by_risk,
+            "shares_by_allocation": shares_by_allocation,
+            "shares_by_cash": shares_by_cash,
+            "requested_shares": requested_shares,
+            "final_shares": final_shares,
+            "actual_position_risk": actual_position_risk,
+            "minimum_one_share_override": (
+                minimum_one_share_override
+            ),
+            "limiting_factor": limiting_factor,
+            "decision": decision,
+            "reason": reason,
+        }
+
+        return final_shares
 
     def update_positions(
         self,

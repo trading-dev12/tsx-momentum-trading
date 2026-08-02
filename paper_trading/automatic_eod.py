@@ -9,7 +9,7 @@ The service runs in a background daemon thread so it does not
 block the Trading Workstation.
 """
 from utilities.backup_manager import create_backup
-from datetime import datetime
+from datetime import datetime, time
 import json
 import os
 from pathlib import Path
@@ -38,6 +38,7 @@ from paper_trading.trading_pipeline_validator import (
 from paper_trading.signal_journal import record_ready_signals
 
 AUTO_EOD_STATE_FILE = "automatic_eod_state.json"
+AUTO_EOD_START_TIME = time(16, 5)
 DEFAULT_CHECK_SECONDS = 60
 
 
@@ -129,7 +130,7 @@ def should_run_automatic_eod(
         current_datetime.time().replace(tzinfo=None)
     )
 
-    if current_time < MARKET_CLOSE_TIME:
+    if current_time < AUTO_EOD_START_TIME:
         return False
 
     current_date = current_datetime.date().isoformat()
@@ -372,6 +373,7 @@ def run_automatic_eod_cycle(
     ):
         return {
             "success": True,
+        
             "status": "NOT_DUE",
             "run_date": current_date,
             "message": (
@@ -409,10 +411,6 @@ def run_automatic_eod_cycle(
     queue_summary = paper_engine.queue_eod_signals(
         results
     )
-    save_last_run_date(
-        current_date,
-        state_file=state_file,
-    )
 
     summary = {
         "success": True,
@@ -427,12 +425,7 @@ def run_automatic_eod_cycle(
         "scan_results": results,
         "queue_summary": queue_summary,
     }
-    validation_result = validation_runner(
-        state_file=state_file,
-    )
-
-    summary["validation"] = validation_result
-
+    
     try:
         try:
             shadow_result = shadow_scan_runner(
@@ -457,50 +450,6 @@ def run_automatic_eod_cycle(
 
     summary["breakout_52week_shadow"] = shadow_result
 
-    breakout_telegram_heading = (
-        "52-WEEK BREAKOUT EOD WARNING"
-        if (
-            not shadow_result.get("success", False)
-            or shadow_result.get("errors", 0) > 0
-        )
-        else "52-WEEK BREAKOUT EOD SCAN COMPLETED"
-    )
-    breakout_telegram_message = (
-        f"{breakout_telegram_heading}\n\n"
-        f"Date: {current_date}\n"
-        f"READY: {shadow_result.get('ready', 0)}\n"
-        f"Queued: {shadow_result.get('queued', 0)}\n"
-        f"Duplicates: "
-        f"{shadow_result.get('duplicates', 0)}\n"
-        f"WATCH: {shadow_result.get('watch', 0)}\n"
-        f"IGNORE: {shadow_result.get('ignored', 0)}\n"
-        f"Errors: {shadow_result.get('errors', 0)}\n\n"
-        "READY signals are queued for next-day execution."
-    )
-
-    try:
-        breakout_telegram_result = send_telegram_message(
-            breakout_telegram_message
-        )
-    except Exception as error:
-        breakout_telegram_result = {
-            "success": False,
-            "message": (
-                "Unexpected 52-week Telegram error: "
-                f"{error}"
-            ),
-        }
-
-    summary["breakout_52week_telegram"] = (
-        breakout_telegram_result
-    )
-
-    if not breakout_telegram_result["success"]:
-        print(
-            "52-week Telegram notification warning: "
-            f"{breakout_telegram_result['message']}"
-        )
-
     try:
         mean_reversion_result = mean_reversion_runner(
             paper_engine=mean_reversion_engine,
@@ -520,51 +469,17 @@ def run_automatic_eod_cycle(
         mean_reversion_result
     )
 
-    mean_reversion_telegram_heading = (
-        "MEAN REVERSION EOD WARNING"
-        if (
-            not mean_reversion_result.get("success", False)
-            or mean_reversion_result.get("errors", 0) > 0
-        )
-        else "MEAN REVERSION EOD SCAN COMPLETED"
-    )
-    mean_reversion_telegram_message = (
-        f"{mean_reversion_telegram_heading}\n\n"
-        f"Date: {current_date}\n"
-        f"READY: {mean_reversion_result.get('ready', 0)}\n"
-        f"Queued: {mean_reversion_result.get('queued', 0)}\n"
-        f"Duplicates: "
-        f"{mean_reversion_result.get('duplicates', 0)}\n"
-        f"WATCH: {mean_reversion_result.get('watch', 0)}\n"
-        f"IGNORE: {mean_reversion_result.get('ignored', 0)}\n"
-        f"Errors: {mean_reversion_result.get('errors', 0)}\n\n"
-        "READY signals are queued for next-day execution."
+    save_last_run_date(
+        current_date,
+        state_file=state_file,
     )
 
-    try:
-        mean_reversion_telegram_result = (
-            send_telegram_message(
-                mean_reversion_telegram_message
-            )
-        )
-    except Exception as error:
-        mean_reversion_telegram_result = {
-            "success": False,
-            "message": (
-                "Unexpected Mean Reversion Telegram error: "
-                f"{error}"
-            ),
-        }
-
-    summary["mean_reversion_telegram"] = (
-        mean_reversion_telegram_result
+    validation_result = validation_runner(
+        state_file=state_file,
     )
 
-    if not mean_reversion_telegram_result["success"]:
-        print(
-            "Mean Reversion Telegram notification warning: "
-            f"{mean_reversion_telegram_result['message']}"
-        )
+    summary["validation"] = validation_result
+    
 
     try:
         backup_result = create_backup()
@@ -591,34 +506,90 @@ def run_automatic_eod_cycle(
             "Trading pipeline validation warning: "
             f"{validation_result['message']}"
         )
+    momentum_status = (
+        "PASS"
+        if summary["errors"] == 0
+        else "FAIL"
+    )
+
+    breakout_status = (
+        "PASS"
+        if (
+            shadow_result.get("success", False)
+            and shadow_result.get("errors", 0) == 0
+        )
+        else "FAIL"
+    )
+
+    mean_reversion_status = (
+        "PASS"
+        if (
+            mean_reversion_result.get("success", False)
+            and mean_reversion_result.get("errors", 0) == 0
+        )
+        else "FAIL"
+    )
+
+    validation_status = validation_result["status"]
+
+    backup_status = (
+        "PASS"
+        if backup_result["success"]
+        else "FAIL"
+    )
+
     has_eod_warning = (
-        summary["errors"] > 0
-        or validation_result["status"] != "PASS"
-        or not backup_result["success"]
+        momentum_status != "PASS"
+        or breakout_status != "PASS"
+        or mean_reversion_status != "PASS"
+        or validation_status == "FAIL"
+        or backup_status != "PASS"
+    )
+
+    overall_health = (
+        "WARNING"
+        if has_eod_warning
+        else "HEALTHY"
     )
 
     telegram_heading = (
-        "AUTOMATIC EOD WARNING"
+        "NORTHSTAR QUANT EOD WARNING"
         if has_eod_warning
-        else "AUTOMATIC EOD SCAN COMPLETED"
+        else "NORTHSTAR QUANT EOD COMPLETE"
     )
+
     telegram_message = (
         f"{telegram_heading}\n\n"
-        f"Date: {current_date}\n"
+        f"Date: {current_date}\n\n"
+
+        "MOMENTUM\n"
+        f"Status: {momentum_status}\n"
         f"READY: {summary['ready']}\n"
         f"Queued: {summary['queued']}\n"
-        f"Duplicates: {summary['duplicates']}\n"
         f"WATCH: {summary['watch']}\n"
-        f"IGNORE: {summary['ignored']}\n"
-        f"Errors: {summary['errors']}\n"
-        f"Pipeline Validation: "
-        f"{validation_result['status']}\n"
-        f"Backup: "
-        f"{'SUCCESS' if backup_result['success'] else 'FAILED'}\n"
-        f"Backup Items Copied: "
-        f"{backup_result['copied']}\n"
-        f"Backup Errors: "
-        f"{len(backup_result['errors'])}\n\n"
+        f"Errors: {summary['errors']}\n\n"
+
+        "52-WEEK BREAKOUT\n"
+        f"Status: {breakout_status}\n"
+        f"READY: {shadow_result.get('ready', 0)}\n"
+        f"Queued: {shadow_result.get('queued', 0)}\n"
+        f"WATCH: {shadow_result.get('watch', 0)}\n"
+        f"Errors: {shadow_result.get('errors', 0)}\n\n"
+
+        "MEAN REVERSION\n"
+        f"Status: {mean_reversion_status}\n"
+        f"READY: {mean_reversion_result.get('ready', 0)}\n"
+        f"Queued: {mean_reversion_result.get('queued', 0)}\n"
+        f"WATCH: {mean_reversion_result.get('watch', 0)}\n"
+        f"Errors: {mean_reversion_result.get('errors', 0)}\n\n"
+
+        "SYSTEM CHECKS\n"
+        f"Pipeline Validation: {validation_status}\n"
+        f"Backup: {backup_status}\n"
+        f"Backup Items: {backup_result['copied']}\n"
+        f"Backup Errors: {len(backup_result['errors'])}\n\n"
+
+        f"OVERALL HEALTH: {overall_health}\n\n"
         "Pending signals are ready for next-day execution."
     )
 
@@ -643,6 +614,7 @@ def run_automatic_eod_cycle(
             f"{telegram_result['message']}"
         )
 
+    
     print("\n" + "=" * 60)
     print("AUTOMATIC END-OF-DAY SCAN")
     print("=" * 60)

@@ -3553,3 +3553,53 @@ PASS
 The Trading Workstation will no longer open with a blank scanner simply because the market is closed. The most recent valid scan remains visible until a newer successful scan replaces it.@'
 from pathlib import Path
 
+## 2026-08-02 – Automatic EOD Reliability Improvements
+
+### Objective
+Improve the reliability and determinism of the automatic End-of-Day (EOD) pipeline prior to Interactive Brokers (IBKR) integration.
+
+### Completed
+
+#### 1. EOD State Synchronization
+- Moved `save_last_run_date()` to execute before pipeline validation.
+- Eliminated false validation failures caused by the validator reading a stale EOD state.
+- Validation now always reflects the completed EOD cycle.
+
+#### 2. Delayed Automatic EOD Execution
+- Introduced `AUTO_EOD_START_TIME = 4:05 PM`.
+- Official TSX market close remains unchanged at 4:00 PM.
+- Automatic EOD processing now waits an additional five minutes to allow market data providers to finalize end-of-day pricing.
+- This improves robustness for both Yahoo Finance and future IBKR data.
+
+#### 3. Consolidated Telegram Notifications
+- Removed individual strategy Telegram notifications.
+- Replaced them with a single consolidated EOD summary.
+- The summary now reports:
+  - Momentum strategy status
+  - 52-Week Breakout status
+  - Mean Reversion status
+  - Pipeline validation status
+  - Backup status
+  - Overall system health
+
+#### 4. Automated Testing
+- Added explicit timing tests verifying:
+  - 4:04 PM → Automatic EOD does not run.
+  - 4:05 PM → Automatic EOD becomes eligible.
+- Existing Automatic EOD validation tests continue to pass.
+- Entire project test suite passes successfully.
+
+### Test Results
+Automatic EOD Tests:
+- PASS
+
+Project Test Suite:
+- 17 tests passed.
+
+### Impact
+These improvements significantly increase production reliability before IBKR integration by ensuring:
+- deterministic EOD execution,
+- complete validation,
+- improved data integrity,
+- simplified operational monitoring,
+- more reliable end-of-day notifications.

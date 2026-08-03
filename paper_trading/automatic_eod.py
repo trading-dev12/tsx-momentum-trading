@@ -17,8 +17,8 @@ import threading
 
 from core.eod_signal_service import scan_eod_signals
 from core.market_hours import (
-    MARKET_CLOSE_TIME,
     TORONTO_TIMEZONE,
+    is_tsx_trading_day,
 )
 from notifications.telegram_notifier import send_telegram_message
 from core.watchlist_loader import load_all_watchlists
@@ -123,7 +123,9 @@ def should_run_automatic_eod(
         current_datetime
     )
 
-    if current_datetime.weekday() >= 5:
+    if not is_tsx_trading_day(
+    current_datetime.date()
+):
         return False
 
     current_time = (

@@ -7,7 +7,7 @@ This service is research-only. It does not modify pending trades,
 open positions, execution decisions, or the baseline paper-trading
 workflow.
 """
-
+from core.market_hours import is_tsx_trading_day
 from datetime import datetime, time
 import threading
 
@@ -225,7 +225,9 @@ def should_record_morning_observations(
         current_datetime
     )
 
-    if current_datetime.weekday() >= 5:
+    if not is_tsx_trading_day(
+        current_datetime.date()
+):
         return False
 
     current_time = (

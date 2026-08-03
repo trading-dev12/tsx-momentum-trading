@@ -3603,3 +3603,38 @@ These improvements significantly increase production reliability before IBKR int
 - improved data integrity,
 - simplified operational monitoring,
 - more reliable end-of-day notifications.
+## 2026-08-03 – TSX Holiday Awareness
+
+### Objective
+Prevent Northstar Quant from treating weekday exchange holidays as normal TSX trading days.
+
+### Problem Identified
+The workstation and background services used weekday-only checks. As a result, the system sent a morning message indicating that the market would open at 9:30 AM on Civic Holiday, even though the TSX was closed.
+
+### Completed
+
+- Added a centralized TSX trading-day calendar to `core/market_hours.py`.
+- Added shared holiday-aware functions:
+  - `is_tsx_trading_day()`
+  - `get_next_tsx_trading_day()`
+  - `normalize_tsx_datetime()`
+- Added the official 2026 TSX full-day holidays.
+- Updated market-session status to show the correct next trading day.
+- Updated Automatic EOD eligibility to block exchange holidays.
+- Updated the Morning Recorder Service to block exchange holidays.
+- Updated the morning system-health Telegram notification to block exchange holidays.
+- Preserved the existing weekend and regular-session behavior.
+
+### Validation
+
+Confirmed:
+
+- August 3, 2026 returns `CLOSED`.
+- The next market open is Tuesday, August 4, 2026 at 9:30 AM ET.
+- August 4 at 9:22 AM returns `PRE-MARKET`.
+- Updated modules compile successfully.
+- Morning Telegram notifications no longer run on TSX holidays.
+
+### Impact
+
+Northstar now uses one shared source of truth for TSX trading dates. This prevents false market-open notifications and keeps the workstation, Automatic EOD service, Morning Recorder, and future IBKR scheduling logic synchronized.

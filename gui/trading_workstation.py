@@ -1,4 +1,4 @@
-import json
+﻿import json
 import socket
 import subprocess
 import sys
@@ -7,7 +7,10 @@ import logging
 
 from shlex import quote
 import tkinter as tk
-from core.market_hours import get_tsx_market_status
+from core.market_hours import (
+    get_tsx_market_status,
+    is_tsx_trading_day,
+)
 from tkinter import ttk, messagebox, simpledialog
 from datetime import datetime
 import threading
@@ -63,7 +66,7 @@ class TradingWorkstation:
         self.start_mobile_dashboard()
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
 
-        self.refresh_interval_seconds = 30
+        self.refresh_interval_seconds = 300
         self.countdown_seconds = self.refresh_interval_seconds
         self.is_refreshing = False
         self.refresh_timeout_ms = 240_000
@@ -337,6 +340,17 @@ class TradingWorkstation:
 
         self.update_paper_portfolio_panel()
 
+        self.morning_health_state_file = (
+            Path(__file__).resolve().parent.parent
+            / "data"
+            / "runtime"
+            / "morning_health_state.json"
+        )
+        self.morning_health_in_flight = False
+        self.morning_health_sent_date = (
+            self.load_morning_health_sent_date()
+        )
+
         startup_session = get_tsx_market_status()
 
         if startup_session["is_open"]:
@@ -449,9 +463,13 @@ class TradingWorkstation:
         def worker():
             try:
                 momentum_results = scan_eod_signals()
-                breakout_scan = run_52_week_shadow_scan()
-                mean_reversion_scan = (
-                    run_mean_reversion_shadow_scan()
+
+                breakout_scan = run_52_week_shadow_scan(
+                    paper_engine=self.breakout_52week_engine,
+                )
+
+                mean_reversion_scan = run_mean_reversion_shadow_scan(
+                    paper_engine=self.mean_reversion_engine,
                 )
 
                 combined_results = {
@@ -797,10 +815,16 @@ class TradingWorkstation:
             )
         )
 
+        queue_line, existing_line = (
+            self.build_strategy_queue_summary(
+                ready_quotes
+            )
+        )
+
         self.summary_label.config(
             text=(
-                f"Saved {view} Scan | "
-                f"Stocks: {total} | "
+                f"Saved {view} Scan | {queue_line}\n"
+                f"{existing_line} | "
                 f"READY: {ready} | "
                 f"WATCH: {watch} | "
                 f"IGNORE: {ignore} | "
@@ -1061,6 +1085,74 @@ class TradingWorkstation:
             ),
         }
 
+    def build_strategy_queue_summary(self, ready_quotes):
+        strategy_engines = (
+            ("MOMENTUM", "Momentum", self.paper_engine),
+            (
+                "52_WEEK_BREAKOUT",
+                "52-Week",
+                self.breakout_52week_engine,
+            ),
+            (
+                "MEAN_REVERSION",
+                "Mean Reversion",
+                self.mean_reversion_engine,
+            ),
+        )
+
+        queue_parts = []
+        existing_parts = []
+
+        for strategy, label, engine in strategy_engines:
+            pending_count = len(
+                engine.pending_trades.get_all()
+            )
+            queue_parts.append(
+                f"{label} Queued: {pending_count}"
+            )
+
+            open_symbols = {
+                position.get("symbol")
+                for position in (
+                    engine.portfolio.open_positions
+                )
+            }
+
+            ready_symbols = {
+                quote.get("symbol")
+                for quote in ready_quotes
+                if quote.get(
+                    "strategy",
+                    "MOMENTUM",
+                ) == strategy
+            }
+
+            existing_symbols = sorted(
+                symbol
+                for symbol in (
+                    open_symbols & ready_symbols
+                )
+                if symbol
+            )
+
+            if existing_symbols:
+                existing_parts.append(
+                    f"{label}: "
+                    + ", ".join(existing_symbols)
+                )
+
+        queue_line = " | ".join(queue_parts)
+        existing_line = (
+            "Existing READY Positions: "
+            + (
+                " | ".join(existing_parts)
+                if existing_parts
+                else "None"
+            )
+        )
+
+        return queue_line, existing_line
+
     def display_eod_results(
         self,
         results,
@@ -1096,12 +1188,17 @@ class TradingWorkstation:
         for row in self.tree.get_children():
             self.tree.delete(row)
 
+        queue_line, existing_line = (
+            self.build_strategy_queue_summary(
+                results["ready"]
+            )
+        )
+
         self.summary_label.config(
             text=(
-                f"EOD Signals | "
+                f"{queue_line}\n"
+                f"{existing_line} | "
                 f"READY: {len(results['ready'])} | "
-                f"Queued: {queue_summary['added']} | "
-                f"Duplicates: {queue_summary['rejected']} | "
                 f"WATCH: {len(results['watch'])} | "
                 f"IGNORE: {len(results['ignore'])} | "
                 f"ERRORS: {len(results['errors'])}"
@@ -2139,18 +2236,28 @@ class TradingWorkstation:
             journal,
         )
 
+        strategy_engines = (
+            self.paper_engine,
+            self.breakout_52week_engine,
+            self.mean_reversion_engine,
+        )
+
         self.system_health_panel.update_counts(
-            pending_trades=len(
-                self.paper_engine.pending_trades.get_all()
+            pending_trades=sum(
+                len(engine.pending_trades.get_all())
+                for engine in strategy_engines
             ),
-            open_positions=len(
-                self.paper_engine.portfolio.open_positions
+            open_positions=sum(
+                len(engine.portfolio.open_positions)
+                for engine in strategy_engines
             ),
-            closed_trades=len(
-                self.paper_engine.portfolio.closed_trades
+            closed_trades=sum(
+                len(engine.portfolio.closed_trades)
+                for engine in strategy_engines
             ),
             last_refresh=self.last_successful_refresh,
         )
+
     def is_mobile_dashboard_running(self, host="127.0.0.1", port=5000):
         """
         Return True when something is already listening on the
@@ -2283,6 +2390,237 @@ class TradingWorkstation:
 
         return session
 
+    def load_morning_health_sent_date(self):
+        try:
+            if not self.morning_health_state_file.exists():
+                return None
+
+            state = json.loads(
+                self.morning_health_state_file.read_text(
+                    encoding="utf-8"
+                )
+            )
+            return state.get("last_sent_date")
+
+        except Exception:
+            logging.exception(
+                "Unable to read morning health state"
+            )
+            return None
+
+    def save_morning_health_sent_date(self, sent_date):
+        try:
+            self.morning_health_state_file.parent.mkdir(
+                parents=True,
+                exist_ok=True,
+            )
+
+            temporary_file = (
+                self.morning_health_state_file.with_name(
+                    self.morning_health_state_file.name
+                    + ".tmp"
+                )
+            )
+
+            temporary_file.write_text(
+                json.dumps(
+                    {
+                        "last_sent_date": sent_date,
+                    },
+                    indent=4,
+                ),
+                encoding="utf-8",
+            )
+
+            temporary_file.replace(
+                self.morning_health_state_file
+            )
+
+        except Exception:
+            logging.exception(
+                "Unable to save morning health state"
+            )
+
+    def build_morning_health_message(self, now, session):
+        engines = (
+            (
+                "Momentum",
+                self.paper_engine,
+                self.automatic_execution_thread,
+            ),
+            (
+                "52-Week",
+                self.breakout_52week_engine,
+                self.breakout_52week_execution_thread,
+            ),
+            (
+                "Mean Reversion",
+                self.mean_reversion_engine,
+                self.mean_reversion_execution_thread,
+            ),
+        )
+
+        all_execution_running = all(
+            execution_thread.is_alive()
+            for _, _, execution_thread in engines
+        )
+
+        eod_running = self.automatic_eod_thread.is_alive()
+
+        pipeline_status = (
+            "HEALTHY"
+            if all_execution_running and eod_running
+            else "ATTENTION REQUIRED"
+        )
+
+        lines = [
+            "Northstar Quant - 9:00 AM System Check",
+            "",
+            f"Date: {now.strftime('%Y-%m-%d')}",
+            f"Time: {now.strftime('%H:%M:%S')}",
+            "",
+            f"Pipeline: {pipeline_status}",
+            "Telegram: CONNECTED - message received",
+            (
+                "Scanner: "
+                + (
+                    "REFRESHING"
+                    if self.is_refreshing
+                    else "READY"
+                )
+            ),
+            (
+                "Automatic EOD: "
+                + (
+                    "RUNNING"
+                    if eod_running
+                    else "STOPPED"
+                )
+            ),
+            (
+                "Last Successful Refresh: "
+                + (
+                    self.last_successful_refresh
+                    or "No live refresh yet"
+                )
+            ),
+            "",
+            (
+                f"TSX Status: "
+                f"{session.get('status', 'UNKNOWN')}"
+            ),
+            f"Market Info: {session.get('message', '')}",
+            "",
+        ]
+
+        for label, engine, execution_thread in engines:
+            lines.extend(
+                [
+                    (
+                        f"{label} Execution: "
+                        + (
+                            "RUNNING"
+                            if execution_thread.is_alive()
+                            else "STOPPED"
+                        )
+                    ),
+                    (
+                        f"{label} Pending: "
+                        f"{len(engine.pending_trades.get_all())}"
+                    ),
+                    (
+                        f"{label} Open: "
+                        f"{len(engine.portfolio.open_positions)}"
+                    ),
+                ]
+            )
+
+        total_pending = sum(
+            len(engine.pending_trades.get_all())
+            for _, engine, _ in engines
+        )
+
+        total_open = sum(
+            len(engine.portfolio.open_positions)
+            for _, engine, _ in engines
+        )
+
+        lines.extend(
+            [
+                "",
+                f"Total Pending Trades: {total_pending}",
+                f"Total Open Positions: {total_open}",
+            ]
+        )
+
+        return "\n".join(lines)
+
+    def send_morning_health_telegram(self, now, session):
+        if self.morning_health_in_flight:
+            return
+
+        self.morning_health_in_flight = True
+        sent_date = now.date().isoformat()
+        message = self.build_morning_health_message(
+            now,
+            session,
+        )
+
+        def worker():
+            try:
+                result = send_telegram_message(message)
+
+                if result.get("success"):
+                    self.morning_health_sent_date = sent_date
+                    self.save_morning_health_sent_date(
+                        sent_date
+                    )
+                    print(
+                        "Morning system-health Telegram "
+                        "message sent successfully."
+                    )
+                else:
+                    print(
+                        "Morning system-health Telegram "
+                        "warning: "
+                        f"{result.get('message', '')}"
+                    )
+
+            except Exception as error:
+                print(
+                    "Unexpected morning system-health "
+                    f"Telegram error: {error}"
+                )
+
+            finally:
+                self.morning_health_in_flight = False
+
+        threading.Thread(
+            target=worker,
+            daemon=True,
+        ).start()
+
+    def check_morning_health_telegram(
+        self,
+        now,
+        session,
+    ):
+        if not is_tsx_trading_day(now.date()):
+            return
+
+        if now.hour != 9:
+            return
+
+        today = now.date().isoformat()
+
+        if self.morning_health_sent_date == today:
+            return
+
+        self.send_morning_health_telegram(
+            now,
+            session,
+        )
+
     def update_countdown(self):
         try:
             now = datetime.now()
@@ -2290,6 +2628,10 @@ class TradingWorkstation:
 
             session = self.update_market_session_status()
             self.update_system_health()
+            self.check_morning_health_telegram(
+                now,
+                session,
+            )
 
             refresh_id = (
                 self.active_refresh_id

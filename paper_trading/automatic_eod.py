@@ -8,7 +8,7 @@ so application refreshes or restarts do not repeat the scan.
 The service runs in a background daemon thread so it does not
 block the Trading Workstation.
 """
-from paper_trading import paper_engine
+
 from utilities.backup_manager import create_backup
 from datetime import datetime, time
 import json

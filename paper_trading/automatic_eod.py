@@ -8,6 +8,7 @@ so application refreshes or restarts do not repeat the scan.
 The service runs in a background daemon thread so it does not
 block the Trading Workstation.
 """
+from paper_trading import paper_engine
 from utilities.backup_manager import create_backup
 from datetime import datetime, time
 import json
@@ -235,12 +236,18 @@ def run_52_week_shadow_scan(paper_engine=None):
         "results": [],
     }
 
+    pending_total = 0
+
     if paper_engine is not None:
         queue_summary = paper_engine.queue_eod_signals(
             results
         )
-
+        pending_total = len(
+            paper_engine.pending_trades.get_all()
+        )
+    
     return {
+    
         "success": True,
         "results": results,
         "ready": len(results["ready"]),
@@ -249,6 +256,8 @@ def run_52_week_shadow_scan(paper_engine=None):
         "errors": len(results["errors"]),
         "queued": queue_summary["added"],
         "duplicates": queue_summary["rejected"],
+        "pending_total": pending_total,
+        "pending_total": pending_total,
         "queue_summary": queue_summary,
         "report_path": report_path,
     }
@@ -581,7 +590,9 @@ def run_automatic_eod_cycle(
         "MEAN REVERSION\n"
         f"Status: {mean_reversion_status}\n"
         f"READY: {mean_reversion_result.get('ready', 0)}\n"
-        f"Queued: {mean_reversion_result.get('queued', 0)}\n"
+        f"Newly Queued: {mean_reversion_result.get('queued', 0)}\n"
+        f"Already Pending: {mean_reversion_result.get('duplicates', 0)}\n"
+        f"Total Pending: {mean_reversion_result.get('pending_total', 0)}\n"
         f"WATCH: {mean_reversion_result.get('watch', 0)}\n"
         f"Errors: {mean_reversion_result.get('errors', 0)}\n\n"
 

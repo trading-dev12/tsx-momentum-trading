@@ -61,7 +61,7 @@ def scan_mean_reversion(watchlist):
     """
 
     scanner = MeanReversionScanner()
-
+    signal_date = datetime.now().date().isoformat()
     results = {
         "ready": [],
         "watch": [],
@@ -110,6 +110,25 @@ def scan_mean_reversion(watchlist):
             record = {
                 "symbol": symbol,
                 "strategy": "MEAN_REVERSION",
+                "signal_date": signal_date,
+                "close": price,
+                "atr": float(
+                    quote.get("atr", 0) or 0
+                ),
+                "tmqs": float(
+                    quote.get("tmqs", 0) or 0
+                ),
+                "rvol": float(
+                    quote.get(
+                        "relative_volume",
+                        0,
+                    )
+                    or 0
+                ),
+                "breakout": quote.get(
+                    "breakout_status",
+                    "NO_BREAKOUT",
+                ),
                 "decision": scan_result.decision,
                 "reason": scan_result.reason,
                 "price": price,
@@ -189,6 +208,7 @@ def save_results(results):
         writer = csv.DictWriter(
             file,
             fieldnames=fieldnames,
+            extrasaction="ignore",
         )
 
         writer.writeheader()

@@ -3638,3 +3638,46 @@ Confirmed:
 ### Impact
 
 Northstar now uses one shared source of truth for TSX trading dates. This prevents false market-open notifications and keeps the workstation, Automatic EOD service, Morning Recorder, and future IBKR scheduling logic synchronized.
+2026-08-05 – Live IBKR Market Data Integration (Major Milestone)
+Summary
+
+Completed integration of Interactive Brokers (IBKR) live TSX market data into the Northstar scanner.
+
+Completed
+Added IBKR market data provider.
+Qualified all 53 TSX watchlist symbols.
+Implemented TSX symbol alias mapping:
+TECK-B → TECK.B
+CCL-B → CCL.B
+EMP-A → EMP.A
+GIB-A → GIB.A
+Added batch quote retrieval using a single TWS connection.
+Successfully retrieved all 53 symbols in one request.
+Scanner now consumes IBKR live prices and live volume.
+Yahoo Finance retained only for:
+historical ATR
+historical average volume
+SMA calculations
+RSI
+Bollinger Bands
+other historical analytics
+Automatic fallback to Yahoo if IBKR is unavailable.
+Added diagnostic fields:
+data_source
+price_source
+Added testing utilities:
+test_ibkr_watchlist.py
+test_ibkr_batch_quotes.py
+find_ibkr_contract.py
+All regression tests passed (17/17).
+Impact
+
+Northstar now performs live market scanning using the paid Interactive Brokers data feed instead of delayed Yahoo Finance quotes.
+
+This significantly improves:
+
+signal timing
+momentum accuracy
+breakout detection
+RVOL calculations
+future execution reliability

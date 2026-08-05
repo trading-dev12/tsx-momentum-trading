@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 from shlex import quote
 from zoneinfo import ZoneInfo
 import yfinance as yf
+from core.ibkr_data_provider import IBKRDataProvider
 
 from core.previous_day import get_previous_day
 from scanner.momentum_score import calculate_score
@@ -263,14 +264,59 @@ def calculate_live_atr(symbol, period=14):
         print(f"ATR unavailable for {symbol}: {error}")
         return 0.0
     
-def get_live_quote(symbol):
-    try:
-        yahoo_symbol = symbol if symbol.endswith(".TO") else symbol + ".TO"
-        ticker = yf.Ticker(yahoo_symbol)
-        info = ticker.fast_info
+def get_live_quote(symbol, live_quote=None):
+    """
+    Build the complete scanner record for one symbol.
 
-        price = info.get("lastPrice", 0) or 0
-        volume = info.get("lastVolume", 0) or 0
+    IBKR supplies live price and current volume when available.
+    Yahoo remains responsible for historical indicators and is
+    used as the live-data fallback.
+    """
+
+    try:
+        data_source = "YAHOO_FALLBACK"
+        price_source = "YAHOO_FAST_INFO"
+
+        ibkr_price = 0.0
+        ibkr_volume = 0.0
+
+        if live_quote is not None:
+            ibkr_price = float(
+                live_quote.get("price", 0) or 0
+            )
+            ibkr_volume = float(
+                live_quote.get("volume", 0) or 0
+            )
+
+        if ibkr_price > 0:
+            price = ibkr_price
+            volume = ibkr_volume
+            data_source = "IBKR"
+            price_source = live_quote.get(
+                "price_source",
+                "UNKNOWN",
+            )
+        else:
+            yahoo_symbol = (
+                symbol
+                if symbol.endswith(".TO")
+                else symbol + ".TO"
+            )
+
+            ticker = yf.Ticker(yahoo_symbol)
+            info = ticker.fast_info
+
+            price = float(
+                info.get("lastPrice", 0) or 0
+            )
+            volume = float(
+                info.get("lastVolume", 0) or 0
+            )
+
+        if price <= 0:
+            raise ValueError(
+                f"No usable live price received for {symbol}."
+            )
 
         previous_day = get_previous_day(symbol)
 
@@ -284,7 +330,10 @@ def get_live_quote(symbol):
             previous_low = 0
 
         if previous_close:
-            change_percent = ((price - previous_close) / previous_close) * 100
+            change_percent = (
+                (price - previous_close)
+                / previous_close
+            ) * 100
             gap_percent = change_percent
         else:
             change_percent = 0
@@ -292,11 +341,20 @@ def get_live_quote(symbol):
 
         average_volume = get_average_volume(symbol)
         atr = calculate_live_atr(symbol)
-        breakout_metrics = get_52_week_breakout_metrics(symbol)
-        mean_reversion_metrics = get_mean_reversion_metrics(symbol)
+
+        breakout_metrics = (
+            get_52_week_breakout_metrics(symbol)
+        )
+
+        mean_reversion_metrics = (
+            get_mean_reversion_metrics(symbol)
+        )
 
         if average_volume > 0:
-            relative_volume = round(volume / average_volume, 2)
+            relative_volume = round(
+                volume / average_volume,
+                2,
+            )
         else:
             relative_volume = 0
 
@@ -311,36 +369,66 @@ def get_live_quote(symbol):
             "volume": volume,
             "average_volume": average_volume,
             "relative_volume": relative_volume,
-            "prior_52_week_high": breakout_metrics["prior_52_week_high"],
+            "prior_52_week_high": breakout_metrics[
+                "prior_52_week_high"
+            ],
             "sma_50": breakout_metrics["sma_50"],
             "sma_200": breakout_metrics["sma_200"],
             "sma_20": mean_reversion_metrics["sma_20"],
             "rsi_2": mean_reversion_metrics["rsi_2"],
             "rsi_14": mean_reversion_metrics["rsi_14"],
-            "bollinger_lower": mean_reversion_metrics["bollinger_lower"],
+            "bollinger_lower": mean_reversion_metrics[
+                "bollinger_lower"
+            ],
             "atr": atr,
-            "rvol_status": get_rvol_status(relative_volume),
-            "status": "Live Data",
+            "rvol_status": get_rvol_status(
+                relative_volume
+            ),
+            "status": (
+                "Live IBKR Data"
+                if data_source == "IBKR"
+                else "Yahoo Fallback Data"
+            ),
+            "data_source": data_source,
+            "price_source": price_source,
         }
 
         quote["score"] = calculate_score(quote)
         quote["grades"] = grade_stock(quote)
         quote["tmqs"] = calculate_tmqs(quote)
-        quote["breakout_status"] = get_breakout_status(quote)
-        quote["confidence_score"] = calculate_confidence_score(quote)
+
+        quote["breakout_status"] = (
+            get_breakout_status(quote)
+        )
+
+        quote["confidence_score"] = (
+            calculate_confidence_score(quote)
+        )
+
         decision, reason = get_trade_decision(quote)
 
         quote["decision"] = decision
         quote["reason"] = reason
 
-        breakout_52week_input = build_breakout_52week_input(quote)
-        breakout_52week_result = Breakout52WeekStrategy().evaluate(
-        breakout_52week_input
+        breakout_52week_input = (
+            build_breakout_52week_input(quote)
         )
 
-        quote["breakout_52week_decision"] = breakout_52week_result.decision.value
-        quote["breakout_52week_reason"] = breakout_52week_result.reason
-        quote["breakout_52week"] = breakout_52week_result.breakout
+        breakout_52week_result = (
+            Breakout52WeekStrategy().evaluate(
+                breakout_52week_input
+            )
+        )
+
+        quote["breakout_52week_decision"] = (
+            breakout_52week_result.decision.value
+        )
+        quote["breakout_52week_reason"] = (
+            breakout_52week_result.reason
+        )
+        quote["breakout_52week"] = (
+            breakout_52week_result.breakout
+        )
 
         return quote
 
@@ -350,27 +438,76 @@ def get_live_quote(symbol):
 
 
 def get_quotes(watchlist):
+    """
+    Retrieve one batch of live IBKR quotes and build full
+    scanner records.
+
+    Yahoo live data is used only if IBKR is unavailable or an
+    individual IBKR quote fails.
+    """
+
+    symbols = list(watchlist)
     quotes = []
 
-    for symbol in watchlist:
-        quote = get_live_quote(symbol)
+    ibkr_quotes = {}
+    ibkr_errors = {}
+
+    provider = IBKRDataProvider(client_id=14)
+
+    try:
+        ibkr_quotes, ibkr_errors = provider.get_quotes(
+            symbols
+        )
+
+        print(
+            "IBKR live quote batch: "
+            f"{len(ibkr_quotes)}/{len(symbols)} received."
+        )
+
+        if ibkr_errors:
+            print(
+                "IBKR individual quote fallbacks: "
+                f"{len(ibkr_errors)}"
+            )
+
+    except Exception as error:
+        print(
+            "IBKR batch unavailable. "
+            f"Using Yahoo live fallback: {error}"
+        )
+        ibkr_quotes = {}
+
+    finally:
+        provider.disconnect()
+
+    for symbol in symbols:
+        quote = get_live_quote(
+            symbol,
+            live_quote=ibkr_quotes.get(symbol),
+        )
 
         if quote is not None:
             quotes.append(quote)
 
     decision_rank = {
-    "READY": 3,
-    "WATCH": 2,
-    "IGNORE": 1,
-}
+        "READY": 3,
+        "WATCH": 2,
+        "IGNORE": 1,
+    }
 
     quotes.sort(
-    key=lambda quote: (
-        decision_rank.get(quote["decision"], 0),
-        quote["tmqs"],
-        quote.get("confidence_score", 0),
-    ),
-    reverse=True,
-)    
+        key=lambda quote: (
+            decision_rank.get(
+                quote["decision"],
+                0,
+            ),
+            quote["tmqs"],
+            quote.get(
+                "confidence_score",
+                0,
+            ),
+        ),
+        reverse=True,
+    )
 
     return quotes

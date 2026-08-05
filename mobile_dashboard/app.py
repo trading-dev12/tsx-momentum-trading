@@ -8,6 +8,7 @@ The dashboard reads persistent project state but does not
 modify trading data.
 """
 
+import csv
 import json
 from datetime import datetime
 from pathlib import Path
@@ -36,6 +37,13 @@ MEAN_REVERSION_PORTFOLIO_STATE_FILE = (
 PENDING_TRADES_FILE = (
     PROJECT_ROOT / "pending_trades.csv"
 )
+BREAKOUT_52WEEK_PENDING_TRADES_FILE = (
+    PROJECT_ROOT / "pending_trades_52week.csv"
+)
+
+MEAN_REVERSION_PENDING_TRADES_FILE = (
+    PROJECT_ROOT / "pending_trades_mean_reversion.csv"
+)
 AUTOMATIC_EOD_STATE_FILE = (
     PROJECT_ROOT / "automatic_eod_state.json"
 )
@@ -48,7 +56,6 @@ LATEST_PRICES_FILE = (
     / "runtime"
     / "latest_prices.json"
 )
-
 
 @app.get("/manifest.json")
 def manifest():
@@ -359,7 +366,23 @@ def dashboard():
     pending_file_health = file_status(
         PENDING_TRADES_FILE
     )
+    momentum_pending_count = count_pending_trades(
+    PENDING_TRADES_FILE
+    )
 
+    breakout_52week_pending_count = count_pending_trades(
+    BREAKOUT_52WEEK_PENDING_TRADES_FILE
+    )
+
+    mean_reversion_pending_count = count_pending_trades(
+    MEAN_REVERSION_PENDING_TRADES_FILE
+    )
+
+    total_pending_count = (
+        momentum_pending_count
+        + breakout_52week_pending_count
+        + mean_reversion_pending_count
+    )
     eod_file_health = file_status(
         AUTOMATIC_EOD_STATE_FILE
     )
@@ -437,6 +460,14 @@ def dashboard():
             "fail_count": 0,
             "pending_trades": 0,
         }
+    validation_summary["pending_trades"] = total_pending_count
+    validation_summary["momentum_pending"] = momentum_pending_count
+    validation_summary["breakout_52week_pending"] = (
+        breakout_52week_pending_count
+    )
+    validation_summary["mean_reversion_pending"] = (
+        mean_reversion_pending_count
+    )
 
     position_rows = []
 

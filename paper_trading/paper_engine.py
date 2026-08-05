@@ -72,9 +72,42 @@ class PaperTradingEngine:
         ready_signals = scan_result.get("ready", [])
         results = []
 
+        already_open = 0
+        already_pending = 0
+        other_rejected = 0
+
+        open_symbols = {
+            position["symbol"]
+            for position in self.portfolio.open_positions
+        }
+
         for signal in ready_signals:
+            symbol = signal["symbol"]
+
+            if symbol in open_symbols:
+                results.append(
+                    {
+                        "success": False,
+                        "symbol": symbol,
+                        "status": "ALREADY_OPEN",
+                        "message": (
+                            f"{symbol} already has an open position."
+                        ),
+                    }
+                )
+                already_open += 1
+                continue
+
             result = self.queue_signal(signal)
             results.append(result)
+
+            if not result.get("success"):
+                message = result.get("message", "")
+
+                if "already pending" in message.lower():
+                    already_pending += 1
+                else:
+                    other_rejected += 1
 
         added = sum(
             1
@@ -82,12 +115,17 @@ class PaperTradingEngine:
             if result.get("success")
         )
 
-        rejected = len(results) - added
-
         return {
             "attempted": len(ready_signals),
             "added": added,
-            "rejected": rejected,
+            "rejected": (
+                already_open
+                + already_pending
+                + other_rejected
+            ),
+            "already_open": already_open,
+            "already_pending": already_pending,
+            "other_rejected": other_rejected,
             "results": results,
         }
 

@@ -1,6 +1,13 @@
 from ib_insync import IB
 
 
+SEARCH_SYMBOLS = [
+    "CCL",
+    "EMP",
+    "GIB",
+]
+
+
 ib = IB()
 
 try:
@@ -12,20 +19,29 @@ try:
         timeout=10,
     )
 
-    matches = ib.reqMatchingSymbols("TECK")
+    for search_symbol in SEARCH_SYMBOLS:
+        print()
+        print("#" * 72)
+        print(f"SEARCH: {search_symbol}")
+        print("#" * 72)
 
-    for match in matches:
-        contract = match.contract
+        matches = ib.reqMatchingSymbols(search_symbol)
 
-        print("=" * 70)
-        print("Symbol          :", contract.symbol)
-        print("Local Symbol    :", contract.localSymbol)
-        print("Trading Class   :", contract.tradingClass)
-        print("Security Type   :", contract.secType)
-        print("Primary Exchange:", contract.primaryExchange)
-        print("Currency        :", contract.currency)
-        print("Description     :", match.derivativeSecTypes)
-        print("ConId           :", contract.conId)
+        for match in matches:
+            contract = match.contract
+
+            if (
+                contract.secType == "STK"
+                and contract.primaryExchange == "TSE"
+                and contract.currency == "CAD"
+            ):
+                print("=" * 70)
+                print("Symbol          :", contract.symbol)
+                print("Local Symbol    :", contract.localSymbol)
+                print("Trading Class   :", contract.tradingClass)
+                print("Primary Exchange:", contract.primaryExchange)
+                print("Currency        :", contract.currency)
+                print("ConId           :", contract.conId)
 
 finally:
     ib.disconnect()

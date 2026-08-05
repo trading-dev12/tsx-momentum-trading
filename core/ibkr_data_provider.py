@@ -21,9 +21,11 @@ IBKR_CLIENT_ID = 11
 IBKR_QUOTE_WAIT_SECONDS = 2.0
 
 IBKR_SYMBOL_ALIASES = {
+    "CCL-B.TO": "CCL.B",
+    "EMP-A.TO": "EMP.A",
+    "GIB-A.TO": "GIB.A",
     "TECK-B.TO": "TECK.B",
 }
-
 
 class IBKRDataProvider:
     """

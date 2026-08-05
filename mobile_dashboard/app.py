@@ -57,6 +57,33 @@ LATEST_PRICES_FILE = (
     / "latest_prices.json"
 )
 
+
+def count_pending_trades(file_path: Path) -> int:
+    """
+    Count rows marked PENDING in one pending-trades CSV file.
+    """
+
+    if not file_path.exists():
+        return 0
+
+    try:
+        with file_path.open(
+            "r",
+            encoding="utf-8-sig",
+            newline="",
+        ) as csv_file:
+            reader = csv.DictReader(csv_file)
+
+            return sum(
+                1
+                for row in reader
+                if str(
+                    row.get("status", "")
+                ).strip().upper() == "PENDING"
+            )
+
+    except (OSError, csv.Error):
+        return 0
 @app.get("/manifest.json")
 def manifest():
     return jsonify(

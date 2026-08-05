@@ -66,7 +66,7 @@ class TradingWorkstation:
         self.start_mobile_dashboard()
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
 
-        self.refresh_interval_seconds = 300
+        self.refresh_interval_seconds = 60
         self.countdown_seconds = self.refresh_interval_seconds
         self.is_refreshing = False
         self.refresh_timeout_ms = 240_000

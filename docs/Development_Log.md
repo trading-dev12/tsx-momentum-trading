@@ -3681,3 +3681,39 @@ momentum accuracy
 breakout detection
 RVOL calculations
 future execution reliability
+## 2026-08-06 — IBKR Historical Data and Opening-Price Validation
+
+### Completed
+
+- Added `IBKRDataProvider.get_historical_bars()`.
+- Confirmed IBKR historical one-minute TSX bars can be retrieved through TWS.
+- Retrieved 780 regular-session one-minute bars for PAAS.TO across two trading days.
+- Confirmed returned bars include timezone-aware timestamps and OHLCV data.
+- Added `IBKRDataProvider.get_market_open_price()`.
+- Confirmed the exact 2026-08-05 PAAS.TO regular-session opening price was returned as `$66.41`.
+- Added independent test tools:
+  - `tools/test_ibkr_historical_bars.py`
+  - `tools/test_ibkr_market_open.py`
+
+### Validation Results
+
+- Historical-bar test: PASS
+- IBKR market-open test: PASS
+- Returned price source: `IBKR_ONE_MINUTE_OPEN`
+- Existing live scanner and strategy logic were not changed.
+
+### Current Architecture
+
+- IBKR is the primary live scanner quote provider.
+- Yahoo remains the current paper-execution opening-price provider.
+- IBKR historical and opening-price capabilities are now independently proven and ready for controlled integration.
+
+### Next Step
+
+Update `paper_trading/opening_price.py` to use this priority:
+
+1. IBKR one-minute regular-session opening price
+2. Yahoo one-minute opening price fallback
+3. Yahoo exact daily opening price fallback
+
+IBKR failures must return a structured result and allow Yahoo fallback rather than interrupting automatic paper execution.

@@ -711,3 +711,30 @@ Live Broker Execution: 0% (next major phase)
 Overall Phase 1 completion: ~95%.
 
 I think today's milestone deserves to be highlighted in your documentation. Months from now, you'll likely look back at August 5, 2026 as the day Northstar transitioned from a delayed-data research platform into a live market intelligence system.
+## IBKR Market Data Phase 2 — Historical and Execution Pricing
+
+### Completed
+
+- [x] Add reusable IBKR historical-bar retrieval
+- [x] Validate TSX one-minute regular-session bars
+- [x] Add IBKR exact market-opening-price lookup
+- [x] Validate PAAS.TO opening price against the first 09:30 IBKR bar
+- [x] Preserve existing paper-execution behavior during capability testing
+
+### Next Implementation
+
+- [ ] Make IBKR the primary opening-price provider in `paper_trading/opening_price.py`
+- [ ] Preserve Yahoo one-minute data as the first fallback
+- [ ] Preserve Yahoo exact daily data as the final fallback
+- [ ] Return structured IBKR failure results without stopping execution
+- [ ] Add automated tests for IBKR success and fallback behavior
+- [ ] Run end-to-end pending-trade execution validation
+- [ ] Record the selected price source in execution results and journals
+
+### Later Work
+
+- [ ] Migrate the morning observation recorder to IBKR intraday bars
+- [ ] Evaluate IBKR daily bars for EOD signal generation
+- [ ] Add historical-request pacing and retry controls
+- [ ] Add historical-data latency and availability diagnostics
+- [ ] Continue using Yahoo where it provides a measurable resilience benefit

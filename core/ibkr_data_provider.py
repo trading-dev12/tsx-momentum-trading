@@ -326,8 +326,84 @@ class IBKRDataProvider:
 
         return quotes_by_symbol, errors_by_symbol
 
+    def get_historical_bars(
+        self,
+        symbol: str,
+        duration: str,
+        bar_size: str,
+        use_rth: bool = True,
+    ):
+        """
+        Retrieve historical bars from IBKR.
 
+        Returns the raw ib_insync BarDataList so callers
+        can interpret the data as needed.
+        """
 
+        self.connect()
+
+        contract = self.build_tsx_contract(symbol)
+
+        qualified = self.ib.qualifyContracts(contract)
+
+        if not qualified:
+            raise ValueError(
+                f"IBKR could not qualify contract for {symbol}."
+            )
+
+        return self.ib.reqHistoricalData(
+            contract,
+            endDateTime="",
+            durationStr=duration,
+            barSizeSetting=bar_size,
+            whatToShow="TRADES",
+            useRTH=use_rth,
+            formatDate=1,
+            keepUpToDate=False,
+        )
+
+    def get_market_open_price(
+        self,
+        symbol: str,
+        trading_date,
+    ):
+        """
+        Return the first regular-session opening price for one
+        trading day using IBKR historical minute bars.
+        """
+
+        requested_date = str(trading_date)
+
+        bars = self.get_historical_bars(
+            symbol=symbol,
+            duration="2 D",
+            bar_size="1 min",
+            use_rth=True,
+        )
+
+        for bar in bars:
+            bar_date = str(bar.date)[:10]
+
+            if bar_date != requested_date:
+                continue
+
+            return {
+                "success": True,
+                "symbol": symbol,
+                "trading_date": requested_date,
+                "open_price": float(bar.open),
+                "price_source": "IBKR_ONE_MINUTE_OPEN",
+            }
+
+        return {
+            "success": False,
+            "symbol": symbol,
+            "trading_date": requested_date,
+            "message": (
+                "No IBKR opening price available for "
+                f"{requested_date}."
+            ),
+        }
 
 def get_ibkr_quote(symbol: str) -> dict[str, Any]:
     """

@@ -57,6 +57,13 @@ LATEST_PRICES_FILE = (
     / "latest_prices.json"
 )
 
+SCANNER_HEALTH_FILE = (
+    PROJECT_ROOT
+    / "data"
+    / "runtime"
+    / "scanner_health.json"
+)
+
 
 def count_pending_trades(file_path: Path) -> int:
     """
@@ -389,7 +396,68 @@ def dashboard():
     portfolio_file_health = file_status(
         PORTFOLIO_STATE_FILE
     )
+    scanner_status = "OFFLINE"
+    scanner_worker = "--"
+    scanner_last_refresh = "--"
+    scanner_refresh_id = "--"
+    scanner_heartbeat_age_seconds = None
 
+    try:
+        scanner_health = load_json_file(
+            SCANNER_HEALTH_FILE
+        )
+
+        scanner_worker = scanner_health.get(
+            "worker",
+            "--",
+        )
+
+        scanner_last_refresh = scanner_health.get(
+            "last_successful_refresh",
+            "--",
+        )
+
+        scanner_refresh_id = scanner_health.get(
+            "refresh_id",
+            "--",
+        )
+
+        heartbeat_text = scanner_health.get(
+            "heartbeat",
+            "",
+        )
+
+        if heartbeat_text:
+            heartbeat_time = datetime.fromisoformat(
+                heartbeat_text
+            )
+
+            scanner_heartbeat_age_seconds = max(
+                0,
+                int(
+                    (
+                        datetime.now()
+                        - heartbeat_time
+                    ).total_seconds()
+                ),
+            )
+
+            if scanner_heartbeat_age_seconds <= 600:
+                scanner_status = scanner_health.get(
+                    "status",
+                    "RUNNING",
+                )
+            else:
+                scanner_status = "STALE"
+
+    except (
+        OSError,
+        ValueError,
+        TypeError,
+        json.JSONDecodeError,
+    ):
+
+        scanner_status = "OFFLINE"
     pending_file_health = file_status(
         PENDING_TRADES_FILE
     )
@@ -1600,7 +1668,38 @@ def dashboard():
                             {portfolio_file_health["text"]}
                         </div>
                     </div>
+                    <div class="health-item">
+                        <div class="health-label">
+                            Scanner Status
+                        </div>
 
+                    <div class="
+                        health-value
+                        {status_class(scanner_status)}
+                    ">
+                        {scanner_status}
+                    </div>
+                </div>
+
+                <div class="health-item">
+                    <div class="health-label">
+                        Last Scanner Refresh
+                    </div>
+
+                <div class="health-value">
+                    {scanner_last_refresh}
+                </div>
+            </div>
+
+            <div class="health-item">
+                <div class="health-label">
+                    Scanner Worker
+                </div>
+
+                <div class="health-value">
+                    {scanner_worker}
+                </div>
+            </div>
                     <div class="health-item">
                         <div class="health-label">
                             Automatic EOD State
@@ -1692,17 +1791,13 @@ def dashboard():
                     </div>
                 </div>
 
-                <div class="footer">
-                    Scanner-running status is not shown yet
-                    because no persistent scanner heartbeat
-                    currently exists.
+                 <div class="footer">
+                    Dashboard refreshed: {refreshed_at}
+                    | Auto-refreshes every 60 seconds
                 </div>
+
             </section>
 
-            <div class="footer">
-                Dashboard refreshed: {refreshed_at}
-                Ãƒâ€šÃ‚Â· Auto-refreshes every 60 seconds
-            </div>
     <script>
             if ("serviceWorker" in navigator) {{
                 window.addEventListener(

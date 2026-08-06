@@ -373,7 +373,7 @@ class TradingWorkstation:
             )
 
 
-    
+
 
         self.update_countdown()
 
@@ -388,6 +388,9 @@ class TradingWorkstation:
 
         self.active_refresh_id = refresh_id
         self.is_refreshing = True
+        self.write_scanner_health(
+            status="REFRESHING",
+        )
 
         logging.info(
             "Scanner refresh %s started",
@@ -562,6 +565,56 @@ class TradingWorkstation:
         thread = threading.Thread(target=worker)
         thread.daemon = True
         thread.start()
+
+    def write_scanner_health(
+        self,
+        status="RUNNING",
+    ):
+
+        """
+        Persist scanner heartbeat for the mobile dashboard.
+        """
+
+        runtime_folder = (
+            Path(__file__).resolve().parent.parent
+            / "data"
+            / "runtime"
+        )
+
+        runtime_folder.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+
+        health_file = (
+            runtime_folder
+            / "scanner_health.json"
+        )
+
+        heartbeat = {
+            "status": status,
+            "heartbeat": datetime.now().isoformat(),
+            "last_successful_refresh":
+                self.last_successful_refresh,
+            "refresh_id":
+                self.refresh_sequence,
+            "worker":
+                (
+                    "RUNNING"
+                    if self.is_refreshing
+                    else "IDLE"
+                ),
+        }
+
+        with health_file.open(
+            "w",
+            encoding="utf-8",
+        ) as file:
+            json.dump(
+                heartbeat,
+                file,
+                indent=4,
+            )
 
     def load_data(self, refresh_id):
         try:
@@ -1336,9 +1389,12 @@ class TradingWorkstation:
         self.last_successful_refresh = (
             datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         )
+        self.write_scanner_health(
+            status="RUNNING",
+        )
 
         self.check_ready_alerts(quotes)
-        
+
 
         for row in self.tree.get_children():
             self.tree.delete(row)
@@ -1470,7 +1526,13 @@ class TradingWorkstation:
         self.update_paper_portfolio_panel()
 
         self.countdown_seconds = self.refresh_interval_seconds
+
         self.is_refreshing = False
+
+        self.write_scanner_health(
+            status="RUNNING",
+        )
+
         self.refresh_button.config(
             state="normal",
             text="Refresh Scanner",

@@ -21,6 +21,9 @@ from notifications.telegram_notifier import send_telegram_message
 from core.config_loader import load_settings
 from core.watchlist_loader import load_all_watchlists
 from core.market_data import get_quotes
+from core.connectivity_monitor import (
+    check_internet_connectivity,
+)
 from core.market_context import score_market_context
 from paper_trading.paper_engine import PaperTradingEngine
 from paper_trading.automatic_execution import (
@@ -2683,7 +2686,74 @@ class TradingWorkstation:
             session,
         )
 
-    def update_countdown(self):
+    def start_connectivity_check_if_due(self):
+        """
+        Run the external internet check in a background thread.
+
+        The GUI loop runs every second, but connectivity is checked
+        at most once every 30 seconds so a slow network response
+        cannot freeze the workstation.
+        """
+
+        if getattr(
+            self,
+            "connectivity_check_in_flight",
+            False,
+        ):
+            return
+
+        now = datetime.now()
+
+        last_started = getattr(
+            self,
+            "last_connectivity_check_started",
+            None,
+        )
+
+        if last_started is not None:
+            elapsed_seconds = (
+                now - last_started
+            ).total_seconds()
+
+            if elapsed_seconds < 30:
+                return
+
+        self.connectivity_check_in_flight = True
+        self.last_connectivity_check_started = now
+
+        def worker():
+            try:
+                result = (
+                    check_internet_connectivity()
+                )
+
+                self.internet_connectivity_result = (
+                    result
+                )
+
+            except Exception as error:
+                logging.exception(
+                    "Internet connectivity check failed"
+                )
+
+                self.internet_connectivity_result = {
+                    "online": None,
+                    "reachable_target": None,
+                    "failures": [],
+                    "error": str(error),
+                }
+
+            finally:
+                self.connectivity_check_in_flight = (
+                    False
+                )
+
+        threading.Thread(
+            target=worker,
+            daemon=True,
+        ).start()
+
+def update_countdown(self):
         try:
             now = datetime.now()
             heartbeat = now.strftime("%H:%M:%S")
@@ -2694,6 +2764,30 @@ class TradingWorkstation:
                 now,
                 session,
             )
+
+            self.start_connectivity_check_if_due()
+
+            connectivity_result = getattr(
+                self,
+                "internet_connectivity_result",
+                None,
+            )
+
+            if connectivity_result is None:
+                internet_status = "CHECKING"
+
+            elif connectivity_result.get(
+                "online"
+            ) is True:
+                internet_status = "ONLINE"
+
+            elif connectivity_result.get(
+                "online"
+            ) is False:
+                internet_status = "OFFLINE"
+
+            else:
+                internet_status = "UNKNOWN"
 
             refresh_id = (
                 self.active_refresh_id
@@ -2707,12 +2801,16 @@ class TradingWorkstation:
                 else "IDLE"
             )
 
-            last_success = self.last_successful_refresh or "--"
+            last_success = (
+                self.last_successful_refresh
+                or "--"
+            )
 
             diagnostics = (
                 f"Heartbeat: {heartbeat} | "
                 f"Refresh ID: {refresh_id} | "
                 f"Worker: {worker_state} | "
+                f"Internet: {internet_status} | "
                 f"Last Success: {last_success} | "
                 f"Countdown: {self.countdown_seconds}s"
             )
@@ -2724,12 +2822,21 @@ class TradingWorkstation:
                 )
 
             elif not session["is_open"]:
-                self.countdown_seconds = self.refresh_interval_seconds
+                self.countdown_seconds = (
+                    self.refresh_interval_seconds
+                )
 
                 status = (
                     f"{diagnostics} | "
                     "Automatic scanning: PAUSED | "
                     f"{session['message']}"
+                )
+
+            elif internet_status == "OFFLINE":
+                status = (
+                    f"{diagnostics} | "
+                    "Internet outage detected | "
+                    "Automatic recovery monitoring: ON"
                 )
 
             else:
@@ -2738,9 +2845,14 @@ class TradingWorkstation:
                     "Auto-refresh: ON"
                 )
 
-            self.status_label.config(text=status)
+            self.status_label.config(
+                text=status
+            )
 
-            if session["is_open"] and not self.is_refreshing:
+            if (
+                session["is_open"]
+                and not self.is_refreshing
+            ):
                 self.countdown_seconds -= 1
 
                 if self.countdown_seconds <= 0:
@@ -2748,16 +2860,19 @@ class TradingWorkstation:
 
         except Exception:
             logging.exception(
-                "Countdown and automatic refresh loop encountered an error"
+                "Countdown and automatic refresh "
+                "loop encountered an error"
             )
 
             try:
                 self.status_label.config(
                     text=(
-                        "Automatic refresh recovered from an error. "
+                        "Automatic refresh recovered "
+                        "from an error. "
                         "See log for details."
                     )
                 )
+
             except tk.TclError:
                 return
 
@@ -2767,9 +2882,11 @@ class TradingWorkstation:
                     1000,
                     self.update_countdown,
                 )
+
             except tk.TclError:
                 pass
-    def format_percent(self, value):
+
+def format_percent(self, value):
         if value is None:
             return "N/A"
         return f"{value}%"

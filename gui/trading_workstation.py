@@ -24,6 +24,13 @@ from core.market_data import get_quotes
 from core.connectivity_monitor import (
     check_internet_connectivity,
 )
+from core.connectivity_state import (
+    record_connectivity_status,
+)
+from core.connectivity_recovery_alert import (
+    save_pending_recovery_alert,
+    try_send_pending_recovery_alert,
+)
 from core.market_context import score_market_context
 from paper_trading.paper_engine import PaperTradingEngine
 from paper_trading.automatic_execution import (
@@ -2690,9 +2697,9 @@ class TradingWorkstation:
         """
         Run the external internet check in a background thread.
 
-        The GUI loop runs every second, but connectivity is checked
-        at most once every 30 seconds so a slow network response
-        cannot freeze the workstation.
+        Connectivity is checked at most once every 30 seconds.
+        Outage state is persisted locally and recovery Telegram
+        notifications are retried until successfully delivered.
         """
 
         if getattr(
@@ -2731,6 +2738,56 @@ class TradingWorkstation:
                     result
                 )
 
+                online = result.get(
+                    "online"
+                )
+
+                if not isinstance(
+                    online,
+                    bool,
+                ):
+                    return
+
+                try:
+                    transition = (
+                        record_connectivity_status(
+                            online
+                        )
+                    )
+
+                    self.internet_connectivity_transition = (
+                        transition
+                    )
+
+                    if (
+                        transition.get(
+                            "transition"
+                        )
+                        == "RECOVERED"
+                    ):
+                        save_pending_recovery_alert(
+                            transition
+                        )
+
+                    if online:
+                        alert_result = (
+                            try_send_pending_recovery_alert()
+                        )
+
+                        self.connectivity_recovery_alert_result = (
+                            alert_result
+                        )
+
+                except Exception as error:
+                    logging.exception(
+                        "Connectivity transition handling "
+                        "failed"
+                    )
+
+                    self.connectivity_transition_error = (
+                        str(error)
+                    )
+
             except Exception as error:
                 logging.exception(
                     "Internet connectivity check failed"
@@ -2752,6 +2809,7 @@ class TradingWorkstation:
             target=worker,
             daemon=True,
         ).start()
+
 
     def update_countdown(self):
         try:

@@ -271,7 +271,6 @@ def status_class(status):
 
     return "health-fail"
 
-
 @app.get("/")
 def dashboard():
     """
@@ -432,17 +431,24 @@ def dashboard():
         if heartbeat_text:
             heartbeat_time = datetime.fromisoformat(
                 heartbeat_text
-        )
+            )
 
-        scanner_heartbeat_age_seconds = max(
-            0,
-            int(
-                (
-                    datetime.now()
-                    - heartbeat_time
-                ).total_seconds()
-            ),
-        )
+            if heartbeat_time.tzinfo is None:
+                current_time = datetime.now()
+            else:
+                current_time = datetime.now(
+                    heartbeat_time.tzinfo
+                )
+
+            scanner_heartbeat_age_seconds = max(
+                0,
+                int(
+                    (
+                        current_time
+                        - heartbeat_time
+                    ).total_seconds()
+                ),
+            )
 
         if not scanner_session["is_open"]:
             scanner_status = "MARKET CLOSED"

@@ -17,6 +17,7 @@ FIELDNAMES = [
     "entry_date",
     "exit_date",
     "entry_price",
+    "price_source",
     "exit_price",
     "shares",
     "stop_price",

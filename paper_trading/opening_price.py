@@ -16,6 +16,11 @@ from datetime import date, datetime, timedelta
 
 import yfinance as yf
 
+from core.ibkr_data_provider import IBKRDataProvider
+
+IBKR_OPENING_PRICE_CLIENT_ID = 15
+
+
 
 def normalize_symbol(symbol):
     """
@@ -112,6 +117,42 @@ def find_matching_open(history, requested_date):
 
     return None
 
+def get_ibkr_open_price(
+    symbol,
+    requested_date,
+):
+    """
+    Retrieve the exact regular-session opening price from IBKR.
+
+    IBKR failure is returned as structured data so Yahoo
+    fallback processing can continue normally.
+    """
+
+    provider = IBKRDataProvider(
+        client_id=IBKR_OPENING_PRICE_CLIENT_ID,
+    )
+
+    try:
+        result = provider.get_market_open_price(
+            symbol,
+            requested_date,
+        )
+
+    except Exception as exc:
+        return {
+            "success": False,
+            "symbol": symbol,
+            "trading_date": requested_date.isoformat(),
+            "message": (
+                "IBKR opening price unavailable: "
+                f"{exc}"
+            ),
+        }
+
+    finally:
+        provider.disconnect()
+
+    return result
 
 def get_intraday_open_price(
     yahoo_symbol,
@@ -177,9 +218,10 @@ def get_market_open_price(symbol, trading_date):
     """
     Return the first available opening price for the exact date.
 
-    Recent-date priority:
-        1. First regular-session one-minute candle
-        2. Exact daily candle
+    Price-source priority:
+        1. IBKR first regular-session one-minute candle
+        2. Yahoo first regular-session one-minute candle
+        3. Yahoo exact daily candle
 
     Weekend, holiday, missing-date, and unavailable-price
     requests return success=False.
@@ -188,6 +230,26 @@ def get_market_open_price(symbol, trading_date):
     yahoo_symbol = normalize_symbol(symbol)
     requested_date = normalize_date(trading_date)
     requested_date_text = requested_date.isoformat()
+
+    ibkr_result = get_ibkr_open_price(
+        yahoo_symbol,
+        requested_date,
+    )
+
+    if ibkr_result.get("success"):
+        return {
+            "success": True,
+            "symbol": yahoo_symbol,
+            "trading_date": requested_date_text,
+            "open_price": round(
+                float(ibkr_result["open_price"]),
+                4,
+            ),
+            "price_source": ibkr_result.get(
+                "price_source",
+                "IBKR_ONE_MINUTE_OPEN",
+            ),
+        }
 
     open_price = get_intraday_open_price(
         yahoo_symbol,

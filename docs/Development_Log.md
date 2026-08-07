@@ -3717,3 +3717,102 @@ Update `paper_trading/opening_price.py` to use this priority:
 3. Yahoo exact daily opening price fallback
 
 IBKR failures must return a structured result and allow Yahoo fallback rather than interrupting automatic paper execution.
+
+## 2026-08-07 — IBKR Paper-Execution Pricing Integration Complete
+
+### Summary
+
+Completed controlled integration of IBKR opening-price data into Northstar automatic paper-trade execution.
+
+IBKR is now the primary opening-price provider for next-day paper execution, with Yahoo retained as a resilient fallback.
+
+### Completed
+
+- Updated `paper_trading/opening_price.py` to use the following price-source priority:
+  1. IBKR first regular-session one-minute opening price
+  2. Yahoo first regular-session one-minute opening price
+  3. Yahoo exact daily opening price
+- Added dedicated IBKR client ID `15` for paper-execution opening-price requests.
+- Preserved structured, nonfatal IBKR failure handling so Yahoo fallback continues automatically.
+- Confirmed live IBKR opening price for PAAS.TO on 2026-08-05:
+  - Opening price: `$66.41`
+  - Price source: `IBKR_ONE_MINUTE_OPEN`
+- Confirmed forced IBKR failure correctly falls back to Yahoo one-minute data.
+- Completed isolated end-to-end pending-trade execution validation using temporary portfolio, pending-trade, and journal files.
+- Confirmed execution path:
+  - pending READY trade
+  - opening-price provider
+  - IBKR opening price
+  - ATR stop and target calculation
+  - fixed-risk position sizing
+  - portfolio position creation
+  - pending-trade removal
+- Confirmed no live validation portfolio, pending queue, or 200-trade journal was contaminated by testing.
+
+### Price-Source Provenance
+
+Added persistent `price_source` tracking through the complete trade lifecycle.
+
+The selected opening-price source is now recorded in:
+
+- automatic execution result
+- open portfolio position
+- closed trade
+- paper-trade journal
+
+Validated full provenance path:
+
+`IBKR -> execution result -> open position -> closed trade -> journal`
+
+Test result:
+
+- Execution price: `$66.41`
+- Execution source: `IBKR_ONE_MINUTE_OPEN`
+- Open-position source: `IBKR_ONE_MINUTE_OPEN`
+- Closed-trade source: `IBKR_ONE_MINUTE_OPEN`
+- Journal source: `IBKR_ONE_MINUTE_OPEN`
+
+Existing historical journal rows remain preserved. Historical trades that predate price-source tracking receive a blank `price_source` field.
+
+### Automated Testing
+
+Added `test_opening_price.py` coverage for:
+
+- IBKR primary opening-price selection
+- Yahoo one-minute fallback
+- Yahoo daily fallback
+- price-source persistence through execution and journal writing
+
+Validation results:
+
+- Opening-price tests: `4 passed`
+- Full Northstar regression suite: `21 passed`
+- One existing `eventkit` deprecation warning remains nonfatal and unrelated to this integration.
+
+### Strategy Integrity
+
+No Momentum strategy rules were changed.
+
+The integration does not modify:
+
+- TMQS logic
+- READY/WATCH/IGNORE rules
+- ATR multiplier
+- reward multiplier
+- maximum hold period
+- position-risk rules
+- entry or exit strategy logic
+
+This change improves execution-data quality and auditability while preserving the integrity of the ongoing 200-trade validation.
+
+### Current Architecture
+
+- IBKR: primary live scanner quote provider
+- IBKR: primary next-day paper-execution opening-price provider
+- Yahoo one-minute data: first execution-price fallback
+- Yahoo daily data: final execution-price fallback
+- Yahoo historical data: retained where it continues to provide resilience or historical analytics
+
+### Status
+
+IBKR historical-data and paper-execution pricing integration is now functionally complete and regression-tested.

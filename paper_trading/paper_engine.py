@@ -202,6 +202,7 @@ class PaperTradingEngine:
                 symbol=symbol,
                 entry_price=price_result["open_price"],
                 entry_date=execution_date,
+                price_source=price_result.get("price_source", ""),
                 atr_multiplier=atr_multiplier,
                 reward_multiplier=reward_multiplier,
                 max_hold_days=max_hold_days,
@@ -215,6 +216,10 @@ class PaperTradingEngine:
                 "symbol": symbol,
                 "entry_date": execution_date,
                 "entry_price": price_result["open_price"],
+                "price_source": price_result.get(
+                    "price_source",
+                    "",
+                ),
                 "status": (
                     "EXECUTED"
                     if execution_result.get("success")
@@ -222,11 +227,12 @@ class PaperTradingEngine:
                 ),
                 "message": execution_result.get(
                     "message",
-                    "",
+                    "Trade execution failed.",
                 ),
+
             }
 
-            results.append(result)
+        results.append(result)
 
         executed = sum(
             1
@@ -267,6 +273,7 @@ class PaperTradingEngine:
         symbol,
         entry_price,
         entry_date,
+        price_source="",
         atr_multiplier=2.0,
         reward_multiplier=2.5,
         max_hold_days=10,
@@ -345,6 +352,7 @@ class PaperTradingEngine:
             "signal_date": pending_trade["signal_date"],
             "entry_date": entry_date,
             "entry_price": entry_price,
+            "price_source": price_source,
             "shares": shares,
             "stop_price": stop_price,
             "target_price": target_price,

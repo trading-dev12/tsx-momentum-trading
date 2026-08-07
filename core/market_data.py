@@ -436,15 +436,20 @@ def get_live_quote(symbol, live_quote=None):
         print(f"Skipping {symbol}: {error}")
         return None
 
-
 def get_quotes(watchlist):
     """
     Retrieve one batch of live IBKR quotes and build full
     scanner records.
 
-    Yahoo live data is used only if IBKR is unavailable or an
-    individual IBKR quote fails.
+    IBKR is attempted up to three times so temporary TWS,
+    API, or connectivity interruptions can recover without
+    requiring the scanner to be restarted.
+
+    Yahoo live data remains the fallback when IBKR is
+    unavailable after all retry attempts.
     """
+
+    from time import sleep
 
     symbols = list(watchlist)
     quotes = []
@@ -452,42 +457,91 @@ def get_quotes(watchlist):
     ibkr_quotes = {}
     ibkr_errors = {}
 
-    provider = IBKRDataProvider(client_id=14)
+    max_ibkr_attempts = 3
+    retry_delay_seconds = 2
 
-    try:
-        ibkr_quotes, ibkr_errors = provider.get_quotes(
-            symbols
+    for attempt in range(
+        1,
+        max_ibkr_attempts + 1,
+    ):
+        provider = IBKRDataProvider(
+            client_id=14
         )
 
-        print(
-            "IBKR live quote batch: "
-            f"{len(ibkr_quotes)}/{len(symbols)} received."
-        )
-
-        if ibkr_errors:
+        try:
             print(
-                "IBKR individual quote fallbacks: "
-                f"{len(ibkr_errors)}"
+                "IBKR live quote attempt "
+                f"{attempt}/{max_ibkr_attempts}..."
             )
 
-    except Exception as error:
-        print(
-            "IBKR batch unavailable. "
-            f"Using Yahoo live fallback: {error}"
-        )
-        ibkr_quotes = {}
+            (
+                ibkr_quotes,
+                ibkr_errors,
+            ) = provider.get_quotes(
+                symbols
+            )
 
-    finally:
-        provider.disconnect()
+            if ibkr_quotes or not symbols:
+                print(
+                    "IBKR live quote batch: "
+                    f"{len(ibkr_quotes)}/"
+                    f"{len(symbols)} received."
+                )
+
+                if ibkr_errors:
+                    print(
+                        "IBKR individual quote "
+                        "fallbacks: "
+                        f"{len(ibkr_errors)}"
+                    )
+
+                break
+
+            print(
+                "IBKR returned no usable live "
+                "quotes."
+            )
+
+        except Exception as error:
+            print(
+                "IBKR live quote attempt "
+                f"{attempt} failed: {error}"
+            )
+
+            ibkr_quotes = {}
+
+        finally:
+            provider.disconnect()
+
+        if attempt < max_ibkr_attempts:
+            print(
+                "Retrying IBKR live data in "
+                f"{retry_delay_seconds} seconds..."
+            )
+
+            sleep(
+                retry_delay_seconds
+            )
+
+    if not ibkr_quotes and symbols:
+        print(
+            "IBKR unavailable after "
+            f"{max_ibkr_attempts} attempts. "
+            "Using Yahoo live fallback."
+        )
 
     for symbol in symbols:
         quote = get_live_quote(
             symbol,
-            live_quote=ibkr_quotes.get(symbol),
+            live_quote=ibkr_quotes.get(
+                symbol
+            ),
         )
 
         if quote is not None:
-            quotes.append(quote)
+            quotes.append(
+                quote
+            )
 
     decision_rank = {
         "READY": 3,

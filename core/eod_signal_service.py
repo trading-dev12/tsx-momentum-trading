@@ -19,9 +19,11 @@ import yfinance as yf
 from backtesting.strategy import evaluate_historical_setup
 from backtesting.trade_simulator import calculate_atr
 from core.market_hours import (
-    MARKET_CLOSE_TIME,
     TORONTO_TIMEZONE,
+    get_tsx_market_close_time,
+    is_tsx_trading_day,
 )
+
 from core.watchlist_loader import load_all_watchlists
 
 
@@ -61,8 +63,8 @@ def is_daily_candle_complete(
     Previous calendar dates are complete.
 
     Today's candle is complete only when:
-    - today is Monday through Friday; and
-    - Toronto time is 4:00 PM or later.
+    - today is a TSX trading day; and
+    - Toronto time is at or after that day's TSX close.
 
     Future dates are never complete.
     """
@@ -79,15 +81,20 @@ def is_daily_candle_complete(
     if row_date > today:
         return False
 
-    if current_datetime.weekday() >= 5:
+    if not is_tsx_trading_day(today):
         return False
 
     current_time = (
-        current_datetime.time().replace(tzinfo=None)
+        current_datetime.time().replace(
+            tzinfo=None
+        )
     )
 
-    return current_time >= MARKET_CLOSE_TIME
+    market_close_time = get_tsx_market_close_time(
+        today
+    )
 
+    return current_time >= market_close_time
 
 def download_watchlist_history(
     watchlist,

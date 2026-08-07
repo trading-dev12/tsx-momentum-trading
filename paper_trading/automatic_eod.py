@@ -10,7 +10,7 @@ block the Trading Workstation.
 """
 
 from utilities.backup_manager import create_backup
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 import json
 import os
 from pathlib import Path
@@ -19,6 +19,7 @@ import threading
 from core.eod_signal_service import scan_eod_signals
 from core.market_hours import (
     TORONTO_TIMEZONE,
+    get_tsx_market_close_time,
     is_tsx_trading_day,
 )
 from notifications.telegram_notifier import send_telegram_message
@@ -39,7 +40,7 @@ from paper_trading.trading_pipeline_validator import (
 from paper_trading.signal_journal import record_ready_signals
 
 AUTO_EOD_STATE_FILE = "automatic_eod_state.json"
-AUTO_EOD_START_TIME = time(16, 5)
+AUTO_EOD_DELAY_MINUTES = 5
 DEFAULT_CHECK_SECONDS = 60
 
 
@@ -117,32 +118,46 @@ def should_run_automatic_eod(
     state_file=AUTO_EOD_STATE_FILE,
 ):
     """
-    Return True only once per weekday after the TSX closes.
+    Return True only once per TSX trading day,
+    five minutes after that day's market close.
     """
 
     current_datetime = normalize_current_datetime(
         current_datetime
     )
 
+    current_date = current_datetime.date()
+
     if not is_tsx_trading_day(
-    current_datetime.date()
-):
+        current_date
+    ):
         return False
 
-    current_time = (
-        current_datetime.time().replace(tzinfo=None)
+    market_close_time = get_tsx_market_close_time(
+        current_date
     )
 
-    if current_time < AUTO_EOD_START_TIME:
+    automatic_eod_time = current_datetime.replace(
+        hour=market_close_time.hour,
+        minute=market_close_time.minute,
+        second=0,
+        microsecond=0,
+    ) + timedelta(
+        minutes=AUTO_EOD_DELAY_MINUTES
+    )
+
+    if current_datetime < automatic_eod_time:
         return False
 
-    current_date = current_datetime.date().isoformat()
+    current_date_text = (
+        current_date.isoformat()
+    )
 
     last_run_date = load_last_run_date(
         state_file=state_file,
     )
 
-    return last_run_date != current_date
+    return last_run_date != current_date_text
 
 def run_pipeline_validation(
     state_file=AUTO_EOD_STATE_FILE,

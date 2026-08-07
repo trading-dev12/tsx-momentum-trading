@@ -139,3 +139,44 @@ def test_automatic_eod_due_at_405(tmp_path):
     )
 
     assert should_run is True
+
+def test_automatic_eod_not_due_before_early_close_plus_5(
+    tmp_path,
+):
+    state_file = (
+        tmp_path / "automatic_eod_state.json"
+    )
+
+    should_run = should_run_automatic_eod(
+        current_datetime=datetime(
+            2026,
+            12,
+            24,
+            13,
+            4,
+        ),
+        state_file=str(state_file),
+    )
+
+    assert should_run is False
+
+
+def test_automatic_eod_due_at_early_close_plus_5(
+    tmp_path,
+):
+    state_file = (
+        tmp_path / "automatic_eod_state.json"
+    )
+
+    should_run = should_run_automatic_eod(
+        current_datetime=datetime(
+            2026,
+            12,
+            24,
+            13,
+            5,
+        ),
+        state_file=str(state_file),
+    )
+
+    assert should_run is True

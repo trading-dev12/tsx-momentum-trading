@@ -14,6 +14,7 @@ from datetime import datetime
 from pathlib import Path
 
 from flask import Flask, jsonify
+from core.market_hours import get_tsx_market_status
 
 from paper_trading.portfolio import PaperPortfolio
 
@@ -401,6 +402,7 @@ def dashboard():
     scanner_last_refresh = "--"
     scanner_refresh_id = "--"
     scanner_heartbeat_age_seconds = None
+    scanner_session = get_tsx_market_status()
 
     try:
         scanner_health = load_json_file(
@@ -430,25 +432,37 @@ def dashboard():
         if heartbeat_text:
             heartbeat_time = datetime.fromisoformat(
                 heartbeat_text
-            )
+        )
 
-            scanner_heartbeat_age_seconds = max(
-                0,
-                int(
-                    (
-                        datetime.now()
-                        - heartbeat_time
-                    ).total_seconds()
-                ),
-            )
+        scanner_heartbeat_age_seconds = max(
+            0,
+            int(
+                (
+                    datetime.now()
+                    - heartbeat_time
+                ).total_seconds()
+            ),
+        )
 
-            if scanner_heartbeat_age_seconds <= 600:
-                scanner_status = scanner_health.get(
-                    "status",
-                    "RUNNING",
-                )
+        if not scanner_session["is_open"]:
+            scanner_status = "MARKET CLOSED"
+
+            if scanner_session["status"] == "PRE-MARKET":
+                scanner_worker = "WAITING FOR MARKET OPEN"
             else:
-                scanner_status = "STALE"
+                scanner_worker = "SLEEPING (MARKET CLOSED)"
+
+        elif scanner_heartbeat_age_seconds is None:
+            scanner_status = "OFFLINE"
+
+        elif scanner_heartbeat_age_seconds <= 600:
+            scanner_status = scanner_health.get(
+                "status",
+                "RUNNING",
+            )
+
+        else:
+            scanner_status = "STALE"
 
     except (
         OSError,

@@ -6,6 +6,7 @@ target, or maximum holding-period rules are triggered.
 """
 
 from datetime import datetime, timedelta
+from core.market_hours import is_tsx_trading_day
 
 
 def count_trading_days(entry_date, current_date):
@@ -27,7 +28,7 @@ def count_trading_days(entry_date, current_date):
     day = entry
 
     while day <= current:
-        if day.weekday() < 5:
+        if is_tsx_trading_day(day):
             trading_days += 1
 
         day += timedelta(days=1)

@@ -31,6 +31,17 @@ from core.connectivity_recovery_alert import (
     save_pending_recovery_alert,
     try_send_pending_recovery_alert,
 )
+
+from core.ibkr_health_monitor import (
+    check_ibkr_tws_available,
+)
+from core.ibkr_health_state import (
+    record_ibkr_tws_status,
+)
+from core.ibkr_health_alert import (
+    queue_ibkr_health_alert,
+    try_send_pending_ibkr_alert,
+)
 from core.market_context import score_market_context
 from paper_trading.paper_engine import PaperTradingEngine
 from paper_trading.automatic_execution import (
@@ -2811,6 +2822,157 @@ class TradingWorkstation:
         ).start()
 
 
+
+    def start_ibkr_health_check_if_due(self):
+        """
+        Check local IBKR/TWS availability during the active
+        trading-day monitoring window.
+
+        TWS health is checked only while the public internet is
+        confirmed online. This keeps internet outages separate
+        from local TWS/API outages and avoids overnight alerts.
+        """
+
+        internet_result = getattr(
+            self,
+            "internet_connectivity_result",
+            None,
+        )
+
+        if (
+            not isinstance(
+                internet_result,
+                dict,
+            )
+            or internet_result.get(
+                "online"
+            )
+            is not True
+        ):
+            return
+
+        now = datetime.now()
+
+        if not is_tsx_trading_day(
+            now.date()
+        ):
+            return
+
+        minutes_now = (
+            now.hour * 60
+            + now.minute
+        )
+
+        monitoring_start = (
+            8 * 60
+            + 30
+        )
+
+        monitoring_end = (
+            16 * 60
+            + 15
+        )
+
+        if not (
+            monitoring_start
+            <= minutes_now
+            <= monitoring_end
+        ):
+            return
+
+        if getattr(
+            self,
+            "ibkr_health_check_in_flight",
+            False,
+        ):
+            return
+
+        last_started = getattr(
+            self,
+            "last_ibkr_health_check_started",
+            None,
+        )
+
+        if last_started is not None:
+            elapsed_seconds = (
+                now - last_started
+            ).total_seconds()
+
+            if elapsed_seconds < 30:
+                return
+
+        self.ibkr_health_check_in_flight = True
+        self.last_ibkr_health_check_started = now
+
+        def worker():
+            try:
+                result = (
+                    check_ibkr_tws_available()
+                )
+
+                self.ibkr_health_result = (
+                    result
+                )
+
+                available = result.get(
+                    "available"
+                )
+
+                if not isinstance(
+                    available,
+                    bool,
+                ):
+                    return
+
+                transition = (
+                    record_ibkr_tws_status(
+                        available
+                    )
+                )
+
+                self.ibkr_health_transition = (
+                    transition
+                )
+
+                if transition.get(
+                    "transition"
+                ) in (
+                    "TWS_DOWN",
+                    "TWS_RECOVERED",
+                ):
+                    queue_ibkr_health_alert(
+                        transition
+                    )
+
+                alert_result = (
+                    try_send_pending_ibkr_alert()
+                )
+
+                self.ibkr_health_alert_result = (
+                    alert_result
+                )
+
+            except Exception as error:
+                logging.exception(
+                    "IBKR/TWS health monitoring failed"
+                )
+
+                self.ibkr_health_result = {
+                    "available": None,
+                    "error": str(error),
+                }
+
+            finally:
+                self.ibkr_health_check_in_flight = (
+                    False
+                )
+
+        threading.Thread(
+            target=worker,
+            daemon=True,
+        ).start()
+
+
     def update_countdown(self):
         try:
             now = datetime.now()
@@ -2847,6 +3009,56 @@ class TradingWorkstation:
             else:
                 internet_status = "UNKNOWN"
 
+            self.start_ibkr_health_check_if_due()
+
+            minutes_now = (
+                now.hour * 60
+                + now.minute
+            )
+
+            ibkr_monitoring_active = (
+                is_tsx_trading_day(
+                    now.date()
+                )
+                and (
+                    8 * 60
+                    + 30
+                )
+                <= minutes_now
+                <= (
+                    16 * 60
+                    + 15
+                )
+            )
+
+            ibkr_result = getattr(
+                self,
+                "ibkr_health_result",
+                None,
+            )
+
+            if not ibkr_monitoring_active:
+                ibkr_status = "PAUSED"
+
+            elif internet_status != "ONLINE":
+                ibkr_status = "WAITING"
+
+            elif ibkr_result is None:
+                ibkr_status = "CHECKING"
+
+            elif ibkr_result.get(
+                "available"
+            ) is True:
+                ibkr_status = "AVAILABLE"
+
+            elif ibkr_result.get(
+                "available"
+            ) is False:
+                ibkr_status = "UNAVAILABLE"
+
+            else:
+                ibkr_status = "UNKNOWN"
+
             refresh_id = (
                 self.active_refresh_id
                 if self.active_refresh_id is not None
@@ -2869,6 +3081,7 @@ class TradingWorkstation:
                 f"Refresh ID: {refresh_id} | "
                 f"Worker: {worker_state} | "
                 f"Internet: {internet_status} | "
+                f"IBKR/TWS: {ibkr_status} | "
                 f"Last Success: {last_success} | "
                 f"Countdown: {self.countdown_seconds}s"
             )
@@ -2895,6 +3108,13 @@ class TradingWorkstation:
                     f"{diagnostics} | "
                     "Internet outage detected | "
                     "Automatic recovery monitoring: ON"
+                )
+
+            elif ibkr_status == "UNAVAILABLE":
+                status = (
+                    f"{diagnostics} | "
+                    "IBKR/TWS unavailable | "
+                    "Automatic reconnect monitoring: ON"
                 )
 
             else:
@@ -2943,6 +3163,7 @@ class TradingWorkstation:
 
             except tk.TclError:
                 pass
+
 
     def format_percent(self, value):
         if value is None:

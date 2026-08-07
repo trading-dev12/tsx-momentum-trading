@@ -39,6 +39,10 @@ from paper_trading.trading_pipeline_validator import (
 
 from paper_trading.signal_journal import record_ready_signals
 
+from paper_trading.eod_recovery import (
+    get_recoverable_eod_datetime,
+)
+
 AUTO_EOD_STATE_FILE = "automatic_eod_state.json"
 AUTO_EOD_DELAY_MINUTES = 5
 DEFAULT_CHECK_SECONDS = 60
@@ -669,6 +673,7 @@ def run_automatic_eod_cycle(
     return summary
 
 
+
 def automatic_eod_worker(
     paper_engine,
     breakout_52week_engine=None,
@@ -678,7 +683,11 @@ def automatic_eod_worker(
     live_snapshot_provider=None,
 ):
     """
-    Continuously check whether the daily EOD scan is due.
+    Continuously check whether an EOD scan is due.
+
+    The worker also reconciles the most recent missed TSX EOD
+    workflow when recovery is still safe before the next market
+    session begins.
     """
 
     if stop_event is None:
@@ -686,12 +695,45 @@ def automatic_eod_worker(
 
     while not stop_event.is_set():
         try:
-            run_automatic_eod_cycle(
+            current_datetime = (
+                normalize_current_datetime()
+            )
+
+            last_run_date = load_last_run_date()
+
+            recovery_datetime = (
+                get_recoverable_eod_datetime(
+                    current_datetime=current_datetime,
+                    last_run_date=last_run_date,
+                )
+            )
+
+            cycle_datetime = (
+                recovery_datetime
+                if recovery_datetime is not None
+                else current_datetime
+            )
+
+            result = run_automatic_eod_cycle(
                 paper_engine=paper_engine,
                 breakout_52week_engine=breakout_52week_engine,
                 mean_reversion_engine=mean_reversion_engine,
-                live_snapshot_provider=live_snapshot_provider,
-        )
+                current_datetime=cycle_datetime,
+                live_snapshot_provider=(
+                    live_snapshot_provider
+                ),
+            )
+
+            if (
+                recovery_datetime is not None
+                and result.get("status")
+                == "COMPLETED"
+            ):
+                print(
+                    "Recovered missed automatic EOD "
+                    f"workflow for "
+                    f"{recovery_datetime.date().isoformat()}."
+                )
 
         except Exception as error:
             print(
@@ -700,6 +742,7 @@ def automatic_eod_worker(
             )
 
         stop_event.wait(check_seconds)
+
 
 def start_automatic_eod_service(
     paper_engine,

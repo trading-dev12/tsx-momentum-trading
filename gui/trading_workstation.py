@@ -2753,7 +2753,7 @@ class TradingWorkstation:
             daemon=True,
         ).start()
 
-def update_countdown(self):
+    def update_countdown(self):
         try:
             now = datetime.now()
             heartbeat = now.strftime("%H:%M:%S")
@@ -2886,7 +2886,7 @@ def update_countdown(self):
             except tk.TclError:
                 pass
 
-def format_percent(self, value):
+    def format_percent(self, value):
         if value is None:
             return "N/A"
         return f"{value}%"

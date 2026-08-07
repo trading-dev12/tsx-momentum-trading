@@ -711,7 +711,7 @@ Live Broker Execution: 0% (next major phase)
 Overall Phase 1 completion: ~95%.
 
 I think today's milestone deserves to be highlighted in your documentation. Months from now, you'll likely look back at August 5, 2026 as the day Northstar transitioned from a delayed-data research platform into a live market intelligence system.
-## IBKR Market Data Phase 2 — Historical and Execution Pricing
+## IBKR Market Data Phase 2 - Historical and Execution Pricing
 
 ### Completed
 
@@ -723,13 +723,13 @@ I think today's milestone deserves to be highlighted in your documentation. Mont
 
 ### Next Implementation
 
-- [ ] Make IBKR the primary opening-price provider in `paper_trading/opening_price.py`
-- [ ] Preserve Yahoo one-minute data as the first fallback
-- [ ] Preserve Yahoo exact daily data as the final fallback
-- [ ] Return structured IBKR failure results without stopping execution
-- [ ] Add automated tests for IBKR success and fallback behavior
-- [ ] Run end-to-end pending-trade execution validation
-- [ ] Record the selected price source in execution results and journals
+- [x] Make IBKR the primary opening-price provider in `paper_trading/opening_price.py`
+- [x] Preserve Yahoo one-minute data as the first fallback
+- [x] Preserve Yahoo exact daily data as the final fallback
+- [x] Return structured IBKR failure results without stopping execution
+- [x] Add automated tests for IBKR success and fallback behavior
+- [x] Run end-to-end pending-trade execution validation
+- [x] Record the selected price source in execution results and journals
 
 ### Later Work
 
@@ -738,3 +738,40 @@ I think today's milestone deserves to be highlighted in your documentation. Mont
 - [ ] Add historical-request pacing and retry controls
 - [ ] Add historical-data latency and availability diagnostics
 - [ ] Continue using Yahoo where it provides a measurable resilience benefit
+## Scanner State Awareness (Dashboard Reliability)
+
+### Objective
+
+Improve the System Health dashboard so it reflects the actual operating state of Northstar rather than only the scanner heartbeat age.
+
+### Planned Improvements
+
+- [ ] Display **MARKET CLOSED** before the TSX opens and after it closes.
+- [ ] Display **RUNNING** only during active market scanning.
+- [ ] Display **STALE** only when the scanner heartbeat becomes overdue during market hours.
+- [ ] Display **OFFLINE** when the scanner process is not running.
+- [ ] Detect weekends and TSX market holidays and suppress false stale warnings.
+- [ ] Replace generic worker states with descriptive states:
+  - Waiting for Market Open
+  - Refreshing
+  - Idle
+  - Sleeping (Market Closed)
+- [ ] Display heartbeat age (for example: "Last refresh: 08:02:56 (18 seconds ago)").
+- [ ] Display next scheduled refresh time during market hours.
+- [ ] Continue using heartbeat monitoring to detect scanner freezes during active trading.
+
+### Long-Term Vision
+
+Expand the System Health panel into a complete operational dashboard showing:
+
+- Scanner Status
+- IBKR Connection
+- TWS Connection
+- Yahoo Backup Status
+- Telegram Status
+- Automatic Paper Execution Status
+- Automatic EOD Status
+- Pipeline Validation Status
+- Last Heartbeat
+- Refresh Duration
+- Next Scheduled Refresh

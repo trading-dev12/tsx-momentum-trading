@@ -780,6 +780,397 @@ def collect_shadow_candidates(
     return candidates
 
 
+
+def _numeric_bucket_member_indices(
+    trades,
+    field,
+    bucket_count=3,
+):
+    """
+    Return the journal row indices assigned to each numeric bucket.
+
+    This mirrors the rank-based bucketing used by
+    compare_numeric_factor().
+    """
+
+    eligible = []
+
+    for index, trade in enumerate(trades):
+        raw_value = str(
+            trade.get(field, "")
+        ).strip()
+
+        if not raw_value:
+            continue
+
+        try:
+            numeric_value = float(
+                raw_value
+            )
+        except (TypeError, ValueError):
+            continue
+
+        eligible.append(
+            (
+                index,
+                numeric_value,
+            )
+        )
+
+    if not eligible:
+        return {}
+
+    eligible.sort(
+        key=lambda item: item[1]
+    )
+
+    actual_bucket_count = min(
+        max(
+            int(bucket_count),
+            1,
+        ),
+        len(eligible),
+    )
+
+    if actual_bucket_count == 3:
+        labels = [
+            "LOW",
+            "MIDDLE",
+            "HIGH",
+        ]
+    else:
+        labels = [
+            f"BUCKET_{index + 1}"
+            for index in range(
+                actual_bucket_count
+            )
+        ]
+
+    buckets = {
+        label: set()
+        for label in labels
+    }
+
+    for rank, item in enumerate(
+        eligible
+    ):
+        bucket_index = min(
+            (
+                rank
+                * actual_bucket_count
+            )
+            // len(eligible),
+            actual_bucket_count - 1,
+        )
+
+        label = labels[
+            bucket_index
+        ]
+
+        row_index = item[0]
+
+        buckets[label].add(
+            row_index
+        )
+
+    return buckets
+
+
+def collect_shadow_candidate_memberships(
+    trades,
+    minimum_sample_size=DEFAULT_MINIMUM_SAMPLE_SIZE,
+):
+    """
+    Collect the journal-row membership of every
+    better-than-baseline shadow candidate.
+    """
+
+    memberships = []
+
+    categorical_results = (
+        analyze_individual_factors(
+            trades,
+            minimum_sample_size=(
+                minimum_sample_size
+            ),
+        )
+    )
+
+    for result in categorical_results:
+        factor = result["factor"]
+
+        for group in result["groups"]:
+            if (
+                group["direction"]
+                != "BETTER_THAN_BASELINE"
+            ):
+                continue
+
+            value = group["value"]
+
+            member_indices = {
+                index
+                for index, trade in enumerate(
+                    trades
+                )
+                if (
+                    str(
+                        trade.get(
+                            factor,
+                            "",
+                        )
+                    ).strip()
+                    == value
+                )
+            }
+
+            memberships.append(
+                {
+                    "factor_type": (
+                        "CATEGORICAL"
+                    ),
+                    "factor": factor,
+                    "value": value,
+                    "minimum_value": None,
+                    "maximum_value": None,
+                    "member_indices": (
+                        member_indices
+                    ),
+                }
+            )
+
+    for factor in NUMERIC_FACTORS:
+        result = compare_numeric_factor(
+            trades,
+            factor,
+            minimum_sample_size=(
+                minimum_sample_size
+            ),
+        )
+
+        buckets = (
+            _numeric_bucket_member_indices(
+                trades,
+                factor,
+            )
+        )
+
+        for group in result["groups"]:
+            if (
+                group["direction"]
+                != "BETTER_THAN_BASELINE"
+            ):
+                continue
+
+            value = group["value"]
+
+            memberships.append(
+                {
+                    "factor_type": "NUMERIC",
+                    "factor": factor,
+                    "value": value,
+                    "minimum_value": group[
+                        "minimum_value"
+                    ],
+                    "maximum_value": group[
+                        "maximum_value"
+                    ],
+                    "member_indices": set(
+                        buckets.get(
+                            value,
+                            set(),
+                        )
+                    ),
+                }
+            )
+
+    return memberships
+
+
+def analyze_candidate_overlap(
+    trades,
+    minimum_sample_size=DEFAULT_MINIMUM_SAMPLE_SIZE,
+    minimum_overlap_percent=66.0,
+):
+    """
+    Detect duplicate, subset and highly overlapping candidates.
+
+    This protects the research process from counting several
+    descriptions of the same trades as independent evidence.
+    """
+
+    memberships = (
+        collect_shadow_candidate_memberships(
+            trades,
+            minimum_sample_size=(
+                minimum_sample_size
+            ),
+        )
+    )
+
+    results = []
+
+    for left_index in range(
+        len(memberships)
+    ):
+        for right_index in range(
+            left_index + 1,
+            len(memberships),
+        ):
+            left = memberships[
+                left_index
+            ]
+
+            right = memberships[
+                right_index
+            ]
+
+            left_members = left[
+                "member_indices"
+            ]
+
+            right_members = right[
+                "member_indices"
+            ]
+
+            if (
+                not left_members
+                or not right_members
+            ):
+                continue
+
+            shared = (
+                left_members
+                & right_members
+            )
+
+            if not shared:
+                continue
+
+            union = (
+                left_members
+                | right_members
+            )
+
+            left_overlap_percent = (
+                len(shared)
+                / len(left_members)
+                * 100
+            )
+
+            right_overlap_percent = (
+                len(shared)
+                / len(right_members)
+                * 100
+            )
+
+            smaller_overlap_percent = (
+                len(shared)
+                / min(
+                    len(left_members),
+                    len(right_members),
+                )
+                * 100
+            )
+
+            jaccard_percent = (
+                len(shared)
+                / len(union)
+                * 100
+            )
+
+            if (
+                left_members
+                == right_members
+            ):
+                relationship = (
+                    "EXACT_DUPLICATE"
+                )
+
+            elif (
+                left_members
+                < right_members
+            ):
+                relationship = (
+                    "LEFT_SUBSET_OF_RIGHT"
+                )
+
+            elif (
+                right_members
+                < left_members
+            ):
+                relationship = (
+                    "RIGHT_SUBSET_OF_LEFT"
+                )
+
+            elif (
+                smaller_overlap_percent
+                >= minimum_overlap_percent
+            ):
+                relationship = (
+                    "HIGH_OVERLAP"
+                )
+
+            else:
+                continue
+
+            results.append(
+                {
+                    "left": left,
+                    "right": right,
+                    "relationship": (
+                        relationship
+                    ),
+                    "shared_count": len(
+                        shared
+                    ),
+                    "shared_indices": (
+                        shared
+                    ),
+                    "left_count": len(
+                        left_members
+                    ),
+                    "right_count": len(
+                        right_members
+                    ),
+                    "left_overlap_percent": (
+                        left_overlap_percent
+                    ),
+                    "right_overlap_percent": (
+                        right_overlap_percent
+                    ),
+                    "smaller_overlap_percent": (
+                        smaller_overlap_percent
+                    ),
+                    "jaccard_percent": (
+                        jaccard_percent
+                    ),
+                }
+            )
+
+    relationship_priority = {
+        "EXACT_DUPLICATE": 3,
+        "LEFT_SUBSET_OF_RIGHT": 2,
+        "RIGHT_SUBSET_OF_LEFT": 2,
+        "HIGH_OVERLAP": 1,
+    }
+
+    results.sort(
+        key=lambda result: (
+            relationship_priority[
+                result["relationship"]
+            ],
+            result[
+                "smaller_overlap_percent"
+            ],
+            result["shared_count"],
+        ),
+        reverse=True,
+    )
+
+    return results
+
+
 def _format_profit_factor(stats):
     profit_factor = stats.get(
         "profit_factor"

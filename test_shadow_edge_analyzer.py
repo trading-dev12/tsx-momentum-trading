@@ -440,3 +440,139 @@ def test_candidate_tracker_prioritizes_sample_size():
         candidates[0]["trade_count"]
         >= candidates[-1]["trade_count"]
     )
+
+
+def test_overlap_analyzer_detects_exact_duplicate():
+    from research.shadow_edge_analyzer import (
+        analyze_candidate_overlap,
+    )
+
+    trades = []
+
+    values = [
+        (100, 1, 1),
+        (80, 2, 2),
+        (-50, 3, 3),
+        (-60, 4, 4),
+        (-70, 5, 5),
+        (-80, 6, 6),
+    ]
+
+    for profit, xic, xiu in values:
+        trades.append(
+            {
+                "profit_loss": str(
+                    profit
+                ),
+                "profit_loss_percent": "1",
+                "rs_xic_20": str(xic),
+                "rs_xiu_20": str(xiu),
+            }
+        )
+
+    results = analyze_candidate_overlap(
+        trades,
+    )
+
+    matches = [
+        result
+        for result in results
+        if {
+            result["left"]["factor"],
+            result["right"]["factor"],
+        }
+        == {
+            "rs_xic_20",
+            "rs_xiu_20",
+        }
+    ]
+
+    assert matches
+
+    assert matches[
+        0
+    ]["relationship"] == (
+        "EXACT_DUPLICATE"
+    )
+
+    assert matches[
+        0
+    ]["jaccard_percent"] == 100.0
+
+
+def test_overlap_analyzer_detects_subset():
+    from research.shadow_edge_analyzer import (
+        analyze_candidate_overlap,
+    )
+
+    trades = [
+        {
+            "profit_loss": "100",
+            "profit_loss_percent": "1",
+            "volatility_regime": "NORMAL",
+            "gap_percent": "6",
+        },
+        {
+            "profit_loss": "100",
+            "profit_loss_percent": "1",
+            "volatility_regime": "NORMAL",
+            "gap_percent": "5",
+        },
+        {
+            "profit_loss": "80",
+            "profit_loss_percent": "0.8",
+            "volatility_regime": "NORMAL",
+            "gap_percent": "2",
+        },
+        {
+            "profit_loss": "70",
+            "profit_loss_percent": "0.7",
+            "volatility_regime": "NORMAL",
+            "gap_percent": "1",
+        },
+        {
+            "profit_loss": "-100",
+            "profit_loss_percent": "-1",
+            "volatility_regime": "HIGH",
+            "gap_percent": "3",
+        },
+        {
+            "profit_loss": "-100",
+            "profit_loss_percent": "-1",
+            "volatility_regime": "HIGH",
+            "gap_percent": "4",
+        },
+    ]
+
+    results = analyze_candidate_overlap(
+        trades,
+    )
+
+    matches = [
+        result
+        for result in results
+        if {
+            result["left"]["factor"],
+            result["right"]["factor"],
+        }
+        == {
+            "volatility_regime",
+            "gap_percent",
+        }
+        and (
+            "SUBSET"
+            in result["relationship"]
+        )
+    ]
+
+    assert matches
+
+    assert matches[
+        0
+    ]["shared_count"] == 2
+
+    assert matches[
+        0
+    ][
+        "smaller_overlap_percent"
+    ] == 100.0

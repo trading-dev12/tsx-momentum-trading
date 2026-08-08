@@ -1,4 +1,4 @@
-"""
+﻿"""
 Northstar Quant Research & Trading Platform
 
 Provides a read-only browser dashboard for monitoring the
@@ -339,7 +339,18 @@ def dashboard():
             mean_reversion_portfolio_data["closed_trades"]
         )
 
-        data_status = "LIVE DATA AVAILABLE"
+        dashboard_market_status = (
+            get_tsx_market_status()
+        )
+
+        data_status = (
+            "LIVE DATA AVAILABLE"
+            if dashboard_market_status["is_open"]
+            else (
+                "LATEST MARKET DATA AVAILABLE "
+                "? MARKET CLOSED"
+            )
+        )
         error_message = ""
 
     except (

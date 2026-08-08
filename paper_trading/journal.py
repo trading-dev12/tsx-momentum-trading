@@ -1,4 +1,4 @@
-"""
+﻿"""
 Paper Trading Journal
 
 Saves completed paper trades to a CSV journal.
@@ -36,6 +36,7 @@ FIELDNAMES = [
     "rs_xiu_20",
     "rs_measurement_date",
     "rs_status",
+    "rs_data_source",
 
     # Market Regime research
     "market_regime",
@@ -47,6 +48,7 @@ FIELDNAMES = [
     "market_regime_sma_50_vs_sma_200_percent",
     "market_regime_measurement_date",
     "market_regime_status",
+    "market_regime_data_source",
 
      # Moving Average Context research
     "ma_close",
@@ -61,6 +63,7 @@ FIELDNAMES = [
     "ma_trend_alignment",
     "ma_measurement_date",
     "ma_status",
+    "ma_data_source",
 
     # Sector Strength research
     "sector",
@@ -72,6 +75,7 @@ FIELDNAMES = [
     "sector_status",
     "sector_measurement_date",
     "sector_strength_status",
+    "sector_strength_data_source",
 
     # Gap Analysis research
     "previous_close",
@@ -85,6 +89,7 @@ FIELDNAMES = [
     "open_vs_previous_low_percent",
     "gap_measurement_date",
     "gap_analysis_status",
+    "gap_data_source",
 
     # Volatility Regime research
     "volatility_close",
@@ -95,6 +100,7 @@ FIELDNAMES = [
     "volatility_regime",
     "volatility_measurement_date",
     "volatility_regime_status",
+    "volatility_data_source",
 
 ]
 
@@ -154,42 +160,125 @@ def ensure_journal_schema(file_path, fieldnames):
 
     os.replace(temporary_path, file_path)
 
-def flatten_research_into_row(row, research):
+def flatten_research_into_row(
+    row,
+    research,
+):
     """
-    Flatten research engine output into a journal row.
+    Flatten research metadata and data-source audit fields
+    into a journal row.
     """
 
-    # Flatten the Relative Strength research data.
-    rs = research.get("relative_strength", {})
+    rs = research.get(
+        "relative_strength",
+        {},
+    )
 
     row["stock_return_20"] = rs.get(
-        "stock_return_20", ""
+        "stock_return_20",
+        "",
     )
 
     row["xic_return_20"] = rs.get(
-        "xic_return_20", ""
+        "xic_return_20",
+        "",
     )
 
     row["xiu_return_20"] = rs.get(
-        "xiu_return_20", ""
+        "xiu_return_20",
+        "",
     )
 
     row["rs_xic_20"] = rs.get(
-        "rs_xic_20", ""
+        "rs_xic_20",
+        "",
     )
 
     row["rs_xiu_20"] = rs.get(
-        "rs_xiu_20", ""
+        "rs_xiu_20",
+        "",
     )
 
     row["rs_measurement_date"] = rs.get(
-        "measurement_date", ""
+        "measurement_date",
+        "",
     )
 
     row["rs_status"] = rs.get(
-        "status", ""
+        "status",
+        "",
     )
-    
+
+    row["rs_data_source"] = rs.get(
+        "data_source",
+        "",
+    )
+
+
+    market_regime = research.get(
+        "market_regime",
+        {},
+    )
+
+    row[
+        "market_regime_data_source"
+    ] = market_regime.get(
+        "data_source",
+        "",
+    )
+
+
+    moving_average_context = research.get(
+        "moving_average_context",
+        {},
+    )
+
+    row[
+        "ma_data_source"
+    ] = moving_average_context.get(
+        "data_source",
+        "",
+    )
+
+
+    sector_strength = research.get(
+        "sector_strength",
+        {},
+    )
+
+    row[
+        "sector_strength_data_source"
+    ] = sector_strength.get(
+        "data_source",
+        "",
+    )
+
+
+    gap_analysis = research.get(
+        "gap_analysis",
+        {},
+    )
+
+    row[
+        "gap_data_source"
+    ] = gap_analysis.get(
+        "data_source",
+        "",
+    )
+
+
+    volatility_regime = research.get(
+        "volatility_regime",
+        {},
+    )
+
+    row[
+        "volatility_data_source"
+    ] = volatility_regime.get(
+        "data_source",
+        "",
+    )
+
     return row
 
 

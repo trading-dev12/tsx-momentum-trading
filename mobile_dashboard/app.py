@@ -17,11 +17,22 @@ from flask import Flask, jsonify
 from core.market_hours import get_tsx_market_status
 
 from paper_trading.portfolio import PaperPortfolio
+from mobile_dashboard.edge_research_data import (
+    build_edge_research_dashboard_data,
+)
+from mobile_dashboard.edge_research_page import (
+    render_edge_research_page,
+)
 
 
 app = Flask(__name__)
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+PAPER_TRADE_JOURNAL_FILE = (
+    PROJECT_ROOT
+    / "paper_trade_journal.csv"
+)
 
 PORTFOLIO_STATE_FILE = (
     PROJECT_ROOT / "paper_portfolio_state.json"
@@ -92,6 +103,24 @@ def count_pending_trades(file_path: Path) -> int:
 
     except (OSError, csv.Error):
         return 0
+@app.get("/edge-research")
+def edge_research_dashboard():
+    """
+    Display the read-only Momentum Edge Research page.
+    """
+
+    data = (
+        build_edge_research_dashboard_data(
+            PAPER_TRADE_JOURNAL_FILE,
+            strategy_name="Momentum",
+        )
+    )
+
+    return render_edge_research_page(
+        data
+    )
+
+
 @app.get("/manifest.json")
 def manifest():
     return jsonify(

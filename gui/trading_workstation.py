@@ -42,6 +42,15 @@ from core.ibkr_health_alert import (
     queue_ibkr_health_alert,
     try_send_pending_ibkr_alert,
 )
+from core.application_heartbeat import (
+    record_application_start,
+    record_application_heartbeat,
+    record_clean_shutdown,
+)
+from core.application_restart_alert import (
+    queue_application_restart_alert,
+    try_send_pending_application_restart_alert,
+)
 from core.market_context import score_market_context
 from paper_trading.paper_engine import PaperTradingEngine
 from paper_trading.automatic_execution import (
@@ -2447,9 +2456,49 @@ class TradingWorkstation:
     def on_close(self):
         """
         Shut down workstation-owned services and close the GUI.
+
+        The application heartbeat worker is stopped first so it
+        cannot overwrite the clean-shutdown state.
         """
+
+        heartbeat_stop_event = getattr(
+            self,
+            "application_heartbeat_stop_event",
+            None,
+        )
+
+        if heartbeat_stop_event is not None:
+            heartbeat_stop_event.set()
+
+        heartbeat_thread = getattr(
+            self,
+            "application_heartbeat_thread",
+            None,
+        )
+
+        if (
+            heartbeat_thread is not None
+            and heartbeat_thread.is_alive()
+            and heartbeat_thread
+            is not threading.current_thread()
+        ):
+            heartbeat_thread.join(
+                timeout=2.0
+            )
+
+        try:
+            record_clean_shutdown()
+
+        except Exception:
+            logging.exception(
+                "Unable to record clean "
+                "Northstar shutdown"
+            )
+
         self.stop_mobile_dashboard()
         self.root.destroy()
+
+
     def update_market_session_status(self):
         session = get_tsx_market_status()
 
@@ -3171,10 +3220,83 @@ class TradingWorkstation:
         return f"{value}%"
 
 
+def application_heartbeat_worker(
+    stop_event,
+    heartbeat_seconds=30,
+):
+    """
+    Maintain the persistent Northstar application heartbeat.
+
+    Pending unexpected-restart Telegram alerts are also retried
+    from this background worker so temporary internet failures
+    do not lose the notification.
+    """
+
+    while not stop_event.is_set():
+        try:
+            record_application_heartbeat()
+
+        except Exception:
+            logging.exception(
+                "Application heartbeat update failed"
+            )
+
+        try:
+            (
+                try_send_pending_application_restart_alert()
+            )
+
+        except Exception:
+            logging.exception(
+                "Application restart alert "
+                "delivery failed"
+            )
+
+        stop_event.wait(
+            heartbeat_seconds
+        )
+
+
 def main():
+    startup_result = (
+        record_application_start()
+    )
+
+    queue_application_restart_alert(
+        startup_result
+    )
+
     root = tk.Tk()
-    TradingWorkstation(root)
+
+    workstation = TradingWorkstation(
+        root
+    )
+
+    heartbeat_stop_event = (
+        threading.Event()
+    )
+
+    workstation.application_heartbeat_stop_event = (
+        heartbeat_stop_event
+    )
+
+    heartbeat_thread = threading.Thread(
+        target=application_heartbeat_worker,
+        args=(
+            heartbeat_stop_event,
+        ),
+        daemon=True,
+    )
+
+    workstation.application_heartbeat_thread = (
+        heartbeat_thread
+    )
+
+    heartbeat_thread.start()
+
     root.mainloop()
+
+
 
 
 if __name__ == "__main__":

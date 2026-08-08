@@ -202,7 +202,10 @@ class PaperTradingEngine:
                 symbol=symbol,
                 entry_price=price_result["open_price"],
                 entry_date=execution_date,
-                price_source=price_result.get("price_source", ""),
+                price_source=price_result.get(
+                    "price_source",
+                    "",
+                ),
                 atr_multiplier=atr_multiplier,
                 reward_multiplier=reward_multiplier,
                 max_hold_days=max_hold_days,
@@ -229,10 +232,9 @@ class PaperTradingEngine:
                     "message",
                     "Trade execution failed.",
                 ),
-
             }
 
-        results.append(result)
+            results.append(result)
 
         executed = sum(
             1
@@ -267,6 +269,7 @@ class PaperTradingEngine:
             "failed": failed,
             "results": results,
         }
+
 
     def execute_pending_trade(
         self,

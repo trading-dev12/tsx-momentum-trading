@@ -1376,6 +1376,367 @@ def analyze_candidate_cohort_concentration(
     return results
 
 
+
+def _shadow_candidate_key(
+    factor_type,
+    factor,
+    value,
+):
+    """
+    Build a stable identifier for one shadow candidate.
+    """
+
+    return (
+        str(factor_type),
+        str(factor),
+        str(value),
+    )
+
+
+def build_candidate_quality_gate(
+    trades,
+    minimum_sample_size=DEFAULT_MINIMUM_SAMPLE_SIZE,
+    material_overlap_percent=66.0,
+):
+    """
+    Combine candidate performance, overlap and cohort safeguards.
+
+    High-overlap relationships are evaluated directionally.
+    A broad candidate is not penalized merely because a much
+    smaller candidate substantially overlaps it.
+
+    This is research only. It does not modify trading rules.
+    """
+
+    candidates = collect_shadow_candidates(
+        trades,
+        minimum_sample_size=(
+            minimum_sample_size
+        ),
+    )
+
+    cohorts = (
+        analyze_candidate_cohort_concentration(
+            trades,
+            minimum_sample_size=(
+                minimum_sample_size
+            ),
+        )
+    )
+
+    overlaps = analyze_candidate_overlap(
+        trades,
+        minimum_sample_size=(
+            minimum_sample_size
+        ),
+        minimum_overlap_percent=(
+            material_overlap_percent
+        ),
+    )
+
+    cohort_lookup = {}
+
+    for cohort in cohorts:
+        key = _shadow_candidate_key(
+            cohort["factor_type"],
+            cohort["factor"],
+            cohort["value"],
+        )
+
+        cohort_lookup[key] = cohort
+
+    overlap_flags = {}
+
+    for candidate in candidates:
+        key = _shadow_candidate_key(
+            candidate["factor_type"],
+            candidate["factor"],
+            candidate["value"],
+        )
+
+        overlap_flags[key] = {
+            "exact_duplicate_count": 0,
+            "subset_of_other_count": 0,
+            "contains_subset_count": 0,
+            "high_overlap_count": 0,
+            "material_high_overlap_count": 0,
+        }
+
+    for overlap in overlaps:
+        left = overlap["left"]
+        right = overlap["right"]
+
+        left_key = _shadow_candidate_key(
+            left["factor_type"],
+            left["factor"],
+            left["value"],
+        )
+
+        right_key = _shadow_candidate_key(
+            right["factor_type"],
+            right["factor"],
+            right["value"],
+        )
+
+        relationship = overlap[
+            "relationship"
+        ]
+
+        if (
+            left_key not in overlap_flags
+            or right_key not in overlap_flags
+        ):
+            continue
+
+        if relationship == "EXACT_DUPLICATE":
+            overlap_flags[
+                left_key
+            ][
+                "exact_duplicate_count"
+            ] += 1
+
+            overlap_flags[
+                right_key
+            ][
+                "exact_duplicate_count"
+            ] += 1
+
+        elif (
+            relationship
+            == "LEFT_SUBSET_OF_RIGHT"
+        ):
+            overlap_flags[
+                left_key
+            ][
+                "subset_of_other_count"
+            ] += 1
+
+            overlap_flags[
+                right_key
+            ][
+                "contains_subset_count"
+            ] += 1
+
+        elif (
+            relationship
+            == "RIGHT_SUBSET_OF_LEFT"
+        ):
+            overlap_flags[
+                right_key
+            ][
+                "subset_of_other_count"
+            ] += 1
+
+            overlap_flags[
+                left_key
+            ][
+                "contains_subset_count"
+            ] += 1
+
+        elif relationship == "HIGH_OVERLAP":
+            overlap_flags[
+                left_key
+            ][
+                "high_overlap_count"
+            ] += 1
+
+            overlap_flags[
+                right_key
+            ][
+                "high_overlap_count"
+            ] += 1
+
+            if (
+                overlap[
+                    "left_overlap_percent"
+                ]
+                >= material_overlap_percent
+            ):
+                overlap_flags[
+                    left_key
+                ][
+                    "material_high_overlap_count"
+                ] += 1
+
+            if (
+                overlap[
+                    "right_overlap_percent"
+                ]
+                >= material_overlap_percent
+            ):
+                overlap_flags[
+                    right_key
+                ][
+                    "material_high_overlap_count"
+                ] += 1
+
+    results = []
+
+    for candidate in candidates:
+        key = _shadow_candidate_key(
+            candidate["factor_type"],
+            candidate["factor"],
+            candidate["value"],
+        )
+
+        cohort = cohort_lookup.get(
+            key,
+            {},
+        )
+
+        flags = overlap_flags.get(
+            key,
+            {
+                "exact_duplicate_count": 0,
+                "subset_of_other_count": 0,
+                "contains_subset_count": 0,
+                "high_overlap_count": 0,
+                "material_high_overlap_count": 0,
+            },
+        )
+
+        concentration_status = (
+            cohort.get(
+                "concentration_status",
+                "UNKNOWN",
+            )
+        )
+
+        cohort_concentration_percent = (
+            cohort.get(
+                "cohort_concentration_percent",
+                0.0,
+            )
+        )
+
+        has_exact_duplicate = (
+            flags[
+                "exact_duplicate_count"
+            ]
+            > 0
+        )
+
+        is_subset_of_other = (
+            flags[
+                "subset_of_other_count"
+            ]
+            > 0
+        )
+
+        has_material_high_overlap = (
+            flags[
+                "material_high_overlap_count"
+            ]
+            > 0
+        )
+
+        has_high_concentration = (
+            concentration_status
+            in {
+                "HIGH_ENTRY_EXIT_CONCENTRATION",
+                "HIGH_ENTRY_DATE_CONCENTRATION",
+            }
+        )
+
+        sample_status = candidate[
+            "status"
+        ]
+
+        if (
+            has_exact_duplicate
+            or (
+                has_high_concentration
+                and is_subset_of_other
+            )
+        ):
+            research_rating = (
+                "HEAVILY_CONFOUNDED"
+            )
+
+        elif (
+            has_high_concentration
+            or is_subset_of_other
+            or has_material_high_overlap
+        ):
+            if (
+                sample_status
+                == "PROMISING"
+            ):
+                research_rating = (
+                    "PROMISING_BUT_CONFOUNDED"
+                )
+            else:
+                research_rating = (
+                    "CONFOUNDED_EARLY"
+                )
+
+        elif (
+            sample_status
+            == "PROMISING"
+        ):
+            research_rating = (
+                "PROMISING_REVIEW"
+            )
+
+        else:
+            research_rating = (
+                "WATCH_ONLY"
+            )
+
+        results.append(
+            {
+                **candidate,
+                "cohort_status": (
+                    concentration_status
+                ),
+                "cohort_concentration_percent": (
+                    cohort_concentration_percent
+                ),
+                "exact_duplicate_count": flags[
+                    "exact_duplicate_count"
+                ],
+                "subset_of_other_count": flags[
+                    "subset_of_other_count"
+                ],
+                "contains_subset_count": flags[
+                    "contains_subset_count"
+                ],
+                "high_overlap_count": flags[
+                    "high_overlap_count"
+                ],
+                "material_high_overlap_count": flags[
+                    "material_high_overlap_count"
+                ],
+                "research_rating": (
+                    research_rating
+                ),
+            }
+        )
+
+    rating_priority = {
+        "PROMISING_REVIEW": 4,
+        "WATCH_ONLY": 3,
+        "PROMISING_BUT_CONFOUNDED": 2,
+        "CONFOUNDED_EARLY": 1,
+        "HEAVILY_CONFOUNDED": 0,
+    }
+
+    results.sort(
+        key=lambda result: (
+            rating_priority.get(
+                result["research_rating"],
+                -1,
+            ),
+            result["trade_count"],
+            result["expectancy_delta"],
+        ),
+        reverse=True,
+    )
+
+    return results
+
+
+
 def _format_profit_factor(stats):
     profit_factor = stats.get(
         "profit_factor"

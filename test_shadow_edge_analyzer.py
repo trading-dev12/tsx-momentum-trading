@@ -715,3 +715,230 @@ def test_cohort_analyzer_allows_diverse_dates():
         bull["concentration_status"]
         == "DIVERSE_COHORTS"
     )
+
+
+def test_quality_gate_marks_duplicate_candidate_confounded():
+    from research.shadow_edge_analyzer import (
+        build_candidate_quality_gate,
+    )
+
+    trades = []
+
+    for index in range(6):
+        profit = (
+            100
+            if index < 2
+            else -100
+        )
+
+        trades.append(
+            {
+                "profit_loss": str(
+                    profit
+                ),
+                "profit_loss_percent": "1",
+                "rs_xic_20": str(
+                    index + 1
+                ),
+                "rs_xiu_20": str(
+                    index + 1
+                ),
+                "entry_date": (
+                    "2026-07-22"
+                    if index < 2
+                    else f"2026-07-{23 + index}"
+                ),
+                "exit_date": (
+                    "2026-08-04"
+                    if index < 2
+                    else f"2026-08-{5 + index}"
+                ),
+            }
+        )
+
+    results = build_candidate_quality_gate(
+        trades
+    )
+
+    target = [
+        result
+        for result in results
+        if (
+            result["factor"]
+            == "rs_xic_20"
+            and result["value"]
+            == "LOW"
+        )
+    ][0]
+
+    assert (
+        target["exact_duplicate_count"]
+        >= 1
+    )
+
+    assert (
+        target["research_rating"]
+        == "HEAVILY_CONFOUNDED"
+    )
+
+
+def test_quality_gate_marks_clean_small_sample_watch_only():
+    from research.shadow_edge_analyzer import (
+        build_candidate_quality_gate,
+    )
+
+    trades = [
+        {
+            "profit_loss": "100",
+            "profit_loss_percent": "1",
+            "market_regime": "BULL",
+            "entry_date": "2026-07-10",
+            "exit_date": "2026-07-11",
+        },
+        {
+            "profit_loss": "80",
+            "profit_loss_percent": "0.8",
+            "market_regime": "BULL",
+            "entry_date": "2026-07-14",
+            "exit_date": "2026-07-15",
+        },
+        {
+            "profit_loss": "60",
+            "profit_loss_percent": "0.6",
+            "market_regime": "BULL",
+            "entry_date": "2026-07-18",
+            "exit_date": "2026-07-19",
+        },
+        {
+            "profit_loss": "-100",
+            "profit_loss_percent": "-1",
+            "market_regime": "BEAR",
+            "entry_date": "2026-07-20",
+            "exit_date": "2026-07-21",
+        },
+        {
+            "profit_loss": "-100",
+            "profit_loss_percent": "-1",
+            "market_regime": "BEAR",
+            "entry_date": "2026-07-22",
+            "exit_date": "2026-07-23",
+        },
+    ]
+
+    results = build_candidate_quality_gate(
+        trades
+    )
+
+    target = [
+        result
+        for result in results
+        if (
+            result["factor"]
+            == "market_regime"
+            and result["value"]
+            == "BULL"
+        )
+    ][0]
+
+    assert (
+        target["research_rating"]
+        == "WATCH_ONLY"
+    )
+
+    assert (
+        target["exact_duplicate_count"]
+        == 0
+    )
+
+    assert (
+        target["cohort_status"]
+        == "DIVERSE_COHORTS"
+    )
+
+
+def test_quality_gate_does_not_penalize_broad_candidate_for_one_sided_overlap():
+    from research.shadow_edge_analyzer import (
+        build_candidate_quality_gate,
+    )
+
+    profits = [
+        100,
+        100,
+        50,
+        50,
+        50,
+        50,
+        50,
+        -10,
+        -200,
+    ]
+
+    sma_values = [
+        4,
+        5,
+        1,
+        2,
+        3,
+        7,
+        8,
+        6,
+        9,
+    ]
+
+    trades = []
+
+    for index in range(9):
+        trades.append(
+            {
+                "profit_loss": str(
+                    profits[index]
+                ),
+                "profit_loss_percent": "1",
+                "volatility_regime": (
+                    "NORMAL"
+                    if index < 7
+                    else "HIGH"
+                ),
+                "ma_close_vs_sma200_percent": str(
+                    sma_values[index]
+                ),
+                "entry_date": (
+                    f"2026-07-{10 + index:02d}"
+                ),
+                "exit_date": (
+                    f"2026-07-{11 + index:02d}"
+                ),
+            }
+        )
+
+    results = build_candidate_quality_gate(
+        trades
+    )
+
+    normal = [
+        result
+        for result in results
+        if (
+            result["factor"]
+            == "volatility_regime"
+            and result["value"]
+            == "NORMAL"
+        )
+    ][0]
+
+    assert (
+        normal["high_overlap_count"]
+        >= 1
+    )
+
+    assert (
+        normal[
+            "material_high_overlap_count"
+        ]
+        == 0
+    )
+
+    assert (
+        normal["research_rating"]
+        == "WATCH_ONLY"
+    )

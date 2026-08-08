@@ -63,6 +63,7 @@ from paper_trading.automatic_eod import (
 )
 from core.workstation_service_bridge import (
     build_workstation_service_starter,
+    is_headless_service_running,
 )
 from gui.system_health_panel import (
     SystemHealthPanel,
@@ -431,11 +432,39 @@ class TradingWorkstation:
         if self.is_refreshing:
             return
 
+        if is_headless_service_running(
+            "market_services_status"
+        ):
+            snapshot_loaded = (
+                self.display_saved_scanner_snapshot()
+            )
+
+            self.countdown_seconds = (
+                self.refresh_interval_seconds
+            )
+
+            self.status_label.config(
+                text=(
+                    "Headless scanner active. "
+                    + (
+                        "Latest headless scan restored."
+                        if snapshot_loaded
+                        else (
+                            "Waiting for first headless "
+                            "scanner snapshot."
+                        )
+                    )
+                )
+            )
+
+            return
+
         self.refresh_sequence += 1
         refresh_id = self.refresh_sequence
 
         self.active_refresh_id = refresh_id
         self.is_refreshing = True
+
         self.write_scanner_health(
             status="REFRESHING",
         )
@@ -449,6 +478,7 @@ class TradingWorkstation:
             state="disabled",
             text="Refreshing...",
         )
+
         self.status_label.config(
             text="Refreshing scanner data...",
         )
@@ -456,7 +486,9 @@ class TradingWorkstation:
         self.root.after(
             self.refresh_timeout_ms,
             lambda rid=refresh_id: (
-                self.handle_refresh_timeout(rid)
+                self.handle_refresh_timeout(
+                    rid
+                )
             ),
         )
 
@@ -465,6 +497,7 @@ class TradingWorkstation:
             args=(refresh_id,),
             daemon=True,
         )
+
         thread.start()
 
     def handle_refresh_timeout(self, refresh_id):
@@ -2043,6 +2076,11 @@ class TradingWorkstation:
         self.update_paper_portfolio_panel()
 
     def monitor_paper_positions(self):
+        if is_headless_service_running(
+            "market_services_status"
+        ):
+            return
+
         if not self.paper_engine.portfolio.open_positions:
             return
 
@@ -2063,11 +2101,15 @@ class TradingWorkstation:
                 position["symbol"] in current_prices,
             )
 
-        current_date = datetime.now().strftime("%Y-%m-%d")
+        current_date = datetime.now().strftime(
+            "%Y-%m-%d"
+        )
 
-        closed_trades = self.paper_engine.update_positions(
-            latest_prices=current_prices,
-            current_date=current_date,
+        closed_trades = (
+            self.paper_engine.update_positions(
+                latest_prices=current_prices,
+                current_date=current_date,
+            )
         )
 
         for trade in closed_trades:
@@ -2084,21 +2126,27 @@ class TradingWorkstation:
                 message=telegram_message,
             ):
                 try:
-                    result = send_telegram_message(message)
+                    result = send_telegram_message(
+                        message
+                    )
 
                     if not result.get("success"):
                         print(
                             "Telegram closed-trade alert warning: "
                             f"{result.get('message', '')}"
                         )
+
                 except Exception as error:
                     print(
-                        "Unexpected Telegram closed-trade alert error: "
+                        "Unexpected Telegram "
+                        "closed-trade alert error: "
                         f"{error}"
                     )
 
             threading.Thread(
-                target=send_closed_trade_telegram_alert,
+                target=(
+                    send_closed_trade_telegram_alert
+                ),
                 daemon=True,
             ).start()
     def update_paper_portfolio_panel(self):

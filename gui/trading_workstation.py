@@ -2150,59 +2150,6 @@ class TradingWorkstation:
                 daemon=True,
             ).start()
     def update_paper_portfolio_panel(self):
-        current_prices = {}
-
-        open_position_symbols = {
-            position["symbol"]
-            for engine in (
-                self.paper_engine,
-                self.breakout_52week_engine,
-                self.mean_reversion_engine,
-            )
-            for position in engine.portfolio.open_positions
-        }
-
-        missing_symbols = sorted(
-            symbol
-            for symbol in open_position_symbols
-            if symbol not in current_prices
-        )
-
-        if missing_symbols:
-            try:
-                portfolio_quotes = get_quotes(missing_symbols)
-
-                for quote_data in portfolio_quotes:
-                    symbol = quote_data.get("symbol")
-                    price = quote_data.get(
-                        "price",
-                        quote_data.get("close"),
-                    )
-
-                    if symbol and price is not None:
-                        current_prices[symbol] = float(price)
-
-                logging.info(
-                    "Loaded portfolio prices for %s missing open positions",
-                    len(missing_symbols),
-                )
-
-            except Exception:
-                logging.exception(
-                    "Could not load prices for missing open positions: %s",
-                    ", ".join(missing_symbols),
-                )
-
-        for quote_data in self.latest_quotes:
-            symbol = quote_data.get("symbol")
-            price = quote_data.get(
-                "price",
-                quote_data.get("close"),
-            )
-
-            if symbol and price is not None:
-                current_prices[symbol] = float(price)
-
         runtime_folder = (
             Path(__file__).resolve().parent.parent
             / "data"
@@ -2215,53 +2162,48 @@ class TradingWorkstation:
         )
 
         latest_prices_file = (
-            runtime_folder / "latest_prices.json"
+            runtime_folder
+            / "latest_prices.json"
         )
 
         temporary_file = (
-            runtime_folder / "latest_prices.tmp"
+            runtime_folder
+            / "latest_prices.tmp"
         )
 
-        if current_prices:
-            price_snapshot = {
-                "generated_at": datetime.now().isoformat(
-                    timespec="seconds"
-                ),
-                "prices": current_prices,
-            }
+        current_prices = {}
 
-            with temporary_file.open(
-                "w",
-                encoding="utf-8",
-            ) as file:
-                json.dump(
-                    price_snapshot,
-                    file,
-                    indent=4,
-                )
-
-            temporary_file.replace(
-                latest_prices_file
+        headless_market_services_running = (
+            is_headless_service_running(
+                "market_services_status"
             )
+        )
 
-        elif latest_prices_file.exists():
+        if (
+            headless_market_services_running
+            and latest_prices_file.exists()
+        ):
             try:
                 with latest_prices_file.open(
                     "r",
                     encoding="utf-8",
                 ) as file:
-                    saved_snapshot = json.load(file)
+                    saved_snapshot = json.load(
+                        file
+                    )
 
-                saved_prices = saved_snapshot.get(
-                    "prices",
-                    {},
+                saved_prices = (
+                    saved_snapshot.get(
+                        "prices",
+                        {},
+                    )
                 )
 
-                if saved_prices:
-                    current_prices = {
-                        symbol: float(price)
-                        for symbol, price in saved_prices.items()
-                    }
+                current_prices = {
+                    symbol: float(price)
+                    for symbol, price
+                    in saved_prices.items()
+                }
 
             except (
                 OSError,
@@ -2270,38 +2212,178 @@ class TradingWorkstation:
                 json.JSONDecodeError,
             ) as error:
                 logging.warning(
-                    "Could not load saved price snapshot: %s",
+                    "Could not load headless "
+                    "price snapshot: %s",
                     error,
                 )
 
-        momentum_text = build_paper_dashboard_text(
-            self.paper_engine,
-            current_prices,
+        if not headless_market_services_running:
+            open_position_symbols = {
+                position["symbol"]
+                for engine in (
+                    self.paper_engine,
+                    self.breakout_52week_engine,
+                    self.mean_reversion_engine,
+                )
+                for position
+                in engine.portfolio.open_positions
+            }
+
+            missing_symbols = sorted(
+                symbol
+                for symbol
+                in open_position_symbols
+                if symbol
+                not in current_prices
+            )
+
+            if missing_symbols:
+                try:
+                    portfolio_quotes = (
+                        get_quotes(
+                            missing_symbols
+                        )
+                    )
+
+                    for quote_data in (
+                        portfolio_quotes
+                    ):
+                        symbol = (
+                            quote_data.get(
+                                "symbol"
+                            )
+                        )
+
+                        price = (
+                            quote_data.get(
+                                "price",
+                                quote_data.get(
+                                    "close"
+                                ),
+                            )
+                        )
+
+                        if (
+                            symbol
+                            and price is not None
+                        ):
+                            current_prices[
+                                symbol
+                            ] = float(
+                                price
+                            )
+
+                    logging.info(
+                        "Loaded portfolio "
+                        "prices for %s missing "
+                        "open positions",
+                        len(
+                            missing_symbols
+                        ),
+                    )
+
+                except Exception:
+                    logging.exception(
+                        "Could not load prices "
+                        "for missing open "
+                        "positions: %s",
+                        ", ".join(
+                            missing_symbols
+                        ),
+                    )
+
+            for quote_data in (
+                self.latest_quotes
+            ):
+                symbol = quote_data.get(
+                    "symbol"
+                )
+
+                price = quote_data.get(
+                    "price",
+                    quote_data.get(
+                        "close"
+                    ),
+                )
+
+                if (
+                    symbol
+                    and price is not None
+                ):
+                    current_prices[
+                        symbol
+                    ] = float(
+                        price
+                    )
+
+            if current_prices:
+                price_snapshot = {
+                    "generated_at":
+                        datetime.now().isoformat(
+                            timespec="seconds"
+                        ),
+                    "prices":
+                        current_prices,
+                }
+
+                with temporary_file.open(
+                    "w",
+                    encoding="utf-8",
+                ) as file:
+                    json.dump(
+                        price_snapshot,
+                        file,
+                        indent=4,
+                    )
+
+                temporary_file.replace(
+                    latest_prices_file
+                )
+
+        momentum_text = (
+            build_paper_dashboard_text(
+                self.paper_engine,
+                current_prices,
+            )
         )
 
-        breakout_52week_text = build_paper_dashboard_text(
-            self.breakout_52week_engine,
-            current_prices,
+        breakout_52week_text = (
+            build_paper_dashboard_text(
+                self.breakout_52week_engine,
+                current_prices,
+            )
         )
 
-        mean_reversion_text = build_paper_dashboard_text(
-            self.mean_reversion_engine,
-            current_prices,
+        mean_reversion_text = (
+            build_paper_dashboard_text(
+                self.mean_reversion_engine,
+                current_prices,
+            )
         )
 
         text = (
             ">>> MOMENTUM STRATEGY <<<\n"
             + momentum_text
-            + "\n\n>>> 52-WEEK BREAKOUT STRATEGY <<<\n"
+            + "\n\n"
+            + ">>> 52-WEEK BREAKOUT STRATEGY <<<\n"
             + breakout_52week_text
-            + "\n\n>>> MEAN REVERSION STRATEGY <<<\n"
+            + "\n\n"
+            + ">>> MEAN REVERSION STRATEGY <<<\n"
             + mean_reversion_text
         )
 
-        self.paper_portfolio_text.config(state="normal")
-        self.paper_portfolio_text.delete("1.0", tk.END)
+        self.paper_portfolio_text.config(
+            state="normal"
+        )
 
-        for line in text.splitlines(keepends=True):
+        self.paper_portfolio_text.delete(
+            "1.0",
+            tk.END,
+        )
+
+        for line in text.splitlines(
+            keepends=True
+        ):
             stripped_line = line.strip()
             tag = None
 
@@ -2316,7 +2398,9 @@ class TradingWorkstation:
             }:
                 tag = "heading"
 
-            elif stripped_line.startswith(">>>"):
+            elif stripped_line.startswith(
+                ">>>"
+            ):
                 tag = "heading"
 
             elif "Status: PROFIT" in line:
@@ -2340,7 +2424,9 @@ class TradingWorkstation:
                     line,
                 )
 
-        self.paper_portfolio_text.config(state="disabled")
+        self.paper_portfolio_text.config(
+            state="disabled"
+        )
 
     def update_system_health(self):
         scanner = (

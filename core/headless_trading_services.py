@@ -16,19 +16,34 @@ from core.headless_execution import (
     build_headless_paper_engines,
     start_headless_execution_services,
 )
+from core.headless_position_monitor import (
+    refresh_headless_price_snapshot,
+)
 
 
 def start_headless_trading_services(
     engine_builder=build_headless_paper_engines,
     execution_starter=start_headless_execution_services,
     eod_starter=start_headless_eod_service,
+    snapshot_refresher=refresh_headless_price_snapshot,
 ):
     """
-    Build the three paper engines and start the automatic
-    execution and EOD background services exactly once.
+    Build the three paper engines, refresh the read-only
+    open-position price snapshot, and start the automatic
+    execution and EOD services exactly once.
+
+    A snapshot failure must never prevent the critical
+    execution or EOD services from starting.
     """
 
     engines = engine_builder()
+
+    try:
+        snapshot_refresher(
+            engines
+        )
+    except Exception:
+        pass
 
     execution_threads = (
         execution_starter(

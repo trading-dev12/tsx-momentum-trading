@@ -5,12 +5,14 @@ All quote retrieval and paper engines are mocked.
 No live market data or real portfolio state is touched.
 """
 
+import json
 from unittest.mock import MagicMock
 
 from core.headless_position_monitor import (
     build_current_prices,
     collect_open_position_symbols,
     run_headless_position_monitor_cycle,
+    write_latest_prices_snapshot,
 )
 
 
@@ -72,6 +74,46 @@ def test_build_current_prices():
     }
 
 
+def test_write_latest_prices_snapshot(tmp_path):
+    snapshot_file = (
+        tmp_path
+        / "latest_prices.json"
+    )
+
+    result = write_latest_prices_snapshot(
+        {
+            "RY.TO": 201.25,
+            "SU.TO": 71.50,
+        },
+        snapshot_file=snapshot_file,
+        generated_at=(
+            "2026-08-08T16:00:00"
+        ),
+    )
+
+    assert result == {
+        "generated_at":
+            "2026-08-08T16:00:00",
+        "prices": {
+            "RY.TO": 201.25,
+            "SU.TO": 71.50,
+        },
+    }
+
+    with snapshot_file.open(
+        "r",
+        encoding="utf-8",
+    ) as file:
+        saved = json.load(file)
+
+    assert saved == result
+
+    assert not (
+        tmp_path
+        / "latest_prices.tmp"
+    ).exists()
+
+
 def test_no_open_positions_skips_quote_provider():
     engines = {
         "momentum": make_engine([]),
@@ -80,11 +122,13 @@ def test_no_open_positions_skips_quote_provider():
     }
 
     quote_provider = MagicMock()
+    snapshot_writer = MagicMock()
 
     result = run_headless_position_monitor_cycle(
         engines,
         quote_provider=quote_provider,
         current_date="2026-08-08",
+        snapshot_writer=snapshot_writer,
     )
 
     assert result == {
@@ -96,6 +140,7 @@ def test_no_open_positions_skips_quote_provider():
     }
 
     quote_provider.assert_not_called()
+    snapshot_writer.assert_not_called()
 
     for engine in engines.values():
         engine.update_positions.assert_not_called()
@@ -147,10 +192,13 @@ def test_position_monitor_updates_all_engines():
         ]
     )
 
+    snapshot_writer = MagicMock()
+
     result = run_headless_position_monitor_cycle(
         engines,
         quote_provider=quote_provider,
         current_date="2026-08-08",
+        snapshot_writer=snapshot_writer,
     )
 
     expected_prices = {
@@ -165,6 +213,10 @@ def test_position_monitor_updates_all_engines():
             "RY.TO",
             "SU.TO",
         ]
+    )
+
+    snapshot_writer.assert_called_once_with(
+        expected_prices
     )
 
     for engine in engines.values():

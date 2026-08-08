@@ -2,6 +2,7 @@
 import socket
 import subprocess
 import sys
+import webbrowser
 from pathlib import Path
 import logging
 
@@ -3409,6 +3410,45 @@ def application_heartbeat_worker(
         )
 
 
+EDGE_RESEARCH_URL = (
+    "http://127.0.0.1:5000/edge-research"
+)
+
+
+def open_edge_research_dashboard():
+    """
+    Open the read-only Edge Research dashboard.
+    """
+
+    return webbrowser.open_new_tab(
+        EDGE_RESEARCH_URL
+    )
+
+
+def add_edge_research_button(root):
+    """
+    Add a shortcut to the Edge Research dashboard.
+    """
+
+    button = tk.Button(
+        root,
+        text="Edge Research",
+        command=open_edge_research_dashboard,
+        font=("Arial", 11, "bold"),
+        padx=10,
+        pady=4,
+    )
+
+    button.place(
+        relx=1.0,
+        x=-20,
+        y=18,
+        anchor="ne",
+    )
+
+    return button
+
+
 def main():
     startup_result = (
         record_application_start()
@@ -3422,6 +3462,12 @@ def main():
 
     workstation = TradingWorkstation(
         root
+    )
+
+    workstation.edge_research_button = (
+        add_edge_research_button(
+            root
+        )
     )
 
     heartbeat_stop_event = (

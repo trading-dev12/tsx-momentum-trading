@@ -174,6 +174,7 @@ def test_main_starts_heartbeat_and_queues_restart_alert(
 
     fake_root = FakeRoot()
     fake_event = FakeEvent()
+    fake_edge_button = object()
 
     created = {}
 
@@ -198,6 +199,12 @@ def test_main_starts_heartbeat_and_queues_restart_alert(
         workstation_module.tk,
         "Tk",
         lambda: fake_root,
+    )
+
+    monkeypatch.setattr(
+        workstation_module,
+        "add_edge_research_button",
+        lambda root: fake_edge_button,
     )
 
     def fake_workstation_factory(root):
@@ -257,6 +264,11 @@ def test_main_starts_heartbeat_and_queues_restart_alert(
     assert events[0] == (
         "queued",
         startup_result,
+    )
+
+    assert (
+        workstation.edge_research_button
+        is fake_edge_button
     )
 
     assert (

@@ -775,3 +775,64 @@ Expand the System Health panel into a complete operational dashboard showing:
 - Last Heartbeat
 - Refresh Duration
 - Next Scheduled Refresh
+---
+
+## Reliability and Power-Recovery Milestone
+
+### Status: Core Software Recovery Complete
+
+Northstar now has a tested recovery path for Windows restarts, application interruptions, internet outages, and temporary IBKR/TWS unavailability.
+
+### Completed
+
+- [x] Persistent Northstar application heartbeat
+- [x] Clean-shutdown detection
+- [x] Unexpected restart/interruption detection
+- [x] Telegram restart/recovery alert framework
+- [x] Internet connectivity monitoring
+- [x] Internet outage and recovery state tracking
+- [x] IBKR/TWS local API health monitoring
+- [x] IBKR/TWS outage and recovery alerting
+- [x] Automatic IBKR reconnect capability
+- [x] Yahoo market-data fallback while IBKR/TWS is unavailable
+- [x] Missed EOD recovery safeguards
+- [x] Automatic TWS launch after Windows logon
+- [x] Automatic Northstar launch after Windows logon
+- [x] Duplicate TWS process protection
+- [x] Duplicate Northstar process protection
+- [x] Windows Task Scheduler recovery task
+- [x] 30-second post-logon startup delay
+- [x] Scheduled-task retry configuration
+- [x] Recovery-task installer stored in Git
+- [x] Full Windows reboot recovery test completed successfully
+- [x] TWS API port 7496 verified after authentication
+- [x] Direct IBKR read-only quote verified after recovery
+- [x] Automatic paper-execution result-handling bug corrected
+- [x] Regression coverage added for empty, skipped, and multiple execution results
+- [x] Full safe automated test suite: 92 passed
+
+### Verified Recovery Sequence
+
+Windows reboot
+-> Windows logon
+-> Northstar Recovery scheduled task
+-> TWS launches
+-> Northstar launches
+-> Yahoo fallback remains available while TWS is unauthenticated
+-> User authenticates TWS
+-> TWS API port 7496 becomes available
+-> IBKR market-data connection succeeds
+
+No IBKR password is stored in Northstar recovery scripts.
+
+### Remaining Power-Outage Reliability Work
+
+- [ ] Configure BIOS/UEFI "Restore on AC Power Loss" so the PC powers itself back on when electricity returns
+- [ ] Verify the Windows recovery sequence after an actual power-loss simulation
+- [ ] Verify during an open TSX session that the already-running scanner automatically resumes IBKR data after TWS authentication without restarting Northstar
+- [ ] Consider UPS protection for the PC, modem, and router to reduce short-outage interruptions
+- [ ] Continue distinguishing local PC/connectivity failures from upstream data-provider failures
+
+### Reliability Principle
+
+Northstar should fail safely, preserve state, fall back where appropriate, recover automatically where possible, and clearly report when human authentication or intervention is still required.

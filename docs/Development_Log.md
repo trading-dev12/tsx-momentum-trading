@@ -3816,3 +3816,87 @@ This change improves execution-data quality and auditability while preserving th
 ### Status
 
 IBKR historical-data and paper-execution pricing integration is now functionally complete and regression-tested.
+
+---
+
+## 2026-08-07 - Reliability, Restart Recovery, and Windows Auto-Start
+
+### Completed
+
+- Completed persistent Northstar application heartbeat integration.
+- Verified normal GUI shutdown records:
+  - `session_active: false`
+  - `clean_shutdown: true`
+- Added unexpected application restart detection and persistent restart-alert handling.
+- Completed persistent internet connectivity monitoring and recovery tracking.
+- Completed persistent IBKR/TWS health monitoring and recovery alerts.
+- Completed missed-EOD recovery safeguards.
+- Fixed automatic paper-execution result aggregation in `execute_pending_trades_for_date()`.
+  - Empty pending queues no longer raise an unbound local-variable error.
+  - Queues containing only skipped trades no longer fail.
+  - Multiple executed trades now each receive an execution result.
+- Added regression tests for the execution-result defect.
+- Full safe automated test suite passed:
+  - `92 passed`
+  - `1 nonfatal eventkit deprecation warning`
+- Created `tools/launch_northstar_recovery.ps1`.
+  - Starts TWS only when missing.
+  - Starts Northstar only when missing.
+  - Prevents duplicate TWS and Northstar instances.
+- Created the `Northstar Recovery` Windows Scheduled Task.
+  - Trigger: user logon
+  - Delay: 30 seconds
+  - Start when available: enabled
+  - Multiple instances: IgnoreNew
+  - Retry count: 3
+  - Retry interval: 1 minute
+- Performed a real Windows reboot test.
+  - TWS launched automatically.
+  - Northstar launched automatically.
+  - Yahoo fallback remained available while TWS awaited authentication.
+- After TWS authentication:
+  - Port `127.0.0.1:7496` returned `TcpTestSucceeded: True`.
+  - Direct IBKR read-only quote for `RY.TO` succeeded.
+  - Quote returned `source: IBKR`.
+  - Quote returned `connected: True`.
+- Created and tested `tools/install_northstar_recovery_task.ps1`.
+  - Recreates the Windows recovery task from the repository.
+  - Recreated task returned `LastTaskResult: 0`.
+- Automatic paper-execution fix committed:
+  - `f1e56d1` - Fix automatic paper execution result handling
+- Recovery launcher committed:
+  - `1a37463` - Add Windows recovery launcher for TWS and Northstar
+- Recovery-task installer committed:
+  - `7b5765c` - Add installer for Northstar recovery task
+
+### Reliability Outcome
+
+Northstar now has a reproducible Windows restart-recovery architecture.
+
+Tested recovery chain:
+
+Windows reboot
+-> Windows logon
+-> Recovery task
+-> TWS launch
+-> Northstar launch
+-> Yahoo fallback while TWS is unavailable
+-> TWS authentication
+-> IBKR API available
+-> IBKR market-data access restored
+
+IBKR credentials are not stored in the recovery scripts.
+
+### Remaining Reliability Work
+
+- Configure BIOS/UEFI Restore on AC Power Loss.
+- Test recovery following a true power-loss event.
+- During an open TSX session, confirm the already-running scanner automatically resumes IBKR data after TWS authentication.
+- Consider UPS protection for the PC and network equipment.
+- Continue improving diagnostics and failure-source classification.
+
+### Validation Status
+
+The Momentum strategy rules remain frozen.
+
+No TMQS, READY/WATCH/IGNORE, ATR, reward target, maximum-hold, or signal-selection rules were changed during this reliability work.

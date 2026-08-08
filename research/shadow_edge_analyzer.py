@@ -427,6 +427,212 @@ def analyze_individual_factors(
     return results
 
 
+
+NUMERIC_FACTORS = [
+    "rs_xic_20",
+    "rs_xiu_20",
+    "ma_close_vs_sma20_percent",
+    "ma_close_vs_sma50_percent",
+    "ma_close_vs_sma200_percent",
+    "sector_strength_20",
+    "gap_percent",
+    "atr_percent",
+]
+
+
+def compare_numeric_factor(
+    trades,
+    field,
+    minimum_sample_size=DEFAULT_MINIMUM_SAMPLE_SIZE,
+    bucket_count=3,
+):
+    """
+    Compare a numeric research factor using rank-based buckets.
+
+    Missing and non-numeric values are excluded from the
+    eligible baseline.
+
+    The buckets are exploratory only. They do not change
+    trading rules or establish an edge.
+    """
+
+    eligible = []
+
+    for trade in trades:
+        raw_value = str(
+            trade.get(field, "")
+        ).strip()
+
+        if not raw_value:
+            continue
+
+        try:
+            numeric_value = float(
+                raw_value
+            )
+        except (TypeError, ValueError):
+            continue
+
+        eligible.append(
+            (
+                trade,
+                numeric_value,
+            )
+        )
+
+    eligible_trades = [
+        trade
+        for trade, _ in eligible
+    ]
+
+    eligible_baseline = (
+        calculate_baseline_stats(
+            eligible_trades
+        )
+    )
+
+    missing_trade_count = (
+        len(trades)
+        - len(eligible_trades)
+    )
+
+    if not eligible:
+        return {
+            "factor": field,
+            "total_trade_count": len(trades),
+            "eligible_trade_count": 0,
+            "missing_trade_count": (
+                missing_trade_count
+            ),
+            "eligible_baseline": (
+                eligible_baseline
+            ),
+            "groups": [],
+        }
+
+    sorted_eligible = sorted(
+        eligible,
+        key=lambda item: item[1],
+    )
+
+    actual_bucket_count = min(
+        max(
+            int(bucket_count),
+            1,
+        ),
+        len(sorted_eligible),
+    )
+
+    if actual_bucket_count == 3:
+        labels = [
+            "LOW",
+            "MIDDLE",
+            "HIGH",
+        ]
+    else:
+        labels = [
+            f"BUCKET_{index + 1}"
+            for index in range(
+                actual_bucket_count
+            )
+        ]
+
+    buckets = {
+        label: []
+        for label in labels
+    }
+
+    for rank, item in enumerate(
+        sorted_eligible
+    ):
+        bucket_index = min(
+            (
+                rank
+                * actual_bucket_count
+            )
+            // len(sorted_eligible),
+            actual_bucket_count - 1,
+        )
+
+        label = labels[
+            bucket_index
+        ]
+
+        buckets[label].append(
+            item
+        )
+
+    group_results = []
+
+    for label in labels:
+        bucket_items = buckets[
+            label
+        ]
+
+        if not bucket_items:
+            continue
+
+        bucket_trades = [
+            trade
+            for trade, _ in bucket_items
+        ]
+
+        bucket_values = [
+            value
+            for _, value in bucket_items
+        ]
+
+        group_stats = (
+            calculate_baseline_stats(
+                bucket_trades
+            )
+        )
+
+        classification = (
+            classify_shadow_result(
+                eligible_baseline,
+                group_stats,
+                minimum_sample_size=(
+                    minimum_sample_size
+                ),
+            )
+        )
+
+        group_results.append(
+            {
+                "value": label,
+                "minimum_value": min(
+                    bucket_values
+                ),
+                "maximum_value": max(
+                    bucket_values
+                ),
+                "stats": group_stats,
+                "status": classification[
+                    "status"
+                ],
+                "direction": classification[
+                    "direction"
+                ],
+            }
+        )
+
+    return {
+        "factor": field,
+        "total_trade_count": len(trades),
+        "eligible_trade_count": len(
+            eligible_trades
+        ),
+        "missing_trade_count": (
+            missing_trade_count
+        ),
+        "eligible_baseline": (
+            eligible_baseline
+        ),
+        "groups": group_results,
+    }
+
+
 def _format_profit_factor(stats):
     profit_factor = stats.get(
         "profit_factor"
@@ -531,11 +737,73 @@ def print_shadow_report(file_path):
                 f"{group['direction']}"
             )
 
+    for factor in NUMERIC_FACTORS:
+        result = compare_numeric_factor(
+            trades,
+            factor,
+        )
+
+        print()
+        print(
+            f"NUMERIC FACTOR: {factor}"
+        )
+        print("-" * 78)
+
+        print(
+            "Coverage: "
+            f"{result['eligible_trade_count']}/"
+            f"{result['total_trade_count']} "
+            "trades | "
+            f"Missing: "
+            f"{result['missing_trade_count']}"
+        )
+
+        eligible_baseline = result[
+            "eligible_baseline"
+        ]
+
+        print(
+            "Eligible baseline: "
+            f"PF "
+            f"{_format_profit_factor(eligible_baseline)} | "
+            f"Expectancy "
+            f"${eligible_baseline['expectancy']:.2f}"
+        )
+
+        if not result["groups"]:
+            print(
+                "No populated numeric data "
+                "for this factor."
+            )
+            continue
+
+        for group in result["groups"]:
+            stats = group["stats"]
+
+            value_range = (
+                f"{group['minimum_value']:.2f}"
+                " to "
+                f"{group['maximum_value']:.2f}"
+            )
+
+            print(
+                f"  {group['value']:<8}"
+                f"{value_range:<22}"
+                f"Trades {stats['trade_count']:>3} | "
+                f"Win {stats['win_rate']:>6.2f}% | "
+                f"PF "
+                f"{_format_profit_factor(stats):>5} | "
+                f"Exp ${stats['expectancy']:>7.2f} | "
+                f"{group['status']} | "
+                f"{group['direction']}"
+            )
+
     print()
     print(
         "Research only. No trading rules "
         "were modified."
     )
+
 
 
 def main():

@@ -1,4 +1,4 @@
-"""
+﻿"""
 Market regime classification for trade research enrichment.
 
 The regime is measured using XIC.TO data available on or before the
@@ -11,6 +11,10 @@ import csv
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any
+
+from research.ibkr_historical_research import (
+    load_ibkr_daily_history,
+)
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -137,21 +141,18 @@ def calculate_market_regime(
     """
     Classify the broad TSX market regime using XIC.
 
-    Rules
-    -----
-    BULL:
-        XIC adjusted close is above its 200-day SMA
-        and its 50-day SMA is above its 200-day SMA.
+    IBKR regular traded daily history is primary when the
+    default XIC benchmark is used.
 
-    BEAR:
-        XIC adjusted close is below its 200-day SMA
-        and its 50-day SMA is below its 200-day SMA.
+    A supplied benchmark_file remains supported for tests
+    and controlled historical research.
 
-    SIDEWAYS:
-        All other combinations.
+    Local saved benchmark history is retained as fallback.
 
-    Only rows dated on or before measurement_date are used.
+    This module is research-only and does not alter
+    strategy decisions.
     """
+
     result: dict[str, Any] = {
         "measurement_date": "",
         "benchmark": "XIC.TO",
@@ -163,20 +164,79 @@ def calculate_market_regime(
         "sma_50_vs_sma_200_percent": "",
         "status": "UNAVAILABLE",
         "reason": "",
+        "data_source": "UNAVAILABLE",
     }
 
     try:
-        normalized_date = _normalize_date(measurement_date)
-
-        result["measurement_date"] = normalized_date.isoformat()
-
-        history_file = (
-            Path(benchmark_file)
-            if benchmark_file is not None
-            else DEFAULT_BENCHMARK_FILE
+        normalized_date = _normalize_date(
+            measurement_date
         )
 
-        history = _load_adjusted_closes(history_file)
+        result[
+            "measurement_date"
+        ] = normalized_date.isoformat()
+
+        history = None
+        ibkr_error = ""
+
+        if benchmark_file is None:
+            try:
+                ibkr_history = (
+                    load_ibkr_daily_history(
+                        symbol="XIC.TO",
+                        measurement_date=(
+                            normalized_date.isoformat()
+                        ),
+                        duration="2 Y",
+                        adjusted=False,
+                        client_id=21,
+                    )
+                )
+
+                if (
+                    ibkr_history is not None
+                    and len(ibkr_history) >= 200
+                ):
+                    history = [
+                        (
+                            row.date(),
+                            float(close),
+                        )
+                        for row, close in zip(
+                            ibkr_history["date"],
+                            ibkr_history["close"],
+                        )
+                    ]
+
+                    result[
+                        "data_source"
+                    ] = "IBKR_TRADES"
+
+            except Exception as error:
+                ibkr_error = str(
+                    error
+                )
+
+                history = None
+
+        if history is None:
+            history_file = (
+                Path(benchmark_file)
+                if benchmark_file is not None
+                else DEFAULT_BENCHMARK_FILE
+            )
+
+            history = _load_adjusted_closes(
+                history_file
+            )
+
+            result[
+                "data_source"
+            ] = (
+                "LOCAL_BENCHMARK_FILE"
+                if benchmark_file is not None
+                else "LOCAL_FALLBACK"
+            )
 
         available_history = [
             item
@@ -186,27 +246,59 @@ def calculate_market_regime(
 
         if len(available_history) < 200:
             result["reason"] = (
-                "At least 200 benchmark trading days are required "
-                f"through {normalized_date.isoformat()}; "
-                f"only {len(available_history)} were available."
+                "At least 200 benchmark trading "
+                "days are required through "
+                f"{normalized_date.isoformat()}; "
+                f"only {len(available_history)} "
+                "were available."
             )
+
+            if ibkr_error:
+                result["reason"] += (
+                    " IBKR error: "
+                    f"{ibkr_error}"
+                )
+
             return result
 
         prices = [
             adjusted_close
-            for _, adjusted_close in available_history
+            for _, adjusted_close
+            in available_history
         ]
 
-        benchmark_close = prices[-1]
-        sma_50 = _simple_moving_average(prices, 50)
-        sma_200 = _simple_moving_average(prices, 200)
+        benchmark_close = (
+            prices[-1]
+        )
+
+        sma_50 = (
+            _simple_moving_average(
+                prices,
+                50,
+            )
+        )
+
+        sma_200 = (
+            _simple_moving_average(
+                prices,
+                200,
+            )
+        )
 
         close_vs_sma_200_percent = (
-            (benchmark_close / sma_200) - 1
+            (
+                benchmark_close
+                / sma_200
+            )
+            - 1
         ) * 100
 
         sma_50_vs_sma_200_percent = (
-            (sma_50 / sma_200) - 1
+            (
+                sma_50
+                / sma_200
+            )
+            - 1
         ) * 100
 
         if (
@@ -214,11 +306,13 @@ def calculate_market_regime(
             and sma_50 > sma_200
         ):
             regime = "BULL"
+
         elif (
             benchmark_close < sma_200
             and sma_50 < sma_200
         ):
             regime = "BEAR"
+
         else:
             regime = "SIDEWAYS"
 
@@ -253,5 +347,8 @@ def calculate_market_regime(
         return result
 
     except Exception as exc:
-        result["reason"] = str(exc)
+        result["reason"] = str(
+            exc
+        )
+
         return result

@@ -1,4 +1,4 @@
-"""
+﻿"""
 Northstar Quant
 Relative Strength Research Module
 
@@ -10,6 +10,10 @@ from datetime import date, datetime
 from pathlib import Path
 
 import pandas as pd
+
+from research.ibkr_historical_research import (
+    load_ibkr_daily_history,
+)
 
 
 HISTORICAL_DATA_FOLDER = Path("data/historical")
@@ -28,17 +32,28 @@ def calculate_relative_strength(
     """
     Calculate relative performance as of the supplied date.
 
-    Relative strength is defined as:
+    IBKR ADJUSTED_LAST history is primary so stock splits
+    and dividends are handled appropriately.
+
+    Local adjusted-close history remains fallback only.
+
+    Relative strength is:
 
         stock return - benchmark return
 
-    The calculation uses adjusted closing prices and only includes
-    data available on or before measurement_date.
+    This function is research-only and does not alter
+    strategy decisions.
     """
 
     result = {
-        "measurement_date": _format_date(measurement_date),
-        "lookback_days": lookback_days,
+        "measurement_date": (
+            _format_date(
+                measurement_date
+            )
+        ),
+        "lookback_days": (
+            lookback_days
+        ),
         "stock_return_20": None,
         "xic_return_20": None,
         "xiu_return_20": None,
@@ -46,67 +61,194 @@ def calculate_relative_strength(
         "rs_xiu_20": None,
         "status": "UNAVAILABLE",
         "reason": "",
+        "data_source": "UNAVAILABLE",
     }
 
+    ibkr_error = ""
+
     try:
-        stock_prices = load_adjusted_close_history(
-            symbol,
-            measurement_date,
+        stock_history = (
+            load_ibkr_daily_history(
+                symbol=symbol,
+                measurement_date=(
+                    measurement_date
+                ),
+                duration="2 Y",
+                adjusted=True,
+                client_id=18,
+            )
         )
 
-        xic_prices = load_adjusted_close_history(
-            XIC_SYMBOL,
-            measurement_date,
+        xic_history = (
+            load_ibkr_daily_history(
+                symbol=XIC_SYMBOL,
+                measurement_date=(
+                    measurement_date
+                ),
+                duration="2 Y",
+                adjusted=True,
+                client_id=19,
+            )
         )
 
-        xiu_prices = load_adjusted_close_history(
-            XIU_SYMBOL,
-            measurement_date,
+        xiu_history = (
+            load_ibkr_daily_history(
+                symbol=XIU_SYMBOL,
+                measurement_date=(
+                    measurement_date
+                ),
+                duration="2 Y",
+                adjusted=True,
+                client_id=20,
+            )
         )
 
-        stock_return = calculate_period_return(
-            stock_prices,
-            lookback_days,
+        stock_prices = pd.to_numeric(
+            stock_history["close"],
+            errors="coerce",
+        ).dropna()
+
+        xic_prices = pd.to_numeric(
+            xic_history["close"],
+            errors="coerce",
+        ).dropna()
+
+        xiu_prices = pd.to_numeric(
+            xiu_history["close"],
+            errors="coerce",
+        ).dropna()
+
+        stock_return = (
+            calculate_period_return(
+                stock_prices,
+                lookback_days,
+            )
         )
 
-        xic_return = calculate_period_return(
-            xic_prices,
-            lookback_days,
+        xic_return = (
+            calculate_period_return(
+                xic_prices,
+                lookback_days,
+            )
         )
 
-        xiu_return = calculate_period_return(
-            xiu_prices,
-            lookback_days,
+        xiu_return = (
+            calculate_period_return(
+                xiu_prices,
+                lookback_days,
+            )
         )
 
-        result["stock_return_20"] = round(stock_return, 4)
-        result["xic_return_20"] = round(xic_return, 4)
-        result["xiu_return_20"] = round(xiu_return, 4)
-
-        result["rs_xic_20"] = round(
-            stock_return - xic_return,
-            4,
-        )
-
-        result["rs_xiu_20"] = round(
-            stock_return - xiu_return,
-            4,
-        )
-
-        result["status"] = "AVAILABLE"
-
-        return result
-
-    except (FileNotFoundError, ValueError, KeyError) as error:
-        result["reason"] = str(error)
-        return result
+        result[
+            "data_source"
+        ] = "IBKR_ADJUSTED_LAST"
 
     except Exception as error:
-        result["reason"] = (
-            "Unexpected relative-strength error: "
-            f"{type(error).__name__}: {error}"
+        ibkr_error = str(
+            error
         )
-        return result
+
+        try:
+            stock_prices = (
+                load_adjusted_close_history(
+                    symbol,
+                    measurement_date,
+                )
+            )
+
+            xic_prices = (
+                load_adjusted_close_history(
+                    XIC_SYMBOL,
+                    measurement_date,
+                )
+            )
+
+            xiu_prices = (
+                load_adjusted_close_history(
+                    XIU_SYMBOL,
+                    measurement_date,
+                )
+            )
+
+            stock_return = (
+                calculate_period_return(
+                    stock_prices,
+                    lookback_days,
+                )
+            )
+
+            xic_return = (
+                calculate_period_return(
+                    xic_prices,
+                    lookback_days,
+                )
+            )
+
+            xiu_return = (
+                calculate_period_return(
+                    xiu_prices,
+                    lookback_days,
+                )
+            )
+
+            result[
+                "data_source"
+            ] = "LOCAL_ADJUSTED_FALLBACK"
+
+        except Exception as fallback_error:
+            result["reason"] = (
+                "IBKR unavailable: "
+                f"{ibkr_error}; "
+                "local adjusted fallback failed: "
+                f"{fallback_error}"
+            )
+
+            return result
+
+    result[
+        "stock_return_20"
+    ] = round(
+        stock_return,
+        4,
+    )
+
+    result[
+        "xic_return_20"
+    ] = round(
+        xic_return,
+        4,
+    )
+
+    result[
+        "xiu_return_20"
+    ] = round(
+        xiu_return,
+        4,
+    )
+
+    result[
+        "rs_xic_20"
+    ] = round(
+        stock_return
+        - xic_return,
+        4,
+    )
+
+    result[
+        "rs_xiu_20"
+    ] = round(
+        stock_return
+        - xiu_return,
+        4,
+    )
+
+    result["status"] = (
+        "AVAILABLE"
+    )
+
+    result["reason"] = ""
+
+    return result
 
 
 def load_adjusted_close_history(symbol, measurement_date):

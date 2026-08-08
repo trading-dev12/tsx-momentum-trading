@@ -1,4 +1,4 @@
-"""
+﻿"""
 Northstar Quant
 Sector-strength research enrichment.
 
@@ -12,6 +12,10 @@ from datetime import datetime, timedelta
 
 import pandas as pd
 import yfinance as yf
+
+from research.ibkr_historical_research import (
+    load_ibkr_daily_history,
+)
 
 from research.sector_map import get_sector_mapping
 
@@ -30,10 +34,12 @@ def unavailable_result(
     reason,
     sector="",
     sector_etf="",
+    data_source="UNAVAILABLE",
 ):
     """
     Return a consistent unavailable result.
     """
+
     return {
         "symbol": symbol,
         "sector": sector,
@@ -48,6 +54,7 @@ def unavailable_result(
         "measurement_date": measurement_date,
         "status": "UNAVAILABLE",
         "reason": reason,
+        "data_source": data_source,
     }
 
 
@@ -125,24 +132,20 @@ def calculate_sector_strength(
     lookback_days=DEFAULT_LOOKBACK_DAYS,
 ):
     """
-    Calculate a stock's sector strength relative to XIC.TO.
+    Calculate sector strength relative to XIC.
 
-    Args:
-        symbol:
-            TSX symbol, such as "CNR.TO".
+    IBKR ADJUSTED_LAST history is primary because this
+    calculation compares historical returns.
 
-        measurement_date:
-            Signal date in YYYY-MM-DD format. The calculation uses
-            market data available through this date.
+    Yahoo Finance remains fallback only.
 
-        lookback_days:
-            Number of trading sessions used for the return calculation.
-
-    Returns:
-        Dictionary containing the sector classification, benchmark
-        returns, relative sector strength, status, and reason.
+    This function is research-only and does not alter
+    strategy decisions.
     """
-    normalized_symbol = str(symbol).strip().upper()
+
+    normalized_symbol = str(
+        symbol
+    ).strip().upper()
 
     if not normalized_symbol:
         return unavailable_result(
@@ -151,35 +154,58 @@ def calculate_sector_strength(
             reason="Symbol is missing.",
         )
 
-    sector_mapping = get_sector_mapping(normalized_symbol)
+    sector_mapping = get_sector_mapping(
+        normalized_symbol
+    )
 
     if sector_mapping is None:
         return unavailable_result(
             symbol=normalized_symbol,
             measurement_date=measurement_date,
-            reason="No sector mapping exists for this symbol.",
+            reason=(
+                "No sector mapping exists "
+                "for this symbol."
+            ),
         )
 
-    sector, sector_etf = sector_mapping
+    sector, sector_etf = (
+        sector_mapping
+    )
 
     if measurement_date is None:
-        measurement_datetime = datetime.now()
-        normalized_measurement_date = measurement_datetime.strftime(
-            "%Y-%m-%d"
+        measurement_datetime = (
+            datetime.now()
         )
+
+        normalized_measurement_date = (
+            measurement_datetime.strftime(
+                "%Y-%m-%d"
+            )
+        )
+
     else:
-        normalized_measurement_date = str(measurement_date)
+        normalized_measurement_date = str(
+            measurement_date
+        )
 
         try:
-            measurement_datetime = datetime.strptime(
-                normalized_measurement_date,
-                "%Y-%m-%d",
+            measurement_datetime = (
+                datetime.strptime(
+                    normalized_measurement_date,
+                    "%Y-%m-%d",
+                )
             )
+
         except ValueError:
             return unavailable_result(
                 symbol=normalized_symbol,
-                measurement_date=normalized_measurement_date,
-                reason="Measurement date must use YYYY-MM-DD format.",
+                measurement_date=(
+                    normalized_measurement_date
+                ),
+                reason=(
+                    "Measurement date must use "
+                    "YYYY-MM-DD format."
+                ),
                 sector=sector,
                 sector_etf=sector_etf,
             )
@@ -187,110 +213,231 @@ def calculate_sector_strength(
     if lookback_days < 1:
         return unavailable_result(
             symbol=normalized_symbol,
-            measurement_date=normalized_measurement_date,
-            reason="Lookback days must be at least 1.",
+            measurement_date=(
+                normalized_measurement_date
+            ),
+            reason=(
+                "Lookback days must be "
+                "at least 1."
+            ),
             sector=sector,
             sector_etf=sector_etf,
         )
 
-    start_date = measurement_datetime - timedelta(
-        days=DOWNLOAD_CALENDAR_DAYS
-    )
-
-    # Yahoo Finance treats end dates as exclusive, so add one day.
-    end_date = measurement_datetime + timedelta(days=1)
+    ibkr_error = ""
 
     try:
-        history = yf.download(
-            tickers=[
-                sector_etf,
-                DEFAULT_MARKET_BENCHMARK,
-            ],
-            start=start_date.strftime("%Y-%m-%d"),
-            end=end_date.strftime("%Y-%m-%d"),
-            auto_adjust=False,
-            progress=False,
-            group_by="ticker",
-            threads=False,
+        sector_history = (
+            load_ibkr_daily_history(
+                symbol=sector_etf,
+                measurement_date=(
+                    normalized_measurement_date
+                ),
+                duration="1 Y",
+                adjusted=True,
+                client_id=22,
+            )
         )
+
+        market_history = (
+            load_ibkr_daily_history(
+                symbol=DEFAULT_MARKET_BENCHMARK,
+                measurement_date=(
+                    normalized_measurement_date
+                ),
+                duration="1 Y",
+                adjusted=True,
+                client_id=23,
+            )
+        )
+
+        sector_closes = pd.to_numeric(
+            sector_history["close"],
+            errors="coerce",
+        ).dropna()
+
+        market_closes = pd.to_numeric(
+            market_history["close"],
+            errors="coerce",
+        ).dropna()
+
+        sector_return = (
+            calculate_return(
+                sector_closes,
+                lookback_days,
+            )
+        )
+
+        market_return = (
+            calculate_return(
+                market_closes,
+                lookback_days,
+            )
+        )
+
+        if (
+            sector_return is None
+            or market_return is None
+        ):
+            raise ValueError(
+                "Insufficient IBKR return history."
+            )
+
+        data_source = (
+            "IBKR_ADJUSTED_LAST"
+        )
+
     except Exception as error:
-        return unavailable_result(
-            symbol=normalized_symbol,
-            measurement_date=normalized_measurement_date,
-            reason=f"Market-data download failed: {error}",
-            sector=sector,
-            sector_etf=sector_etf,
+        ibkr_error = str(
+            error
         )
 
-    if history is None or history.empty:
-        return unavailable_result(
-            symbol=normalized_symbol,
-            measurement_date=normalized_measurement_date,
-            reason="No market data was returned.",
-            sector=sector,
-            sector_etf=sector_etf,
+        start_date = (
+            measurement_datetime
+            - timedelta(
+                days=DOWNLOAD_CALENDAR_DAYS
+            )
         )
 
-    try:
-        sector_history = history[sector_etf]
-        market_history = history[DEFAULT_MARKET_BENCHMARK]
-    except (KeyError, TypeError):
-        return unavailable_result(
-            symbol=normalized_symbol,
-            measurement_date=normalized_measurement_date,
-            reason="One or more benchmark datasets were missing.",
-            sector=sector,
-            sector_etf=sector_etf,
+        end_date = (
+            measurement_datetime
+            + timedelta(days=1)
         )
 
-    sector_closes = normalize_close_series(sector_history)
-    market_closes = normalize_close_series(market_history)
+        try:
+            history = yf.download(
+                tickers=[
+                    sector_etf,
+                    DEFAULT_MARKET_BENCHMARK,
+                ],
+                start=start_date.strftime(
+                    "%Y-%m-%d"
+                ),
+                end=end_date.strftime(
+                    "%Y-%m-%d"
+                ),
+                auto_adjust=False,
+                progress=False,
+                group_by="ticker",
+                threads=False,
+            )
 
-    sector_return = calculate_return(
-        sector_closes,
-        lookback_days,
+            if (
+                history is None
+                or history.empty
+            ):
+                raise ValueError(
+                    "No Yahoo market data returned."
+                )
+
+            sector_yahoo = history[
+                sector_etf
+            ]
+
+            market_yahoo = history[
+                DEFAULT_MARKET_BENCHMARK
+            ]
+
+            sector_closes = (
+                normalize_close_series(
+                    sector_yahoo
+                )
+            )
+
+            market_closes = (
+                normalize_close_series(
+                    market_yahoo
+                )
+            )
+
+            sector_return = (
+                calculate_return(
+                    sector_closes,
+                    lookback_days,
+                )
+            )
+
+            market_return = (
+                calculate_return(
+                    market_closes,
+                    lookback_days,
+                )
+            )
+
+            if (
+                sector_return is None
+                or market_return is None
+            ):
+                raise ValueError(
+                    "Insufficient Yahoo "
+                    "benchmark history."
+                )
+
+            data_source = (
+                "YAHOO_FALLBACK"
+            )
+
+        except Exception as fallback_error:
+            return unavailable_result(
+                symbol=normalized_symbol,
+                measurement_date=(
+                    normalized_measurement_date
+                ),
+                reason=(
+                    "IBKR unavailable: "
+                    f"{ibkr_error}; "
+                    "Yahoo fallback failed: "
+                    f"{fallback_error}"
+                ),
+                sector=sector,
+                sector_etf=sector_etf,
+            )
+
+    sector_strength = (
+        sector_return
+        - market_return
     )
 
-    market_return = calculate_return(
-        market_closes,
-        lookback_days,
+    sector_status = (
+        classify_sector_strength(
+            sector_strength
+        )
     )
-
-    if sector_return is None:
-        return unavailable_result(
-            symbol=normalized_symbol,
-            measurement_date=normalized_measurement_date,
-            reason="Insufficient sector benchmark history.",
-            sector=sector,
-            sector_etf=sector_etf,
-        )
-
-    if market_return is None:
-        return unavailable_result(
-            symbol=normalized_symbol,
-            measurement_date=normalized_measurement_date,
-            reason="Insufficient broad-market benchmark history.",
-            sector=sector,
-            sector_etf=sector_etf,
-        )
-
-    sector_strength = sector_return - market_return
-    sector_status = classify_sector_strength(sector_strength)
 
     return {
         "symbol": normalized_symbol,
         "sector": sector,
         "sector_etf": sector_etf,
-        "market_benchmark": DEFAULT_MARKET_BENCHMARK,
-        "sector_return_20": round(sector_return, 4),
-        "market_return_20": round(market_return, 4),
-        "sector_strength_20": round(sector_strength, 4),
-        "sector_status": sector_status,
-        "sector_measurement_date": normalized_measurement_date,
-        "sector_strength_status": "AVAILABLE",
-        "measurement_date": normalized_measurement_date,
+        "market_benchmark": (
+            DEFAULT_MARKET_BENCHMARK
+        ),
+        "sector_return_20": round(
+            sector_return,
+            4,
+        ),
+        "market_return_20": round(
+            market_return,
+            4,
+        ),
+        "sector_strength_20": round(
+            sector_strength,
+            4,
+        ),
+        "sector_status": (
+            sector_status
+        ),
+        "sector_measurement_date": (
+            normalized_measurement_date
+        ),
+        "sector_strength_status": (
+            "AVAILABLE"
+        ),
+        "measurement_date": (
+            normalized_measurement_date
+        ),
         "status": "AVAILABLE",
         "reason": "",
+        "data_source": data_source,
     }
 
 

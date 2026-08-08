@@ -1,4 +1,4 @@
-"""
+﻿"""
 Northstar Quant
 Gap-analysis research enrichment.
 
@@ -13,6 +13,10 @@ from datetime import datetime, timedelta
 import pandas as pd
 import yfinance as yf
 
+from research.ibkr_historical_research import (
+    load_ibkr_daily_history,
+)
+
 
 DOWNLOAD_CALENDAR_DAYS = 30
 
@@ -25,10 +29,12 @@ def unavailable_result(
     symbol,
     measurement_date,
     reason,
+    data_source="UNAVAILABLE",
 ):
     """
     Return a consistent unavailable result.
     """
+
     return {
         "symbol": symbol,
         "previous_close": None,
@@ -45,6 +51,7 @@ def unavailable_result(
         "measurement_date": measurement_date,
         "status": "UNAVAILABLE",
         "reason": reason,
+        "data_source": data_source,
     }
 
 
@@ -169,22 +176,18 @@ def calculate_gap_analysis(
     measurement_date=None,
 ):
     """
-    Calculate opening-gap context for a stock on its signal date.
+    Calculate opening-gap context on the signal date.
 
-    Args:
-        symbol:
-            TSX symbol, such as "CNR.TO".
+    IBKR regular traded daily bars are primary.
+    Yahoo Finance remains fallback only.
 
-        measurement_date:
-            Signal date in YYYY-MM-DD format. The calculation uses
-            the signal-date opening price and the previous completed
-            trading session.
-
-    Returns:
-        Dictionary containing the opening gap, previous-session
-        price context, classification, status, and reason.
+    This is research-only and does not alter
+    strategy decisions.
     """
-    normalized_symbol = str(symbol).strip().upper()
+
+    normalized_symbol = str(
+        symbol
+    ).strip().upper()
 
     if not normalized_symbol:
         return unavailable_result(
@@ -195,8 +198,11 @@ def calculate_gap_analysis(
 
     if measurement_date is None:
         measurement_datetime = datetime.now()
+
         normalized_measurement_date = (
-            measurement_datetime.strftime("%Y-%m-%d")
+            measurement_datetime.strftime(
+                "%Y-%m-%d"
+            )
         )
     else:
         normalized_measurement_date = str(
@@ -204,107 +210,235 @@ def calculate_gap_analysis(
         )
 
         try:
-            measurement_datetime = datetime.strptime(
-                normalized_measurement_date,
-                "%Y-%m-%d",
+            measurement_datetime = (
+                datetime.strptime(
+                    normalized_measurement_date,
+                    "%Y-%m-%d",
+                )
             )
         except ValueError:
             return unavailable_result(
                 symbol=normalized_symbol,
-                measurement_date=normalized_measurement_date,
+                measurement_date=(
+                    normalized_measurement_date
+                ),
                 reason=(
                     "Measurement date must use "
                     "YYYY-MM-DD format."
                 ),
             )
 
-    start_date = measurement_datetime - timedelta(
-        days=DOWNLOAD_CALENDAR_DAYS
-    )
-
-    # Yahoo Finance treats end dates as exclusive.
-    end_date = measurement_datetime + timedelta(days=1)
+    normalized_history = None
+    data_source = "UNAVAILABLE"
+    ibkr_error = ""
 
     try:
-        history = yf.download(
-            tickers=normalized_symbol,
-            start=start_date.strftime("%Y-%m-%d"),
-            end=end_date.strftime("%Y-%m-%d"),
-            auto_adjust=False,
-            progress=False,
-            threads=False,
-        )
-    except Exception as error:
-        return unavailable_result(
-            symbol=normalized_symbol,
-            measurement_date=normalized_measurement_date,
-            reason=f"Market-data download failed: {error}",
+        ibkr_history = (
+            load_ibkr_daily_history(
+                symbol=normalized_symbol,
+                measurement_date=(
+                    normalized_measurement_date
+                ),
+                duration="3 M",
+                adjusted=False,
+            )
         )
 
-    normalized_history = normalize_history(
-        history,
-        normalized_symbol,
-    )
+        if (
+            ibkr_history is not None
+            and not ibkr_history.empty
+        ):
+            history = ibkr_history.rename(
+                columns={
+                    "open": "Open",
+                    "high": "High",
+                    "low": "Low",
+                    "close": "Close",
+                    "volume": "Volume",
+                }
+            ).copy()
+
+            history = history.set_index(
+                "date"
+            )
+
+            normalized_history = (
+                normalize_history(
+                    history,
+                    normalized_symbol,
+                )
+            )
+
+            if not normalized_history.empty:
+                data_source = (
+                    "IBKR_TRADES"
+                )
+
+    except Exception as error:
+        ibkr_error = str(
+            error
+        )
+        normalized_history = None
+
+    if (
+        normalized_history is None
+        or normalized_history.empty
+    ):
+        start_date = (
+            measurement_datetime
+            - timedelta(
+                days=DOWNLOAD_CALENDAR_DAYS
+            )
+        )
+
+        end_date = (
+            measurement_datetime
+            + timedelta(days=1)
+        )
+
+        try:
+            history = yf.download(
+                tickers=normalized_symbol,
+                start=start_date.strftime(
+                    "%Y-%m-%d"
+                ),
+                end=end_date.strftime(
+                    "%Y-%m-%d"
+                ),
+                auto_adjust=False,
+                progress=False,
+                threads=False,
+            )
+
+        except Exception as error:
+            return unavailable_result(
+                symbol=normalized_symbol,
+                measurement_date=(
+                    normalized_measurement_date
+                ),
+                reason=(
+                    "IBKR unavailable: "
+                    f"{ibkr_error}; "
+                    "Yahoo fallback failed: "
+                    f"{error}"
+                ),
+            )
+
+        normalized_history = (
+            normalize_history(
+                history,
+                normalized_symbol,
+            )
+        )
+
+        data_source = (
+            "YAHOO_FALLBACK"
+        )
 
     if normalized_history.empty:
         return unavailable_result(
             symbol=normalized_symbol,
-            measurement_date=normalized_measurement_date,
-            reason="No usable market data was returned.",
+            measurement_date=(
+                normalized_measurement_date
+            ),
+            reason=(
+                "No usable market data "
+                "was returned."
+            ),
+            data_source=data_source,
         )
 
     signal_date = pd.Timestamp(
         normalized_measurement_date
     )
 
-    available_dates = normalized_history.index.normalize()
+    available_dates = (
+        normalized_history
+        .index
+        .normalize()
+    )
 
-    signal_rows = normalized_history[
-        available_dates == signal_date
-    ]
+    signal_rows = (
+        normalized_history[
+            available_dates
+            == signal_date
+        ]
+    )
 
     if signal_rows.empty:
         return unavailable_result(
             symbol=normalized_symbol,
-            measurement_date=normalized_measurement_date,
-            reason=(
-                "No trading session exists for the "
-                "measurement date."
+            measurement_date=(
+                normalized_measurement_date
             ),
+            reason=(
+                "No trading session exists "
+                "for the measurement date."
+            ),
+            data_source=data_source,
         )
 
-    signal_row = signal_rows.iloc[-1]
-
-    previous_rows = normalized_history[
-        available_dates < signal_date
-    ]
+    previous_rows = (
+        normalized_history[
+            available_dates
+            < signal_date
+        ]
+    )
 
     if previous_rows.empty:
         return unavailable_result(
             symbol=normalized_symbol,
-            measurement_date=normalized_measurement_date,
-            reason=(
-                "No previous trading session was available."
+            measurement_date=(
+                normalized_measurement_date
             ),
+            reason=(
+                "No previous trading session "
+                "was available."
+            ),
+            data_source=data_source,
         )
 
-    previous_row = previous_rows.iloc[-1]
+    signal_row = (
+        signal_rows.iloc[-1]
+    )
 
-    previous_close = float(previous_row["Close"])
-    previous_high = float(previous_row["High"])
-    previous_low = float(previous_row["Low"])
-    signal_open = float(signal_row["Open"])
+    previous_row = (
+        previous_rows.iloc[-1]
+    )
+
+    previous_close = float(
+        previous_row["Close"]
+    )
+
+    previous_high = float(
+        previous_row["High"]
+    )
+
+    previous_low = float(
+        previous_row["Low"]
+    )
+
+    signal_open = float(
+        signal_row["Open"]
+    )
 
     if previous_close <= 0:
         return unavailable_result(
             symbol=normalized_symbol,
-            measurement_date=normalized_measurement_date,
-            reason="Previous close was invalid.",
+            measurement_date=(
+                normalized_measurement_date
+            ),
+            reason=(
+                "Previous close was invalid."
+            ),
+            data_source=data_source,
         )
 
-    gap_percent = calculate_percent_difference(
-        signal_open,
-        previous_close,
+    gap_percent = (
+        calculate_percent_difference(
+            signal_open,
+            previous_close,
+        )
     )
 
     open_vs_previous_high_percent = (
@@ -321,23 +455,46 @@ def calculate_gap_analysis(
         )
     )
 
-    gap_direction = classify_gap_direction(
-        gap_percent
+    gap_direction = (
+        classify_gap_direction(
+            gap_percent
+        )
     )
 
-    gap_bucket = classify_gap_bucket(
-        gap_percent
+    gap_bucket = (
+        classify_gap_bucket(
+            gap_percent
+        )
     )
 
     return {
         "symbol": normalized_symbol,
-        "previous_close": round(previous_close, 4),
-        "previous_high": round(previous_high, 4),
-        "previous_low": round(previous_low, 4),
-        "signal_open": round(signal_open, 4),
-        "gap_percent": round(gap_percent, 4),
-        "gap_direction": gap_direction,
-        "gap_bucket": gap_bucket,
+        "previous_close": round(
+            previous_close,
+            4,
+        ),
+        "previous_high": round(
+            previous_high,
+            4,
+        ),
+        "previous_low": round(
+            previous_low,
+            4,
+        ),
+        "signal_open": round(
+            signal_open,
+            4,
+        ),
+        "gap_percent": round(
+            gap_percent,
+            4,
+        ),
+        "gap_direction": (
+            gap_direction
+        ),
+        "gap_bucket": (
+            gap_bucket
+        ),
         "open_vs_previous_high_percent": round(
             open_vs_previous_high_percent,
             4,
@@ -349,12 +506,15 @@ def calculate_gap_analysis(
         "gap_measurement_date": (
             normalized_measurement_date
         ),
-        "gap_analysis_status": "AVAILABLE",
+        "gap_analysis_status": (
+            "AVAILABLE"
+        ),
         "measurement_date": (
             normalized_measurement_date
         ),
         "status": "AVAILABLE",
         "reason": "",
+        "data_source": data_source,
     }
 
 

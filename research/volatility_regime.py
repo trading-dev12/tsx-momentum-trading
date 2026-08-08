@@ -1,4 +1,4 @@
-"""
+﻿"""
 Northstar Quant
 Volatility Regime Research Module
 
@@ -13,6 +13,10 @@ from datetime import datetime, timedelta
 import numpy as np
 import pandas as pd
 import yfinance as yf
+
+from research.ibkr_historical_research import (
+    load_ibkr_daily_history,
+)
 
 
 ATR_PERIOD = 14
@@ -29,10 +33,12 @@ def unavailable_result(
     symbol,
     measurement_date,
     reason,
+    data_source="UNAVAILABLE",
 ):
     """
     Return a consistent unavailable result.
     """
+
     return {
         "symbol": symbol,
         "close": None,
@@ -47,6 +53,7 @@ def unavailable_result(
         "measurement_date": measurement_date,
         "status": "UNAVAILABLE",
         "reason": reason,
+        "data_source": data_source,
     }
 
 
@@ -248,19 +255,13 @@ def calculate_volatility_regime(
     """
     Calculate a stock's volatility regime on the signal date.
 
-    Args:
-        symbol:
-            TSX symbol, such as "CNR.TO".
+    IBKR regular traded daily bars are primary.
+    Yahoo Finance is retained only as fallback.
 
-        measurement_date:
-            Signal date in YYYY-MM-DD format. Only data available
-            through this date is used.
-
-    Returns:
-        Dictionary containing ATR, ATR percentage, realized
-        volatility, historical percentile, regime, status,
-        and reason.
+    This function is research-only and does not alter
+    strategy decisions.
     """
+
     normalized_symbol = str(
         symbol
     ).strip().upper()
@@ -286,9 +287,11 @@ def calculate_volatility_regime(
         )
 
         try:
-            measurement_datetime = datetime.strptime(
-                normalized_measurement_date,
-                "%Y-%m-%d",
+            measurement_datetime = (
+                datetime.strptime(
+                    normalized_measurement_date,
+                    "%Y-%m-%d",
+                )
             )
         except ValueError:
             return unavailable_result(
@@ -302,42 +305,137 @@ def calculate_volatility_regime(
                 ),
             )
 
-    start_date = measurement_datetime - timedelta(
-        days=DOWNLOAD_CALENDAR_DAYS
-    )
-
-    # Yahoo Finance treats the end date as exclusive.
-    end_date = measurement_datetime + timedelta(
-        days=1
-    )
+    normalized_history = None
+    data_source = "UNAVAILABLE"
+    ibkr_error = ""
 
     try:
-        history = yf.download(
-            normalized_symbol,
-            start=start_date.strftime(
-                "%Y-%m-%d"
-            ),
-            end=end_date.strftime(
-                "%Y-%m-%d"
-            ),
-            auto_adjust=False,
-            progress=False,
-            threads=False,
-            multi_level_index=False,
+        ibkr_history = (
+            load_ibkr_daily_history(
+                symbol=normalized_symbol,
+                measurement_date=(
+                    normalized_measurement_date
+                ),
+                duration="2 Y",
+                adjusted=False,
+            )
         )
+
+        if (
+            ibkr_history is not None
+            and not ibkr_history.empty
+        ):
+            history = ibkr_history.rename(
+                columns={
+                    "open": "Open",
+                    "high": "High",
+                    "low": "Low",
+                    "close": "Close",
+                    "volume": "Volume",
+                }
+            ).copy()
+
+            history = history.set_index(
+                "date"
+            )
+
+            normalized_history = (
+                normalize_history(
+                    history
+                )
+            )
+
+            if not normalized_history.empty:
+                data_source = (
+                    "IBKR_TRADES"
+                )
+
     except Exception as error:
+        ibkr_error = str(
+            error
+        )
+
+        normalized_history = None
+
+    if (
+        normalized_history is None
+        or normalized_history.empty
+    ):
+        start_date = (
+            measurement_datetime
+            - timedelta(
+                days=DOWNLOAD_CALENDAR_DAYS
+            )
+        )
+
+        end_date = (
+            measurement_datetime
+            + timedelta(days=1)
+        )
+
+        try:
+            history = yf.download(
+                normalized_symbol,
+                start=start_date.strftime(
+                    "%Y-%m-%d"
+                ),
+                end=end_date.strftime(
+                    "%Y-%m-%d"
+                ),
+                auto_adjust=False,
+                progress=False,
+                threads=False,
+                multi_level_index=False,
+            )
+
+        except Exception as error:
+            return unavailable_result(
+                symbol=normalized_symbol,
+                measurement_date=(
+                    normalized_measurement_date
+                ),
+                reason=(
+                    "IBKR unavailable: "
+                    f"{ibkr_error}; "
+                    "Yahoo fallback failed: "
+                    f"{error}"
+                ),
+            )
+
+        normalized_history = (
+            normalize_history(
+                history
+            )
+        )
+
+        data_source = (
+            "YAHOO_FALLBACK"
+        )
+
+    if normalized_history.empty:
         return unavailable_result(
             symbol=normalized_symbol,
             measurement_date=(
                 normalized_measurement_date
             ),
             reason=(
-                f"Market-data download failed: {error}"
+                "No usable market data "
+                "was returned."
             ),
+            data_source=data_source,
         )
 
-    normalized_history = normalize_history(
-        history
+    measurement_timestamp = (
+        pd.Timestamp(
+            normalized_measurement_date
+        )
+    )
+
+    normalized_history = (
+        normalized_history[
+            normalized_history.index.normalize()
+            <= measurement_timestamp
+        ]
     )
 
     if normalized_history.empty:
@@ -347,29 +445,10 @@ def calculate_volatility_regime(
                 normalized_measurement_date
             ),
             reason=(
-                "No usable market data was returned."
+                "No market data was available "
+                "through the measurement date."
             ),
-        )
-
-    measurement_timestamp = pd.Timestamp(
-        normalized_measurement_date
-    )
-
-    normalized_history = normalized_history[
-        normalized_history.index.normalize()
-        <= measurement_timestamp
-    ]
-
-    if normalized_history.empty:
-        return unavailable_result(
-            symbol=normalized_symbol,
-            measurement_date=(
-                normalized_measurement_date
-            ),
-            reason=(
-                "No market data was available through "
-                "the measurement date."
-            ),
+            data_source=data_source,
         )
 
     required_rows = max(
@@ -379,7 +458,10 @@ def calculate_volatility_regime(
         + 1,
     )
 
-    if len(normalized_history) < required_rows:
+    if (
+        len(normalized_history)
+        < required_rows
+    ):
         return unavailable_result(
             symbol=normalized_symbol,
             measurement_date=(
@@ -389,24 +471,33 @@ def calculate_volatility_regime(
                 f"At least {required_rows} trading "
                 "sessions are required."
             ),
+            data_source=data_source,
         )
 
     true_range = calculate_true_range(
         normalized_history
     )
 
-    atr_series = true_range.rolling(
-        ATR_PERIOD
-    ).mean()
+    atr_series = (
+        true_range
+        .rolling(
+            ATR_PERIOD
+        )
+        .mean()
+    )
 
     realized_volatility_series = (
         calculate_realized_volatility(
-            normalized_history["Close"]
+            normalized_history[
+                "Close"
+            ]
         )
     )
 
     latest_close = float(
-        normalized_history["Close"].iloc[-1]
+        normalized_history[
+            "Close"
+        ].iloc[-1]
     )
 
     latest_atr = float(
@@ -414,12 +505,16 @@ def calculate_volatility_regime(
     )
 
     latest_realized_volatility = float(
-        realized_volatility_series.iloc[-1]
+        realized_volatility_series.iloc[
+            -1
+        ]
     )
 
     if (
         pd.isna(latest_atr)
-        or pd.isna(latest_realized_volatility)
+        or pd.isna(
+            latest_realized_volatility
+        )
     ):
         return unavailable_result(
             symbol=normalized_symbol,
@@ -427,9 +522,10 @@ def calculate_volatility_regime(
                 normalized_measurement_date
             ),
             reason=(
-                "Volatility calculations produced "
-                "insufficient values."
+                "Volatility calculations "
+                "produced insufficient values."
             ),
+            data_source=data_source,
         )
 
     if latest_close <= 0:
@@ -438,17 +534,23 @@ def calculate_volatility_regime(
             measurement_date=(
                 normalized_measurement_date
             ),
-            reason="Latest close was invalid.",
+            reason=(
+                "Latest close was invalid."
+            ),
+            data_source=data_source,
         )
 
     atr_percent = (
-        latest_atr / latest_close
+        latest_atr
+        / latest_close
     ) * 100.0
 
     percentile_history = (
         realized_volatility_series
         .dropna()
-        .tail(PERCENTILE_LOOKBACK)
+        .tail(
+            PERCENTILE_LOOKBACK
+        )
     )
 
     if (
@@ -462,8 +564,10 @@ def calculate_volatility_regime(
             ),
             reason=(
                 "Insufficient realized-volatility "
-                "history for percentile calculation."
+                "history for percentile "
+                "calculation."
             ),
+            data_source=data_source,
         )
 
     volatility_percentile = (
@@ -480,9 +584,10 @@ def calculate_volatility_regime(
                 normalized_measurement_date
             ),
             reason=(
-                "Volatility percentile could not "
-                "be calculated."
+                "Volatility percentile could "
+                "not be calculated."
             ),
+            data_source=data_source,
         )
 
     volatility_regime = (
@@ -493,7 +598,7 @@ def calculate_volatility_regime(
 
     return {
         "symbol": normalized_symbol,
-         "close": round(
+        "close": round(
             latest_close,
             4,
         ),
@@ -514,19 +619,26 @@ def calculate_volatility_regime(
             4,
         ),
         "volatility_percentile_252": round(
-            float(volatility_percentile),
+            float(
+                volatility_percentile
+            ),
             4,
         ),
-         "volatility_regime": volatility_regime,
+        "volatility_regime": (
+            volatility_regime
+        ),
         "volatility_measurement_date": (
             normalized_measurement_date
         ),
-        "volatility_regime_status": "AVAILABLE",
+        "volatility_regime_status": (
+            "AVAILABLE"
+        ),
         "measurement_date": (
             normalized_measurement_date
         ),
         "status": "AVAILABLE",
         "reason": "",
+        "data_source": data_source,
     }
 
 

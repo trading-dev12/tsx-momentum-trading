@@ -332,23 +332,54 @@ class IBKRDataProvider:
         duration: str,
         bar_size: str,
         use_rth: bool = True,
+        what_to_show: str = "TRADES",
     ):
         """
         Retrieve historical bars from IBKR.
+
+        TRADES:
+            Standard traded OHLCV history.
+
+        ADJUSTED_LAST:
+            Split- and dividend-adjusted stock/ETF history
+            for research return calculations.
 
         Returns the raw ib_insync BarDataList so callers
         can interpret the data as needed.
         """
 
+        normalized_data_type = str(
+            what_to_show
+        ).strip().upper()
+
+        allowed_data_types = {
+            "TRADES",
+            "ADJUSTED_LAST",
+        }
+
+        if (
+            normalized_data_type
+            not in allowed_data_types
+        ):
+            raise ValueError(
+                "Unsupported IBKR historical data type: "
+                f"{normalized_data_type}"
+            )
+
         self.connect()
 
-        contract = self.build_tsx_contract(symbol)
+        contract = self.build_tsx_contract(
+            symbol
+        )
 
-        qualified = self.ib.qualifyContracts(contract)
+        qualified = self.ib.qualifyContracts(
+            contract
+        )
 
         if not qualified:
             raise ValueError(
-                f"IBKR could not qualify contract for {symbol}."
+                "IBKR could not qualify contract "
+                f"for {symbol}."
             )
 
         return self.ib.reqHistoricalData(
@@ -356,11 +387,12 @@ class IBKRDataProvider:
             endDateTime="",
             durationStr=duration,
             barSizeSetting=bar_size,
-            whatToShow="TRADES",
+            whatToShow=normalized_data_type,
             useRTH=use_rth,
             formatDate=1,
             keepUpToDate=False,
         )
+
 
     def get_market_open_price(
         self,

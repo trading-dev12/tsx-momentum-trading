@@ -348,7 +348,7 @@ def dashboard():
             if dashboard_market_status["is_open"]
             else (
                 "LATEST MARKET DATA AVAILABLE "
-                "? MARKET CLOSED"
+                "- MARKET CLOSED"
             )
         )
         error_message = ""

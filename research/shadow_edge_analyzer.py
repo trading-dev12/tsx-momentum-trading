@@ -1737,6 +1737,222 @@ def build_candidate_quality_gate(
 
 
 
+
+def assess_combination_readiness(
+    trades,
+    minimum_enriched_trades=60,
+    minimum_distinct_entry_dates=10,
+    validation_trade_target=200,
+):
+    """
+    Decide whether pairwise shadow-factor exploration has enough
+    enriched and time-diverse evidence to begin.
+
+    READY_FOR_EXPLORATION does not mean an edge is validated and
+    never authorizes trading-rule changes.
+    """
+
+    factor_fields = (
+        list(CATEGORICAL_FACTORS)
+        + list(NUMERIC_FACTORS)
+    )
+
+    enriched_indices = []
+
+    for index, trade in enumerate(trades):
+        fully_enriched = True
+
+        for factor in CATEGORICAL_FACTORS:
+            raw_value = trade.get(
+                factor,
+                "",
+            )
+
+            if raw_value is None:
+                fully_enriched = False
+                break
+
+            if not str(
+                raw_value
+            ).strip():
+                fully_enriched = False
+                break
+
+        if not fully_enriched:
+            continue
+
+        for factor in NUMERIC_FACTORS:
+            raw_value = trade.get(
+                factor,
+                "",
+            )
+
+            if raw_value is None:
+                fully_enriched = False
+                break
+
+            raw_text = str(
+                raw_value
+            ).strip()
+
+            if not raw_text:
+                fully_enriched = False
+                break
+
+            try:
+                float(raw_text)
+            except (TypeError, ValueError):
+                fully_enriched = False
+                break
+
+        if fully_enriched:
+            enriched_indices.append(
+                index
+            )
+
+    enriched_trade_count = len(
+        enriched_indices
+    )
+
+    total_trade_count = len(
+        trades
+    )
+
+    if total_trade_count:
+        enrichment_coverage_percent = (
+            enriched_trade_count
+            / total_trade_count
+            * 100
+        )
+    else:
+        enrichment_coverage_percent = 0.0
+
+    entry_date_counts = {}
+
+    for index in enriched_indices:
+        entry_date = str(
+            trades[index].get(
+                "entry_date",
+                "",
+            )
+        ).strip()
+
+        if not entry_date:
+            continue
+
+        entry_date_counts[
+            entry_date
+        ] = (
+            entry_date_counts.get(
+                entry_date,
+                0,
+            )
+            + 1
+        )
+
+    distinct_entry_date_count = len(
+        entry_date_counts
+    )
+
+    dominant_entry_date = None
+    dominant_entry_count = 0
+
+    if entry_date_counts:
+        (
+            dominant_entry_date,
+            dominant_entry_count,
+        ) = max(
+            entry_date_counts.items(),
+            key=lambda item: item[1],
+        )
+
+    dated_enriched_trade_count = sum(
+        entry_date_counts.values()
+    )
+
+    if dated_enriched_trade_count:
+        dominant_entry_concentration_percent = (
+            dominant_entry_count
+            / dated_enriched_trade_count
+            * 100
+        )
+    else:
+        dominant_entry_concentration_percent = (
+            0.0
+        )
+
+    reasons = []
+
+    if (
+        enriched_trade_count
+        < minimum_enriched_trades
+    ):
+        reasons.append(
+            (
+                "Need "
+                f"{minimum_enriched_trades - enriched_trade_count} "
+                "more fully enriched trades."
+            )
+        )
+
+    if (
+        distinct_entry_date_count
+        < minimum_distinct_entry_dates
+    ):
+        reasons.append(
+            (
+                "Need "
+                f"{minimum_distinct_entry_dates - distinct_entry_date_count} "
+                "more distinct enriched entry dates."
+            )
+        )
+
+    if reasons:
+        status = "NOT_READY"
+    else:
+        status = (
+            "READY_FOR_EXPLORATION"
+        )
+
+    return {
+        "status": status,
+        "total_trade_count": (
+            total_trade_count
+        ),
+        "fully_enriched_trade_count": (
+            enriched_trade_count
+        ),
+        "enrichment_coverage_percent": (
+            enrichment_coverage_percent
+        ),
+        "distinct_entry_date_count": (
+            distinct_entry_date_count
+        ),
+        "minimum_enriched_trades": (
+            minimum_enriched_trades
+        ),
+        "minimum_distinct_entry_dates": (
+            minimum_distinct_entry_dates
+        ),
+        "dominant_entry_date": (
+            dominant_entry_date
+        ),
+        "dominant_entry_count": (
+            dominant_entry_count
+        ),
+        "dominant_entry_concentration_percent": (
+            dominant_entry_concentration_percent
+        ),
+        "minimum_candidate_sample_size": (
+            DEFAULT_MINIMUM_SAMPLE_SIZE
+        ),
+        "validation_trade_target": (
+            validation_trade_target
+        ),
+        "reasons": reasons,
+    }
+
+
 def _format_profit_factor(stats):
     profit_factor = stats.get(
         "profit_factor"

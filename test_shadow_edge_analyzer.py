@@ -942,3 +942,117 @@ def test_quality_gate_does_not_penalize_broad_candidate_for_one_sided_overlap():
         normal["research_rating"]
         == "WATCH_ONLY"
     )
+
+
+def test_combination_readiness_blocks_small_sample():
+    from research.shadow_edge_analyzer import (
+        CATEGORICAL_FACTORS,
+        NUMERIC_FACTORS,
+        assess_combination_readiness,
+    )
+
+    trades = []
+
+    for index in range(9):
+        trade = {
+            "profit_loss": "10",
+            "profit_loss_percent": "1",
+            "entry_date": (
+                f"2026-07-{10 + index:02d}"
+            ),
+        }
+
+        for factor in CATEGORICAL_FACTORS:
+            trade[factor] = "TEST"
+
+        for factor in NUMERIC_FACTORS:
+            trade[factor] = str(
+                index + 1
+            )
+
+        trades.append(trade)
+
+    result = (
+        assess_combination_readiness(
+            trades
+        )
+    )
+
+    assert (
+        result["status"]
+        == "NOT_READY"
+    )
+
+    assert (
+        result[
+            "fully_enriched_trade_count"
+        ]
+        == 9
+    )
+
+    assert (
+        result[
+            "minimum_enriched_trades"
+        ]
+        == 60
+    )
+
+
+def test_combination_readiness_allows_diverse_enriched_sample():
+    from research.shadow_edge_analyzer import (
+        CATEGORICAL_FACTORS,
+        NUMERIC_FACTORS,
+        assess_combination_readiness,
+    )
+
+    trades = []
+
+    for index in range(60):
+        trade = {
+            "profit_loss": "10",
+            "profit_loss_percent": "1",
+            "entry_date": (
+                "2026-07-"
+                f"{10 + (index % 12):02d}"
+            ),
+        }
+
+        for factor in CATEGORICAL_FACTORS:
+            trade[factor] = "TEST"
+
+        for factor in NUMERIC_FACTORS:
+            trade[factor] = str(
+                index + 1
+            )
+
+        trades.append(trade)
+
+    result = (
+        assess_combination_readiness(
+            trades
+        )
+    )
+
+    assert (
+        result["status"]
+        == "READY_FOR_EXPLORATION"
+    )
+
+    assert (
+        result[
+            "fully_enriched_trade_count"
+        ]
+        == 60
+    )
+
+    assert (
+        result[
+            "distinct_entry_date_count"
+        ]
+        == 12
+    )
+
+    assert (
+        result["reasons"]
+        == []
+    )

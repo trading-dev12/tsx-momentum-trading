@@ -576,3 +576,142 @@ def test_overlap_analyzer_detects_subset():
     ][
         "smaller_overlap_percent"
     ] == 100.0
+
+
+def test_cohort_analyzer_detects_concentration():
+    from research.shadow_edge_analyzer import (
+        analyze_candidate_cohort_concentration,
+    )
+
+    trades = [
+        {
+            "profit_loss": "100",
+            "profit_loss_percent": "1",
+            "market_regime": "BULL",
+            "entry_date": "2026-07-22",
+            "exit_date": "2026-08-04",
+        },
+        {
+            "profit_loss": "80",
+            "profit_loss_percent": "0.8",
+            "market_regime": "BULL",
+            "entry_date": "2026-07-22",
+            "exit_date": "2026-08-04",
+        },
+        {
+            "profit_loss": "60",
+            "profit_loss_percent": "0.6",
+            "market_regime": "BULL",
+            "entry_date": "2026-07-22",
+            "exit_date": "2026-08-04",
+        },
+        {
+            "profit_loss": "-100",
+            "profit_loss_percent": "-1",
+            "market_regime": "BEAR",
+            "entry_date": "2026-07-23",
+            "exit_date": "2026-08-05",
+        },
+        {
+            "profit_loss": "-100",
+            "profit_loss_percent": "-1",
+            "market_regime": "BEAR",
+            "entry_date": "2026-07-24",
+            "exit_date": "2026-08-06",
+        },
+    ]
+
+    results = (
+        analyze_candidate_cohort_concentration(
+            trades
+        )
+    )
+
+    bull = [
+        result
+        for result in results
+        if (
+            result["factor"]
+            == "market_regime"
+            and result["value"]
+            == "BULL"
+        )
+    ][0]
+
+    assert (
+        bull[
+            "cohort_concentration_percent"
+        ]
+        == 100.0
+    )
+
+    assert (
+        bull["concentration_status"]
+        == "HIGH_ENTRY_EXIT_CONCENTRATION"
+    )
+
+
+def test_cohort_analyzer_allows_diverse_dates():
+    from research.shadow_edge_analyzer import (
+        analyze_candidate_cohort_concentration,
+    )
+
+    trades = [
+        {
+            "profit_loss": "100",
+            "profit_loss_percent": "1",
+            "market_regime": "BULL",
+            "entry_date": "2026-07-20",
+            "exit_date": "2026-07-21",
+        },
+        {
+            "profit_loss": "90",
+            "profit_loss_percent": "0.9",
+            "market_regime": "BULL",
+            "entry_date": "2026-07-22",
+            "exit_date": "2026-07-23",
+        },
+        {
+            "profit_loss": "80",
+            "profit_loss_percent": "0.8",
+            "market_regime": "BULL",
+            "entry_date": "2026-07-24",
+            "exit_date": "2026-07-25",
+        },
+        {
+            "profit_loss": "-100",
+            "profit_loss_percent": "-1",
+            "market_regime": "BEAR",
+            "entry_date": "2026-07-26",
+            "exit_date": "2026-07-27",
+        },
+        {
+            "profit_loss": "-100",
+            "profit_loss_percent": "-1",
+            "market_regime": "BEAR",
+            "entry_date": "2026-07-28",
+            "exit_date": "2026-07-29",
+        },
+    ]
+
+    results = (
+        analyze_candidate_cohort_concentration(
+            trades
+        )
+    )
+
+    bull = [
+        result
+        for result in results
+        if (
+            result["factor"]
+            == "market_regime"
+            and result["value"]
+            == "BULL"
+        )
+    ][0]
+
+    assert (
+        bull["concentration_status"]
+        == "DIVERSE_COHORTS"
+    )

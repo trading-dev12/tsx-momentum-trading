@@ -1171,6 +1171,211 @@ def analyze_candidate_overlap(
     return results
 
 
+
+def analyze_candidate_cohort_concentration(
+    trades,
+    minimum_sample_size=DEFAULT_MINIMUM_SAMPLE_SIZE,
+    concentration_threshold_percent=66.0,
+):
+    """
+    Measure whether shadow candidates are concentrated in
+    the same entry date or entry/exit trade cohort.
+
+    High cohort concentration means the apparent candidate
+    may reflect one market period rather than an independent
+    and repeatable factor effect.
+    """
+
+    memberships = (
+        collect_shadow_candidate_memberships(
+            trades,
+            minimum_sample_size=(
+                minimum_sample_size
+            ),
+        )
+    )
+
+    results = []
+
+    for candidate in memberships:
+        member_indices = candidate[
+            "member_indices"
+        ]
+
+        entry_dates = {}
+        entry_exit_cohorts = {}
+
+        dated_trade_count = 0
+
+        for index in member_indices:
+            trade = trades[index]
+
+            entry_date = str(
+                trade.get(
+                    "entry_date",
+                    "",
+                )
+            ).strip()
+
+            exit_date = str(
+                trade.get(
+                    "exit_date",
+                    "",
+                )
+            ).strip()
+
+            if not entry_date:
+                continue
+
+            dated_trade_count += 1
+
+            entry_dates[entry_date] = (
+                entry_dates.get(
+                    entry_date,
+                    0,
+                )
+                + 1
+            )
+
+            if exit_date:
+                cohort = (
+                    entry_date,
+                    exit_date,
+                )
+
+                entry_exit_cohorts[
+                    cohort
+                ] = (
+                    entry_exit_cohorts.get(
+                        cohort,
+                        0,
+                    )
+                    + 1
+                )
+
+        dominant_entry_date = None
+        dominant_entry_count = 0
+
+        if entry_dates:
+            (
+                dominant_entry_date,
+                dominant_entry_count,
+            ) = max(
+                entry_dates.items(),
+                key=lambda item: item[1],
+            )
+
+        dominant_cohort = None
+        dominant_cohort_count = 0
+
+        if entry_exit_cohorts:
+            (
+                dominant_cohort,
+                dominant_cohort_count,
+            ) = max(
+                entry_exit_cohorts.items(),
+                key=lambda item: item[1],
+            )
+
+        entry_concentration_percent = 0.0
+        cohort_concentration_percent = 0.0
+
+        if dated_trade_count > 0:
+            entry_concentration_percent = (
+                dominant_entry_count
+                / dated_trade_count
+                * 100
+            )
+
+            cohort_concentration_percent = (
+                dominant_cohort_count
+                / dated_trade_count
+                * 100
+            )
+
+        if dated_trade_count < 2:
+            concentration_status = (
+                "INSUFFICIENT_COHORT_DATA"
+            )
+
+        elif (
+            cohort_concentration_percent
+            >= concentration_threshold_percent
+        ):
+            concentration_status = (
+                "HIGH_ENTRY_EXIT_CONCENTRATION"
+            )
+
+        elif (
+            entry_concentration_percent
+            >= concentration_threshold_percent
+        ):
+            concentration_status = (
+                "HIGH_ENTRY_DATE_CONCENTRATION"
+            )
+
+        else:
+            concentration_status = (
+                "DIVERSE_COHORTS"
+            )
+
+        results.append(
+            {
+                "factor_type": candidate[
+                    "factor_type"
+                ],
+                "factor": candidate[
+                    "factor"
+                ],
+                "value": candidate[
+                    "value"
+                ],
+                "trade_count": len(
+                    member_indices
+                ),
+                "dated_trade_count": (
+                    dated_trade_count
+                ),
+                "dominant_entry_date": (
+                    dominant_entry_date
+                ),
+                "dominant_entry_count": (
+                    dominant_entry_count
+                ),
+                "entry_concentration_percent": (
+                    entry_concentration_percent
+                ),
+                "dominant_entry_exit_cohort": (
+                    dominant_cohort
+                ),
+                "dominant_cohort_count": (
+                    dominant_cohort_count
+                ),
+                "cohort_concentration_percent": (
+                    cohort_concentration_percent
+                ),
+                "concentration_status": (
+                    concentration_status
+                ),
+            }
+        )
+
+    results.sort(
+        key=lambda result: (
+            result[
+                "cohort_concentration_percent"
+            ],
+            result[
+                "entry_concentration_percent"
+            ],
+            result["trade_count"],
+        ),
+        reverse=True,
+    )
+
+    return results
+
+
 def _format_profit_factor(stats):
     profit_factor = stats.get(
         "profit_factor"

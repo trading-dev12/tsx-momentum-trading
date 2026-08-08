@@ -633,6 +633,153 @@ def compare_numeric_factor(
     }
 
 
+
+def collect_shadow_candidates(
+    trades,
+    minimum_sample_size=DEFAULT_MINIMUM_SAMPLE_SIZE,
+):
+    """
+    Collect descriptive shadow candidates.
+
+    A candidate is simply a group currently performing better
+    than its eligible baseline.
+
+    Candidates remain subject to their sample-size status and
+    must never be interpreted as proven trading edges.
+    """
+
+    candidates = []
+
+    categorical_results = (
+        analyze_individual_factors(
+            trades,
+            minimum_sample_size=(
+                minimum_sample_size
+            ),
+        )
+    )
+
+    for result in categorical_results:
+        baseline = result[
+            "eligible_baseline"
+        ]
+
+        for group in result["groups"]:
+            if (
+                group["direction"]
+                != "BETTER_THAN_BASELINE"
+            ):
+                continue
+
+            stats = group["stats"]
+
+            candidates.append(
+                {
+                    "factor_type": "CATEGORICAL",
+                    "factor": result["factor"],
+                    "value": group["value"],
+                    "minimum_value": None,
+                    "maximum_value": None,
+                    "trade_count": stats[
+                        "trade_count"
+                    ],
+                    "win_rate": stats[
+                        "win_rate"
+                    ],
+                    "profit_factor": stats[
+                        "profit_factor"
+                    ],
+                    "expectancy": stats[
+                        "expectancy"
+                    ],
+                    "baseline_expectancy": (
+                        baseline["expectancy"]
+                    ),
+                    "expectancy_delta": (
+                        stats["expectancy"]
+                        - baseline["expectancy"]
+                    ),
+                    "status": group[
+                        "status"
+                    ],
+                    "direction": group[
+                        "direction"
+                    ],
+                }
+            )
+
+    for factor in NUMERIC_FACTORS:
+        result = compare_numeric_factor(
+            trades,
+            factor,
+            minimum_sample_size=(
+                minimum_sample_size
+            ),
+        )
+
+        baseline = result[
+            "eligible_baseline"
+        ]
+
+        for group in result["groups"]:
+            if (
+                group["direction"]
+                != "BETTER_THAN_BASELINE"
+            ):
+                continue
+
+            stats = group["stats"]
+
+            candidates.append(
+                {
+                    "factor_type": "NUMERIC",
+                    "factor": factor,
+                    "value": group["value"],
+                    "minimum_value": group[
+                        "minimum_value"
+                    ],
+                    "maximum_value": group[
+                        "maximum_value"
+                    ],
+                    "trade_count": stats[
+                        "trade_count"
+                    ],
+                    "win_rate": stats[
+                        "win_rate"
+                    ],
+                    "profit_factor": stats[
+                        "profit_factor"
+                    ],
+                    "expectancy": stats[
+                        "expectancy"
+                    ],
+                    "baseline_expectancy": (
+                        baseline["expectancy"]
+                    ),
+                    "expectancy_delta": (
+                        stats["expectancy"]
+                        - baseline["expectancy"]
+                    ),
+                    "status": group[
+                        "status"
+                    ],
+                    "direction": group[
+                        "direction"
+                    ],
+                }
+            )
+
+    candidates.sort(
+        key=lambda candidate: (
+            candidate["trade_count"],
+            candidate["expectancy_delta"],
+        ),
+        reverse=True,
+    )
+
+    return candidates
+
+
 def _format_profit_factor(stats):
     profit_factor = stats.get(
         "profit_factor"

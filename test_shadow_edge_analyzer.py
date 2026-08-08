@@ -347,3 +347,96 @@ def test_shadow_report_includes_numeric_section(
         "were modified."
         in output
     )
+
+
+def test_candidate_tracker_only_keeps_better_groups():
+    from research.shadow_edge_analyzer import (
+        collect_shadow_candidates,
+    )
+
+    trades = [
+        {
+            "profit_loss": "100",
+            "profit_loss_percent": "1",
+            "market_regime": "BULL",
+        },
+        {
+            "profit_loss": "80",
+            "profit_loss_percent": "0.8",
+            "market_regime": "BULL",
+        },
+        {
+            "profit_loss": "-100",
+            "profit_loss_percent": "-1",
+            "market_regime": "BEAR",
+        },
+        {
+            "profit_loss": "-80",
+            "profit_loss_percent": "-0.8",
+            "market_regime": "BEAR",
+        },
+    ]
+
+    candidates = collect_shadow_candidates(
+        trades,
+        minimum_sample_size=30,
+    )
+
+    market_candidates = [
+        candidate
+        for candidate in candidates
+        if candidate["factor"]
+        == "market_regime"
+    ]
+
+    assert len(
+        market_candidates
+    ) == 1
+
+    assert market_candidates[
+        0
+    ]["value"] == "BULL"
+
+    assert market_candidates[
+        0
+    ]["status"] == "INSUFFICIENT_DATA"
+
+
+def test_candidate_tracker_prioritizes_sample_size():
+    from research.shadow_edge_analyzer import (
+        collect_shadow_candidates,
+    )
+
+    trades = []
+
+    for index in range(9):
+        trades.append(
+            {
+                "profit_loss": str(
+                    100
+                    if index < 7
+                    else -100
+                ),
+                "profit_loss_percent": "1",
+                "volatility_regime": (
+                    "NORMAL"
+                    if index < 7
+                    else "HIGH"
+                ),
+                "atr_percent": str(
+                    index + 1
+                ),
+            }
+        )
+
+    candidates = collect_shadow_candidates(
+        trades,
+        minimum_sample_size=30,
+    )
+
+    assert candidates
+
+    assert (
+        candidates[0]["trade_count"]
+        >= candidates[-1]["trade_count"]
+    )

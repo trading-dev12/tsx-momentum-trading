@@ -54,16 +54,34 @@ from core.application_restart_alert import (
 from core.market_context import score_market_context
 from paper_trading.paper_engine import PaperTradingEngine
 from paper_trading.automatic_execution import (
-    start_automatic_execution_service,
+    start_automatic_execution_service as _start_automatic_execution_service_local,
 )
 from paper_trading.automatic_eod import (
     run_52_week_shadow_scan,
     run_mean_reversion_shadow_scan,
-    start_automatic_eod_service,
+    start_automatic_eod_service as _start_automatic_eod_service_local,
+)
+from core.workstation_service_bridge import (
+    build_workstation_service_starter,
 )
 from gui.system_health_panel import (
     SystemHealthPanel,
 )
+
+start_automatic_execution_service = (
+    build_workstation_service_starter(
+        _start_automatic_execution_service_local,
+        "execution_status",
+    )
+)
+
+start_automatic_eod_service = (
+    build_workstation_service_starter(
+        _start_automatic_eod_service_local,
+        "eod_status",
+    )
+)
+
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 LOG_FOLDER = PROJECT_ROOT / "logs"

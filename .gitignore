@@ -243,3 +243,6 @@ Northstar_Backups/
 
 # Generated 52-week breakout research results
 research/52_week_results/
+
+# Generated Shadow Edge research snapshots
+research/shadow_edge_snapshots/

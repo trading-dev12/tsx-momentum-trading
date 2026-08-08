@@ -13,7 +13,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from core.market_hours import get_tsx_market_status
 
 from paper_trading.portfolio import PaperPortfolio
@@ -22,6 +22,9 @@ from mobile_dashboard.edge_research_data import (
 )
 from mobile_dashboard.edge_research_page import (
     render_edge_research_page,
+)
+from mobile_dashboard.edge_research_shortcut import (
+    inject_edge_research_shortcut,
 )
 
 
@@ -103,6 +106,38 @@ def count_pending_trades(file_path: Path) -> int:
 
     except (OSError, csv.Error):
         return 0
+@app.after_request
+def add_edge_research_shortcut_to_dashboard(
+    response,
+):
+    """
+    Add the Edge Research shortcut only to the main dashboard.
+    """
+
+    if request.path != "/":
+        return response
+
+    if response.mimetype != "text/html":
+        return response
+
+    html = response.get_data(
+        as_text=True
+    )
+
+    updated_html = (
+        inject_edge_research_shortcut(
+            html
+        )
+    )
+
+    if updated_html != html:
+        response.set_data(
+            updated_html
+        )
+
+    return response
+
+
 @app.get("/edge-research")
 def edge_research_dashboard():
     """

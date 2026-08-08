@@ -7,8 +7,10 @@ recover after a Windows reboot without requiring desktop login.
 Current services:
 - Runtime heartbeat
 - Mobile dashboard
+- Trading-service ownership lock
 
-Trading, execution, scanner, and EOD services are NOT enabled yet.
+Trading, execution, scanner, position monitoring, and EOD
+services are NOT enabled yet.
 """
 
 import getpass
@@ -18,6 +20,10 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
+
+from core.service_ownership import (
+    TradingServiceOwnership,
+)
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -68,7 +74,9 @@ def start_dashboard():
         startup_info.dwFlags |= (
             subprocess.STARTF_USESHOWWINDOW
         )
-        creation_flags = subprocess.CREATE_NO_WINDOW
+        creation_flags = (
+            subprocess.CREATE_NO_WINDOW
+        )
 
     return subprocess.Popen(
         command,
@@ -83,6 +91,7 @@ def start_dashboard():
 def write_heartbeat(
     dashboard_process=None,
     dashboard_error="",
+    trading_services_owned=False,
 ):
     RUNTIME_FOLDER.mkdir(
         parents=True,
@@ -113,6 +122,8 @@ def write_heartbeat(
             f"{'RUNNING' if dashboard_running else 'STOPPED'}\n"
             f"dashboard_pid={dashboard_pid}\n"
             f"dashboard_error={dashboard_error}\n"
+            f"trading_services_lock="
+            f"{'OWNED' if trading_services_owned else 'NOT_OWNED'}\n"
         ),
         encoding="utf-8",
     )
@@ -122,22 +133,40 @@ def main():
     dashboard_process = None
     dashboard_error = ""
 
-    while True:
-        if not is_dashboard_running():
-            try:
-                dashboard_process = (
-                    start_dashboard()
-                )
-                dashboard_error = ""
-            except Exception as error:
-                dashboard_error = str(error)
-
-        write_heartbeat(
-            dashboard_process=dashboard_process,
-            dashboard_error=dashboard_error,
+    trading_service_ownership = (
+        TradingServiceOwnership(
+            "HEADLESS_RUNTIME"
         )
+    )
 
-        time.sleep(30)
+    try:
+        while True:
+            if (
+                not trading_service_ownership.acquired
+            ):
+                trading_service_ownership.acquire()
+
+            if not is_dashboard_running():
+                try:
+                    dashboard_process = (
+                        start_dashboard()
+                    )
+                    dashboard_error = ""
+                except Exception as error:
+                    dashboard_error = str(error)
+
+            write_heartbeat(
+                dashboard_process=dashboard_process,
+                dashboard_error=dashboard_error,
+                trading_services_owned=(
+                    trading_service_ownership.acquired
+                ),
+            )
+
+            time.sleep(30)
+
+    finally:
+        trading_service_ownership.release()
 
 
 if __name__ == "__main__":

@@ -161,3 +161,57 @@ def test_edge_research_page_renders_enrichment_integrity():
         "New Monitored Trades"
         in html
     )
+
+
+def test_edge_research_page_renders_strategy_selector():
+    data = {
+        "strategy": "Mean Reversion",
+        "research_only_notice": "RESEARCH ONLY",
+        "validation": {},
+        "baseline": {},
+        "enrichment": {},
+        "combination_readiness": {},
+        "best_candidate": None,
+        "candidate_count": 0,
+        "source_quality": {},
+        "enrichment_integrity": {},
+    }
+
+    html = render_edge_research_page(
+        data
+    )
+
+    assert (
+        'href="/edge-research"'
+        in html
+    )
+
+    assert (
+        'href="/edge-research/52-week-breakout"'
+        in html
+    )
+
+    assert (
+        'href="/edge-research/mean-reversion"'
+        in html
+    )
+
+    assert (
+        "Momentum"
+        in html
+    )
+
+    assert (
+        "52-Week Breakout"
+        in html
+    )
+
+    assert (
+        "Mean Reversion Strategy"
+        in html
+    )
+
+    assert (
+        "#4169e1"
+        in html
+    )

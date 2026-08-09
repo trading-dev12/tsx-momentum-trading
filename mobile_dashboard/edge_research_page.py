@@ -980,14 +980,122 @@ def _enrichment_integrity_html(data):
     """
 
 
+def _strategy_selector_html(data):
+    """
+    Render navigation between independent strategy research pages.
+    """
+
+    current_strategy = str(
+        data.get(
+            "strategy",
+            "",
+        )
+        or ""
+    )
+
+    strategies = [
+        (
+            "Momentum",
+            "/edge-research",
+        ),
+        (
+            "52-Week Breakout",
+            "/edge-research/52-week-breakout",
+        ),
+        (
+            "Mean Reversion",
+            "/edge-research/mean-reversion",
+        ),
+    ]
+
+    links = []
+
+    for (
+        strategy_name,
+        href,
+    ) in strategies:
+        is_active = (
+            current_strategy
+            == strategy_name
+        )
+
+        background = (
+            "#4169e1"
+            if is_active
+            else "#151b26"
+        )
+
+        border = (
+            "#7da2ff"
+            if is_active
+            else "#303a4c"
+        )
+
+        links.append(
+            f"""
+            <a
+                href="{href}"
+                style="
+                    display: inline-block;
+                    padding: 10px 14px;
+                    border-radius: 9px;
+                    border: 1px solid {border};
+                    background: {background};
+                    color: #ffffff;
+                    text-decoration: none;
+                    font-weight: bold;
+                "
+            >
+                {escape(strategy_name)}
+            </a>
+            """
+        )
+
+    return f"""
+        <div
+            style="
+                display: flex;
+                flex-wrap: wrap;
+                gap: 9px;
+                margin-top: 18px;
+                margin-bottom: 4px;
+            "
+        >
+            {''.join(links)}
+        </div>
+    """
+
+
 def render_edge_research_page(data):
     """
-    Render Edge Research with enrichment integrity information.
+    Render Edge Research with strategy navigation and
+    enrichment integrity information.
     """
 
     html = _render_edge_research_page_base(
         data
     )
+
+    selector_html = (
+        _strategy_selector_html(
+            data
+        )
+    )
+
+    warning_landmark = (
+        '<div class="warning">'
+    )
+
+    if warning_landmark in html:
+        html = html.replace(
+            warning_landmark,
+            (
+                selector_html
+                + "\n"
+                + warning_landmark
+            ),
+            1,
+        )
 
     integrity_html = (
         _enrichment_integrity_html(

@@ -37,6 +37,16 @@ PAPER_TRADE_JOURNAL_FILE = (
     / "paper_trade_journal.csv"
 )
 
+BREAKOUT_52WEEK_TRADE_JOURNAL_FILE = (
+    PROJECT_ROOT
+    / "paper_trade_journal_52week.csv"
+)
+
+MEAN_REVERSION_TRADE_JOURNAL_FILE = (
+    PROJECT_ROOT
+    / "paper_trade_journal_mean_reversion.csv"
+)
+
 PORTFOLIO_STATE_FILE = (
     PROJECT_ROOT / "paper_portfolio_state.json"
 )
@@ -148,6 +158,42 @@ def edge_research_dashboard():
         build_edge_research_dashboard_data(
             PAPER_TRADE_JOURNAL_FILE,
             strategy_name="Momentum",
+        )
+    )
+
+    return render_edge_research_page(
+        data
+    )
+
+
+@app.get("/edge-research/52-week-breakout")
+def edge_research_52week_dashboard():
+    """
+    Display the read-only 52-Week Breakout Edge Research page.
+    """
+
+    data = (
+        build_edge_research_dashboard_data(
+            BREAKOUT_52WEEK_TRADE_JOURNAL_FILE,
+            strategy_name="52-Week Breakout",
+        )
+    )
+
+    return render_edge_research_page(
+        data
+    )
+
+
+@app.get("/edge-research/mean-reversion")
+def edge_research_mean_reversion_dashboard():
+    """
+    Display the read-only Mean Reversion Edge Research page.
+    """
+
+    data = (
+        build_edge_research_dashboard_data(
+            MEAN_REVERSION_TRADE_JOURNAL_FILE,
+            strategy_name="Mean Reversion",
         )
     )
 

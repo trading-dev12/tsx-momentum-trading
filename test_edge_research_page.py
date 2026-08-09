@@ -97,3 +97,67 @@ def test_edge_research_page_handles_no_candidate():
         "No strategy or trading controls"
         in html
     )
+
+
+def test_edge_research_page_renders_enrichment_integrity():
+    data = {
+        "strategy": "Momentum",
+        "research_only_notice": "RESEARCH ONLY",
+        "validation": {},
+        "baseline": {},
+        "enrichment": {},
+        "combination_readiness": {},
+        "best_candidate": None,
+        "candidate_count": 0,
+        "source_quality": {},
+        "enrichment_integrity": {
+            "integrity_status": (
+                "NO_MONITORED_TRADES_YET"
+            ),
+            "monitor_start_date": (
+                "2026-08-10"
+            ),
+            "total_trade_count": 14,
+            "fully_enriched_trade_count": 9,
+            "overall_coverage_percent": (
+                64.28571428571429
+            ),
+            "monitored_trade_count": 0,
+            "monitored_fully_enriched_count": 0,
+            "monitored_incomplete_count": 0,
+        },
+    }
+
+    html = render_edge_research_page(
+        data
+    )
+
+    assert (
+        "Enrichment Integrity"
+        in html
+    )
+
+    assert (
+        "9/14"
+        in html
+    )
+
+    assert (
+        "64.3%"
+        in html
+    )
+
+    assert (
+        "2026-08-10"
+        in html
+    )
+
+    assert (
+        "WAITING FOR NEW TRADES"
+        in html
+    )
+
+    assert (
+        "New Monitored Trades"
+        in html
+    )

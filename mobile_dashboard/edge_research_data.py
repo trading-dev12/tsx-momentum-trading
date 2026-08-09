@@ -9,6 +9,9 @@ This module never changes trading rules, signals,
 positions, portfolios, pending trades, or journals.
 """
 
+from research.enrichment_integrity import (
+    analyze_enrichment_integrity_journal,
+)
 from research.research_data_quality import (
     calculate_research_source_coverage,
 )
@@ -63,6 +66,12 @@ def build_edge_research_dashboard_data(
 
     source_quality = (
         calculate_research_source_coverage(
+            journal_path
+        )
+    )
+
+    enrichment_integrity = (
+        analyze_enrichment_integrity_journal(
             journal_path
         )
     )
@@ -178,6 +187,9 @@ def build_edge_research_dashboard_data(
                 )
             ),
         },
+        "enrichment_integrity": (
+            enrichment_integrity
+        ),
         "combination_readiness": (
             readiness
         ),

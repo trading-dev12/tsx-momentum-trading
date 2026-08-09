@@ -157,7 +157,7 @@ def _candidate_html(candidate):
     """
 
 
-def render_edge_research_page(data):
+def _render_edge_research_page_base(data):
     """
     Render one complete read-only Edge Research page.
     """
@@ -798,3 +798,216 @@ def render_edge_research_page(data):
 </body>
 </html>
 """
+
+
+def _enrichment_integrity_html(data):
+    """
+    Render the read-only enrichment integrity section.
+    """
+
+    integrity = data.get(
+        "enrichment_integrity",
+        {},
+    ) or {}
+
+    total_trades = int(
+        integrity.get(
+            "total_trade_count",
+            0,
+        )
+        or 0
+    )
+
+    fully_enriched = int(
+        integrity.get(
+            "fully_enriched_trade_count",
+            0,
+        )
+        or 0
+    )
+
+    coverage = float(
+        integrity.get(
+            "overall_coverage_percent",
+            0.0,
+        )
+        or 0.0
+    )
+
+    monitor_start = escape(
+        str(
+            integrity.get(
+                "monitor_start_date",
+                "--",
+            )
+        )
+    )
+
+    monitored_trades = int(
+        integrity.get(
+            "monitored_trade_count",
+            0,
+        )
+        or 0
+    )
+
+    monitored_complete = int(
+        integrity.get(
+            "monitored_fully_enriched_count",
+            0,
+        )
+        or 0
+    )
+
+    monitored_incomplete = int(
+        integrity.get(
+            "monitored_incomplete_count",
+            0,
+        )
+        or 0
+    )
+
+    raw_status = str(
+        integrity.get(
+            "integrity_status",
+            "--",
+        )
+    )
+
+    status_labels = {
+        "NO_MONITORED_TRADES_YET": (
+            "WAITING FOR NEW TRADES"
+        ),
+        "PASS": "PASS",
+        "FAIL": "FAIL",
+    }
+
+    status = escape(
+        status_labels.get(
+            raw_status,
+            raw_status.replace(
+                "_",
+                " ",
+            ),
+        )
+    )
+
+    return f"""
+        <section class="section">
+            <h2>
+                Enrichment Integrity
+            </h2>
+
+            <div class="grid">
+                <div class="metric">
+                    <div class="label">
+                        Fully Enriched History
+                    </div>
+
+                    <div class="value">
+                        {fully_enriched}/{total_trades}
+                    </div>
+                </div>
+
+                <div class="metric">
+                    <div class="label">
+                        Overall Coverage
+                    </div>
+
+                    <div class="value">
+                        {coverage:.1f}%
+                    </div>
+                </div>
+
+                <div class="metric">
+                    <div class="label">
+                        Monitoring Begins
+                    </div>
+
+                    <div class="value">
+                        {monitor_start}
+                    </div>
+                </div>
+
+                <div class="metric">
+                    <div class="label">
+                        New Monitored Trades
+                    </div>
+
+                    <div class="value">
+                        {monitored_trades}
+                    </div>
+                </div>
+
+                <div class="metric">
+                    <div class="label">
+                        New Fully Enriched
+                    </div>
+
+                    <div class="value">
+                        {monitored_complete}
+                    </div>
+                </div>
+
+                <div class="metric">
+                    <div class="label">
+                        New Incomplete
+                    </div>
+
+                    <div class="value">
+                        {monitored_incomplete}
+                    </div>
+                </div>
+
+                <div class="metric">
+                    <div class="label">
+                        Integrity Status
+                    </div>
+
+                    <div class="value">
+                        {status}
+                    </div>
+                </div>
+            </div>
+
+            <div class="research-note">
+                Historical incomplete trades remain legacy
+                research records. Trades from the monitoring
+                start date forward must satisfy the full
+                enrichment requirement.
+            </div>
+        </section>
+    """
+
+
+def render_edge_research_page(data):
+    """
+    Render Edge Research with enrichment integrity information.
+    """
+
+    html = _render_edge_research_page_base(
+        data
+    )
+
+    integrity_html = (
+        _enrichment_integrity_html(
+            data
+        )
+    )
+
+    footer_landmark = (
+        '<div class="footer">'
+    )
+
+    if footer_landmark not in html:
+        return html
+
+    return html.replace(
+        footer_landmark,
+        (
+            integrity_html
+            + "\n"
+            + footer_landmark
+        ),
+        1,
+    )

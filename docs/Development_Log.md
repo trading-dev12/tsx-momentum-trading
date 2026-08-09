@@ -3900,3 +3900,390 @@ IBKR credentials are not stored in the recovery scripts.
 The Momentum strategy rules remain frozen.
 
 No TMQS, READY/WATCH/IGNORE, ATR, reward target, maximum-hold, or signal-selection rules were changed during this reliability work.
+---
+
+## 2026-08-08 - Edge Discovery Platform and Multi-Strategy Research Milestone
+
+### Summary
+
+Northstar Quant reached a major research-platform milestone.
+
+The Shadow Edge Analyzer, research-data quality controls, Enrichment Integrity Monitor, and live Edge Research dashboard are now operating as a unified read-only research system.
+
+Edge Research has also been expanded from Momentum to all three independent validation strategies:
+
+- Momentum
+- 52-Week Breakout
+- Mean Reversion
+
+No production strategy rules were changed.
+
+### Shadow Edge Research Platform
+
+Completed the core Shadow Edge Analyzer research architecture.
+
+Capabilities now include:
+
+- Baseline performance analysis
+- Categorical factor analysis
+- Numeric factor analysis
+- Candidate edge identification
+- Candidate overlap analysis
+- Candidate cohort analysis
+- Candidate quality gating
+- Combination-research readiness gating
+- Research snapshots
+- Minimum-sample safeguards
+- Read-only research ratings
+
+Research factors currently evaluated include:
+
+- Market regime
+- Moving-average trend alignment
+- Gap bucket
+- Volatility regime
+- Relative strength versus XIC
+- Relative strength versus XIU
+- Distance from SMA20
+- Distance from SMA50
+- Distance from SMA200
+- Sector strength
+- Gap percentage
+- ATR percentage
+
+All findings remain exploratory.
+
+### Combination Research Readiness
+
+Added a safeguard preventing premature multi-factor research from being treated as meaningful.
+
+Current exploratory readiness requirement:
+
+- 60 fully enriched completed trades
+- 10 distinct entry dates
+
+Passing this threshold only permits deeper research.
+
+It does not authorize changes to the trading strategy.
+
+### Research Market-Data Improvements
+
+Completed migration of Edge Research historical factor calculations to an IBKR-primary architecture.
+
+Added persistent research-source provenance for:
+
+- Relative Strength
+- Market Regime
+- Moving Average Context
+- Sector Strength
+- Gap Analysis
+- Volatility Regime
+
+Yahoo remains available as a controlled fallback where appropriate.
+
+Historical records that predate source tracking remain blank rather than being guessed or backfilled.
+
+### Research Data Quality Audit
+
+Added a read-only research data-quality calculator.
+
+The system can now report:
+
+- Recorded research-source coverage
+- IBKR usage
+- Fallback usage
+- Missing source history
+- Source-tracking status
+
+Legacy source history is preserved exactly as originally recorded.
+
+### Enrichment Integrity Monitor
+
+Created:
+
+`research/enrichment_integrity.py`
+
+Purpose:
+
+Continuously verify that newly completed paper trades contain the full research payload required by the Edge Analyzer.
+
+A fully enriched trade currently requires valid values for all 12 core research fields:
+
+Categorical:
+
+- market_regime
+- ma_trend_alignment
+- gap_bucket
+- volatility_regime
+
+Numeric:
+
+- rs_xic_20
+- rs_xiu_20
+- ma_close_vs_sma20_percent
+- ma_close_vs_sma50_percent
+- ma_close_vs_sma200_percent
+- sector_strength_20
+- gap_percent
+- atr_percent
+
+Monitoring start date:
+
+`2026-08-10`
+
+Older incomplete trades remain legitimate legacy records and do not create false integrity failures.
+
+### Current Momentum Enrichment State
+
+Current completed Momentum trades:
+
+- Total completed: 14
+- Fully enriched: 9
+- Historical incomplete/legacy: 5
+- Overall enrichment coverage: 64.3%
+- New monitored trades: 0
+- Integrity status: WAITING FOR NEW TRADES
+
+The five incomplete historical trades are:
+
+- PPL.TO - 2026-07-14
+- ATH.TO - 2026-07-14
+- CVE.TO - 2026-07-14
+- NTR.TO - 2026-07-14
+- MFC.TO - 2026-07-16
+
+Each predates the complete enrichment pipeline and is missing the complete 12-factor research payload.
+
+No historical values were invented or backfilled.
+
+### Edge Research Dashboard
+
+Completed a dedicated read-only Edge Research dashboard.
+
+The dashboard now displays:
+
+- Validation progress
+- Completed trades versus 200-trade target
+- Win rate
+- Profit Factor
+- Expectancy
+- Sample status
+- Fully enriched research count
+- Distinct entry dates
+- Combination-research readiness
+- Best current watched pattern
+- Candidate count
+- Research data-source quality
+- Enrichment Integrity status
+
+The dashboard remains research-only and contains no trading controls.
+
+### Desktop and Mobile Access
+
+Completed Edge Research integration into both interfaces.
+
+Desktop:
+
+- Added Edge Research shortcut to the Trading Workstation.
+- Verified successful launch.
+
+Mobile/PWA:
+
+- Added Edge Research shortcut to the mobile dashboard.
+- Verified access from the phone.
+- Preserved the existing Trade Control Center dashboard.
+
+### Multi-Strategy Edge Research
+
+Expanded Edge Research to all three strategies while preserving complete statistical separation.
+
+Independent routes:
+
+- Momentum:
+  `/edge-research`
+
+- 52-Week Breakout:
+  `/edge-research/52-week-breakout`
+
+- Mean Reversion:
+  `/edge-research/mean-reversion`
+
+Independent completed-trade journals:
+
+- `paper_trade_journal.csv`
+- `paper_trade_journal_52week.csv`
+- `paper_trade_journal_mean_reversion.csv`
+
+Current completed-trade counts:
+
+- Momentum: 14
+- 52-Week Breakout: 0
+- Mean Reversion: 0
+
+Direct pipeline tests confirmed:
+
+- 52-Week Breakout does not include Momentum trades.
+- Mean Reversion does not include Momentum trades.
+- Missing strategy journals safely produce a 0/200 research state.
+- Strategy data is not pooled.
+
+### Edge Research Strategy Selector
+
+Added direct strategy navigation to the Edge Research page.
+
+Available selections:
+
+- Momentum
+- 52-Week Breakout
+- Mean Reversion
+
+The active strategy is visually highlighted.
+
+Validated successfully on:
+
+- Desktop browser
+- Northstar workstation/scanner environment
+- Mobile phone
+
+User confirmed all three strategy pages and navigation work correctly on the phone and scanner.
+
+### Dashboard Recovery Validation
+
+Deployment also provided repeated real-world validation of the dashboard recovery system.
+
+During deployment, the active Waitress listener on port 5000 was deliberately terminated multiple times.
+
+Each time:
+
+1. The active process was terminated.
+2. Northstar recovery detected the missing dashboard.
+3. A new Waitress process started automatically.
+4. Port 5000 returned.
+5. Edge Research returned HTTP 200.
+
+Example recovery sequence:
+
+- PID 16520 -> PID 13512
+- PID 13512 -> PID 20076
+- PID 20076 -> PID 18580
+
+This confirms automatic dashboard-process recovery is functioning.
+
+### Live HTTP Validation
+
+Verified live production responses for:
+
+Momentum Edge Research:
+
+- HTTP 200
+- Enrichment Integrity present
+- 9/14 enrichment state present
+- 64.3% historical coverage present
+- 2026-08-10 monitoring date present
+- WAITING FOR NEW TRADES present
+
+52-Week Breakout:
+
+- HTTP 200
+- Correct strategy page
+- 0/200 validation state
+
+Mean Reversion:
+
+- HTTP 200
+- Correct strategy page
+- 0/200 validation state
+
+Strategy selector:
+
+- Momentum link present
+- 52-Week Breakout link present
+- Mean Reversion link present
+- Active-strategy styling present
+
+### Automated Test Baseline
+
+Full safe Northstar regression suite:
+
+`138 passed, 1 warning`
+
+Known warning:
+
+`eventkit` deprecation warning regarding the current asyncio event loop.
+
+The warning remains nonfatal and unrelated to Northstar strategy logic.
+
+### Important Commits
+
+Research enrichment integrity monitor:
+
+`6e1297d - Add research enrichment integrity monitor`
+
+Dashboard enrichment integration:
+
+`35ee4f3 - Add enrichment integrity to Edge Research dashboard`
+
+Multi-strategy Edge Research:
+
+`cda4740 - Add multi-strategy Edge Research routes`
+
+Strategy navigation:
+
+`7541860 - Add strategy selector to Edge Research`
+
+All commits were pushed successfully to `origin/main`.
+
+### Strategy Integrity
+
+No changes were made to:
+
+- TMQS
+- READY / WATCH / IGNORE
+- ATR multiplier
+- reward multiplier
+- maximum holding period
+- entry rules
+- exit rules
+- position-risk rules
+
+Momentum, 52-Week Breakout, and Mean Reversion remain independent validation experiments.
+
+Each strategy retains its own 200-trade evidence requirement.
+
+### Current Research Status
+
+Northstar is no longer only collecting trades.
+
+It now has the foundation to:
+
+1. Collect trades.
+2. Attach research context.
+3. Verify research-data completeness.
+4. Measure baseline performance.
+5. Identify possible factor relationships.
+6. Reject weak small-sample candidates.
+7. Monitor research independently by strategy.
+8. Preserve snapshots of research evidence.
+9. Present results remotely.
+10. Continue validation without modifying production rules.
+
+### Next Development Priority
+
+Candidate History and Stability Tracking.
+
+The next research feature will measure whether promising Edge Analyzer candidates remain strong as additional trades accumulate.
+
+Planned measurements include:
+
+- Candidate sample size through time
+- Profit Factor through time
+- Expectancy through time
+- Win rate through time
+- Candidate ranking changes
+- Candidate appearance/disappearance
+- Persistence across increasing sample sizes
+- Stability versus small-sample noise
+
+After candidate stability is operational, the next major research component will be the Combination Explorer.
+
+Combination research will remain gated by sufficient enriched trade history and will not alter production strategy rules.

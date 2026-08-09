@@ -836,3 +836,239 @@ No IBKR password is stored in Northstar recovery scripts.
 ### Reliability Principle
 
 Northstar should fail safely, preserve state, fall back where appropriate, recover automatically where possible, and clearly report when human authentication or intervention is still required.
+---
+
+## Edge Discovery Research Platform - August 8, 2026
+
+### Status: ACTIVE - Core Research Infrastructure Complete
+
+Northstar has now moved beyond basic trade collection into the first operational stage of systematic edge discovery.
+
+The three production research strategies remain statistically independent:
+
+- Momentum
+- 52-Week Breakout
+- Mean Reversion
+
+Each strategy must still complete its own 200-trade validation. Results must not be pooled to accelerate validation.
+
+### Strategy Freeze Principle
+
+The existing strategy rules remain frozen during validation.
+
+The Edge Research system is observational and read-only. It does not modify:
+
+- TMQS
+- READY / WATCH / IGNORE rules
+- ATR stop settings
+- reward target
+- maximum holding period
+- entry rules
+- exit rules
+- position-risk rules
+
+Research findings may generate future hypotheses, but no strategy changes will be accepted until the appropriate validation review.
+
+### Completed - Shadow Edge Analyzer
+
+- [x] Baseline trade-performance analysis
+- [x] Categorical research-factor analysis
+- [x] Numeric research-factor analysis
+- [x] Candidate edge tracking
+- [x] Candidate overlap analysis
+- [x] Candidate cohort analysis
+- [x] Candidate quality gate
+- [x] Combination-research readiness gate
+- [x] Read-only research snapshots
+- [x] Minimum-sample safeguards
+- [x] Research-only candidate ratings
+
+The analyzer can evaluate observed relationships involving:
+
+- Market regime
+- Moving-average trend alignment
+- Gap characteristics
+- Volatility regime
+- Relative strength versus XIC
+- Relative strength versus XIU
+- Distance from SMA20
+- Distance from SMA50
+- Distance from SMA200
+- Sector strength
+- Gap percentage
+- ATR percentage
+
+### Combination Research Safeguard
+
+Combination research is exploratory only and does not authorize strategy changes.
+
+Current minimum readiness requirement:
+
+- 60 fully enriched completed trades
+- 10 distinct entry dates
+
+Passing this gate means only that combination research may begin. It does not prove an edge.
+
+### Completed - Research Data Quality
+
+- [x] IBKR-primary historical research data
+- [x] Yahoo fallback where appropriate
+- [x] Research data-source provenance
+- [x] Source-quality audit
+- [x] Missing-source handling for legacy trades
+- [x] Enrichment Integrity Monitor
+
+Research source history is never invented or backfilled.
+
+Old trades with missing enrichment remain legitimate legacy records.
+
+### Enrichment Integrity Monitor
+
+Monitoring begins:
+
+2026-08-10
+
+All newly completed trades from that date forward must satisfy the full enrichment requirement.
+
+Current Momentum research history:
+
+- Completed trades: 14
+- Fully enriched: 9
+- Legacy incomplete trades: 5
+- Historical enrichment coverage: 64.3%
+- New monitored trades: 0
+- Current integrity status: WAITING FOR NEW TRADES
+
+The five incomplete historical trades predate the complete enrichment pipeline and remain unchanged.
+
+### Completed - Edge Research Dashboard
+
+- [x] Dedicated read-only Edge Research dashboard
+- [x] Validation progress
+- [x] Baseline performance
+- [x] Profit Factor
+- [x] Expectancy
+- [x] Win rate
+- [x] Research depth
+- [x] Combination readiness
+- [x] Best current watched pattern
+- [x] Research data-source quality
+- [x] Enrichment Integrity status
+- [x] Desktop workstation shortcut
+- [x] Mobile dashboard shortcut
+- [x] Phone/PWA validation
+
+### Completed - Multi-Strategy Edge Research
+
+Independent live Edge Research routes now exist for:
+
+- [x] Momentum
+- [x] 52-Week Breakout
+- [x] Mean Reversion
+
+Research journals remain separate:
+
+- `paper_trade_journal.csv`
+- `paper_trade_journal_52week.csv`
+- `paper_trade_journal_mean_reversion.csv`
+
+Current completed-trade counts:
+
+- Momentum: 14
+- 52-Week Breakout: 0
+- Mean Reversion: 0
+
+Testing confirmed that 52-Week Breakout and Mean Reversion do not read or include Momentum trades.
+
+### Completed - Edge Research Strategy Selector
+
+The Edge Research page now includes direct strategy navigation:
+
+Momentum -> 52-Week Breakout -> Mean Reversion
+
+The active strategy is visually highlighted.
+
+The selector has been validated on:
+
+- Desktop browser
+- Mobile phone
+- Northstar scanner/workstation environment
+
+### Automated Test Baseline
+
+Current safe full regression suite:
+
+138 passed
+1 known nonfatal `eventkit` deprecation warning
+
+### Dashboard Recovery Validation
+
+The dashboard recovery system was also repeatedly validated during deployment.
+
+When the active Waitress process on port 5000 was deliberately terminated:
+
+- the old listener stopped successfully;
+- Northstar recovery automatically launched a replacement process;
+- port 5000 returned automatically;
+- Edge Research returned HTTP 200 after recovery.
+
+This confirms that the mobile research dashboard can recover from an unexpected process interruption.
+
+## NEXT PRIORITY - Candidate History and Stability Tracking
+
+### Objective
+
+Move Edge Research from showing only the best current candidate to measuring whether apparent edges remain stable as new trades accumulate.
+
+### Planned Work
+
+- [ ] Store candidate research history over time
+- [ ] Record candidate sample size at each snapshot
+- [ ] Record rolling Profit Factor
+- [ ] Record rolling expectancy
+- [ ] Record rolling win rate
+- [ ] Measure whether candidate strength improves or deteriorates
+- [ ] Detect candidates that disappear as sample size increases
+- [ ] Distinguish persistent patterns from temporary small-sample noise
+- [ ] Display candidate stability on Edge Research
+- [ ] Keep all strategy datasets independent
+
+### After Candidate Stability
+
+Combination Explorer
+
+Only begin meaningful combination research after the readiness gate is satisfied.
+
+The Combination Explorer should:
+
+- analyze multiple factors together;
+- enforce minimum trade-count requirements;
+- penalize tiny samples;
+- prevent duplicate or overlapping discoveries from appearing stronger than they are;
+- rank combinations by expectancy, Profit Factor, stability, and sample size;
+- remain completely separate from production strategy decisions.
+
+### Validation Path Remains
+
+1. Continue collecting clean trades.
+2. Maintain frozen strategy rules.
+3. Require 200 completed trades per strategy.
+4. Build Edge Discovery tools alongside validation.
+5. Use research findings to generate hypotheses.
+6. Test promising hypotheses independently.
+7. Require unseen forward evidence before adopting strategy changes.
+8. Consider live capital only after a repeatable edge has been demonstrated.
+
+### Longer-Term Sequence
+
+Candidate History / Stability
+-> Combination Explorer
+-> 200-Trade Strategy Reviews
+-> Evidence-Based Strategy Optimization
+-> Portfolio Allocation Engine
+-> Post-200-Trade US Expansion
+-> Elite Opportunity Selection
+
+The objective is not to force the current strategies to appear profitable.
+
+The objective is to build a platform capable of discovering, rejecting, and validating market edges using evidence.

@@ -8,9 +8,21 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SETTINGS_PATH = PROJECT_ROOT / "config" / "settings.json"
 
 BACKUP_ITEMS = [
-    "paper_trade_journal.csv",
-    "paper_portfolio_state.json",
     "automatic_eod_state.json",
+    "paper_signal_journal.csv",
+
+    "paper_trade_journal.csv",
+    "paper_trade_journal_52week.csv",
+    "paper_trade_journal_mean_reversion.csv",
+
+    "paper_portfolio_state.json",
+    "paper_portfolio_state_52week.json",
+    "paper_portfolio_state_mean_reversion.json",
+
+    "pending_trades.csv",
+    "pending_trades_52week.csv",
+    "pending_trades_mean_reversion.csv",
+
     "research",
     "validation_reports",
     "data",
@@ -132,6 +144,7 @@ def create_backup(backup_root=None):
                     ignore=shutil.ignore_patterns(
                         "__pycache__",
                         "*.pyc",
+                        "*.lock",
                     ),
                 )
 

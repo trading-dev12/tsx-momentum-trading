@@ -300,9 +300,14 @@ def run_mean_reversion_shadow_scan(paper_engine=None):
         "results": [],
     }
 
+    pending_total = 0
+
     if paper_engine is not None:
         queue_summary = paper_engine.queue_eod_signals(
             results
+        )
+        pending_total = len(
+            paper_engine.pending_trades.get_all()
         )
 
     return {
@@ -313,6 +318,19 @@ def run_mean_reversion_shadow_scan(paper_engine=None):
         "ignored": len(results["ignore"]),
         "queued": queue_summary["added"],
         "duplicates": queue_summary["rejected"],
+        "already_open": queue_summary.get(
+            "already_open",
+            0,
+        ),
+        "already_pending": queue_summary.get(
+            "already_pending",
+            0,
+        ),
+        "other_rejected": queue_summary.get(
+            "other_rejected",
+            0,
+        ),
+        "pending_total": pending_total,
         "queue_summary": queue_summary,
         "report_path": report_path,
     }
@@ -610,7 +628,9 @@ def run_automatic_eod_cycle(
         f"Status: {mean_reversion_status}\n"
         f"READY: {mean_reversion_result.get('ready', 0)}\n"
         f"Newly Queued: {mean_reversion_result.get('queued', 0)}\n"
-        f"Already Pending: {mean_reversion_result.get('duplicates', 0)}\n"
+        f"Already Open: {mean_reversion_result.get('already_open', 0)}\n"
+        f"Already Pending: {mean_reversion_result.get('already_pending', 0)}\n"
+        f"Other Rejected: {mean_reversion_result.get('other_rejected', 0)}\n"
         f"Total Pending: {mean_reversion_result.get('pending_total', 0)}\n"
         f"WATCH: {mean_reversion_result.get('watch', 0)}\n"
         f"Errors: {mean_reversion_result.get('errors', 0)}\n\n"

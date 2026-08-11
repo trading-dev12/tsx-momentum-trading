@@ -68,7 +68,39 @@ class PaperTradingEngine:
     def queue_signal(self, signal):
         return self.pending_trades.add_trade(signal)
 
+    def refresh_runtime_state(self):
+        """
+        Reload persisted trading state before critical actions.
+
+        This prevents a long-running GUI or headless process
+        from acting on stale portfolio or pending-queue data
+        written by another Northstar process.
+
+        In-memory test doubles do not necessarily provide
+        persistence reload methods, so reload only when the
+        underlying object supports it.
+        """
+        portfolio_loader = getattr(
+            self.portfolio,
+            "_load_state",
+            None,
+        )
+
+        if callable(portfolio_loader):
+            portfolio_loader()
+
+        pending_loader = getattr(
+            self.pending_trades,
+            "_load_from_csv",
+            None,
+        )
+
+        if callable(pending_loader):
+            pending_loader()
+
     def queue_eod_signals(self, scan_result):
+        self.refresh_runtime_state()
+
         ready_signals = scan_result.get("ready", [])
         results = []
 
@@ -137,6 +169,8 @@ class PaperTradingEngine:
         reward_multiplier=2.5,
         max_hold_days=10,
     ):
+        self.refresh_runtime_state()
+
         pending_trades = self.pending_trades.get_all()
         results = []
 

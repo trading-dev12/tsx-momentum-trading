@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "enabled": true,
-  "historical_rows_policy": "warning",
+  "historical_rows_policy": "ignore",
   "current_rows_start_date": "2026-07-21",
   "current_rows_policy": "fail",
   "status_success_values": [

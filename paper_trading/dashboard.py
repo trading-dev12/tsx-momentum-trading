@@ -4,7 +4,112 @@ Paper Trading Dashboard
 Builds portfolio status, open-position details, recent trades,
 and performance analytics for live paper-trading validation.
 """
-from datetime import datetime
+from datetime import date, datetime
+
+from core.market_hours import normalize_tsx_datetime
+from paper_trading.position_manager import count_trading_days
+
+def calculate_position_holding_window(
+    position,
+    current_date=None,
+):
+    """
+    Return the current TSX trading-day holding window
+    for an open paper position.
+
+    Uses the same trading-day counter as the actual
+    position-manager time-exit rule.
+    """
+
+    entry_date = position.get(
+        "entry_date"
+    )
+
+    try:
+        max_hold_days = int(
+            position.get(
+                "max_hold_days",
+                10,
+            )
+        )
+    except (
+        TypeError,
+        ValueError,
+    ):
+        max_hold_days = 10
+
+    max_hold_days = max(
+        1,
+        max_hold_days,
+    )
+
+    if not entry_date:
+        return {
+            "available": False,
+            "trading_days_held": None,
+            "max_hold_days": max_hold_days,
+            "trading_days_remaining": None,
+            "time_exit_due": False,
+        }
+
+    if current_date is None:
+        current_date = (
+            normalize_tsx_datetime()
+            .date()
+        )
+
+    elif isinstance(
+        current_date,
+        datetime,
+    ):
+        current_date = (
+            normalize_tsx_datetime(
+                current_date
+            ).date()
+        )
+
+    elif isinstance(
+        current_date,
+        str,
+    ):
+        current_date = datetime.strptime(
+            current_date,
+            "%Y-%m-%d",
+        ).date()
+
+    elif not isinstance(
+        current_date,
+        date,
+    ):
+        raise TypeError(
+            "current_date must be None, "
+            "date, datetime, or YYYY-MM-DD."
+        )
+
+    trading_days_held = count_trading_days(
+        entry_date,
+        current_date.isoformat(),
+    )
+
+    trading_days_remaining = max(
+        max_hold_days - trading_days_held,
+        0,
+    )
+
+    return {
+        "available": True,
+        "trading_days_held":
+            trading_days_held,
+        "max_hold_days":
+            max_hold_days,
+        "trading_days_remaining":
+            trading_days_remaining,
+        "time_exit_due": (
+            trading_days_held
+            >= max_hold_days
+        ),
+    }
+
 
 def calculate_closed_trade_metrics(
     closed_trades,
@@ -207,6 +312,7 @@ def calculate_closed_trade_metrics(
 def build_paper_dashboard_text(
     engine,
     current_prices=None,
+    current_date=None,
 ):
     if current_prices is None:
         current_prices = {}
@@ -441,6 +547,13 @@ def build_paper_dashboard_text(
                 position["target_price"]
             )
 
+            holding_window = (
+                calculate_position_holding_window(
+                    position,
+                    current_date=current_date,
+                )
+            )
+
             current_price = current_prices.get(
                 symbol
             )
@@ -464,6 +577,24 @@ def build_paper_dashboard_text(
                     f"Stop  ${stop_price:.2f} | "
                     f"Target  ${target_price:.2f}"
                 )
+
+                if holding_window["available"]:
+                    lines.append(
+                        "Holding Period: "
+                        f"Day "
+                        f"{holding_window['trading_days_held']} "
+                        f"of "
+                        f"{holding_window['max_hold_days']}"
+                    )
+                    lines.append(
+                        "Trading Days Remaining: "
+                        f"{holding_window['trading_days_remaining']}"
+                    )
+                else:
+                    lines.append(
+                        "Holding Period: N/A"
+                    )
+
                 lines.append(
                     "Live position metrics unavailable."
                 )
@@ -569,6 +700,23 @@ def build_paper_dashboard_text(
                 f"Stop  ${stop_price:.2f} | "
                 f"Target  ${target_price:.2f}"
             )
+
+            if holding_window["available"]:
+                lines.append(
+                    "Holding Period: "
+                    f"Day "
+                    f"{holding_window['trading_days_held']} "
+                    f"of "
+                    f"{holding_window['max_hold_days']}"
+                )
+                lines.append(
+                    "Trading Days Remaining: "
+                    f"{holding_window['trading_days_remaining']}"
+                )
+            else:
+                lines.append(
+                    "Holding Period: N/A"
+                )
 
             lines.append(
                 f"STOP {progress_bar} TARGET"

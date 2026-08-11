@@ -1,4 +1,4 @@
-﻿"""
+"""
 Regression tests for missing live prices in the
 paper-trading Trade Control Center.
 
@@ -9,6 +9,7 @@ from types import SimpleNamespace
 
 from paper_trading.dashboard import (
     build_paper_dashboard_text,
+    calculate_position_holding_window,
 )
 
 
@@ -101,5 +102,101 @@ def test_available_price_still_calculates_profit():
 
     assert (
         "P/L $+100.00"
+        in text
+    )
+
+
+
+def test_holding_window_skips_weekends_and_tsx_holidays():
+    position = {
+        "entry_date": "2026-07-31",
+        "max_hold_days": 10,
+    }
+
+    result = calculate_position_holding_window(
+        position,
+        current_date="2026-08-04",
+    )
+
+    assert result["trading_days_held"] == 2
+    assert result["trading_days_remaining"] == 8
+    assert result["time_exit_due"] is False
+
+
+def test_holding_window_marks_day_10_as_due():
+    position = {
+        "entry_date": "2026-07-29",
+        "max_hold_days": 10,
+    }
+
+    result = calculate_position_holding_window(
+        position,
+        current_date="2026-08-12",
+    )
+
+    assert result["trading_days_held"] == 10
+    assert result["trading_days_remaining"] == 0
+    assert result["time_exit_due"] is True
+
+
+def test_dashboard_displays_holding_countdown():
+    engine = build_engine()
+
+    engine.portfolio.open_positions[0][
+        "entry_date"
+    ] = "2026-08-07"
+
+    engine.portfolio.open_positions[0][
+        "max_hold_days"
+    ] = 10
+
+    text = build_paper_dashboard_text(
+        engine,
+        {
+            "TEST.TO": 110.00,
+        },
+        current_date="2026-08-11",
+    )
+
+    assert (
+        "Holding Period: Day 3 of 10"
+        in text
+    )
+
+    assert (
+        "Trading Days Remaining: 7"
+        in text
+    )
+
+
+def test_missing_price_still_displays_holding_countdown():
+    engine = build_engine()
+
+    engine.portfolio.open_positions[0][
+        "entry_date"
+    ] = "2026-08-07"
+
+    engine.portfolio.open_positions[0][
+        "max_hold_days"
+    ] = 10
+
+    text = build_paper_dashboard_text(
+        engine,
+        {},
+        current_date="2026-08-11",
+    )
+
+    assert (
+        "Status: PRICE UNAVAILABLE"
+        in text
+    )
+
+    assert (
+        "Holding Period: Day 3 of 10"
+        in text
+    )
+
+    assert (
+        "Trading Days Remaining: 7"
         in text
     )

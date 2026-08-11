@@ -1,4 +1,4 @@
-﻿import json
+import json
 import socket
 import subprocess
 import sys
@@ -2339,6 +2339,74 @@ class TradingWorkstation:
 
                 temporary_file.replace(
                     latest_prices_file
+                )
+
+        # Defensive portfolio-price fallback.
+        #
+        # The headless runtime normally provides prices through
+        # latest_prices.json. If that snapshot is incomplete,
+        # fetch only the missing open-position symbols directly.
+        # This prevents missing prices from silently appearing
+        # as flat positions in the Trade Control Center.
+        open_position_symbols = {
+            position["symbol"]
+            for engine in (
+                self.paper_engine,
+                self.breakout_52week_engine,
+                self.mean_reversion_engine,
+            )
+            for position
+            in engine.portfolio.open_positions
+        }
+
+        missing_symbols = sorted(
+            symbol
+            for symbol
+            in open_position_symbols
+            if symbol not in current_prices
+        )
+
+        if missing_symbols:
+            try:
+                fallback_quotes = get_quotes(
+                    missing_symbols
+                )
+
+                for quote_data in fallback_quotes:
+                    symbol = quote_data.get(
+                        "symbol"
+                    )
+
+                    price = quote_data.get(
+                        "price",
+                        quote_data.get(
+                            "close"
+                        ),
+                    )
+
+                    if (
+                        symbol
+                        and price is not None
+                    ):
+                        current_prices[
+                            symbol
+                        ] = float(
+                            price
+                        )
+
+                logging.info(
+                    "Filled missing Trade Control "
+                    "Center prices for %s symbols",
+                    len(missing_symbols),
+                )
+
+            except Exception:
+                logging.exception(
+                    "Could not retrieve missing "
+                    "Trade Control Center prices: %s",
+                    ", ".join(
+                        missing_symbols
+                    ),
                 )
 
         momentum_text = (

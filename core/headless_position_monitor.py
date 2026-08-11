@@ -1,4 +1,4 @@
-﻿"""
+"""
 Northstar Headless Position Monitor
 
 Provides one headless position-monitoring cycle for the
@@ -27,6 +27,20 @@ LATEST_PRICES_FILE = (
 
 
 def collect_open_position_symbols(engines):
+    # Refresh persisted trading state before determining which
+    # positions require live prices. This prevents the long-running
+    # headless process from using stale in-memory portfolio data
+    # written by another Northstar process.
+    for engine in engines.values():
+        refresh_runtime_state = getattr(
+            engine,
+            "refresh_runtime_state",
+            None,
+        )
+
+        if callable(refresh_runtime_state):
+            refresh_runtime_state()
+
     symbols = {
         position["symbol"]
         for engine in engines.values()

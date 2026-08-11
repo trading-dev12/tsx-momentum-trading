@@ -238,3 +238,36 @@ def test_position_monitor_updates_all_engines():
             {"symbol": "BMO.TO"}
         ],
     }
+
+
+def test_collect_open_position_symbols_refreshes_runtime_state():
+    """
+    A long-running headless engine must refresh persisted
+    state before deciding which positions require prices.
+    """
+    engine = MagicMock()
+
+    engine.portfolio.open_positions = []
+
+    def refresh_state():
+        engine.portfolio.open_positions = [
+            {
+                "symbol": "SHOP.TO",
+            }
+        ]
+
+    engine.refresh_runtime_state.side_effect = (
+        refresh_state
+    )
+
+    symbols = collect_open_position_symbols(
+        {
+            "momentum": engine,
+        }
+    )
+
+    engine.refresh_runtime_state.assert_called_once()
+
+    assert symbols == [
+        "SHOP.TO",
+    ]

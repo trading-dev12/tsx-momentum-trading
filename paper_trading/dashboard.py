@@ -235,6 +235,7 @@ def build_paper_dashboard_text(
     total_open_profit_loss = 0.0
     winning_open_positions = 0
     losing_open_positions = 0
+    unavailable_open_positions = 0
 
     for position in open_positions:
         symbol = position["symbol"]
@@ -245,11 +246,16 @@ def build_paper_dashboard_text(
             position["shares"]
         )
 
+        current_price = current_prices.get(
+            symbol
+        )
+
+        if current_price is None:
+            unavailable_open_positions += 1
+            continue
+
         current_price = float(
-            current_prices.get(
-                symbol,
-                entry_price,
-            )
+            current_price
         )
 
         position_profit_loss = (
@@ -321,6 +327,10 @@ def build_paper_dashboard_text(
     lines.append(
         f"Losing Positions  "
         f"{losing_open_positions:>13}"
+    )
+    lines.append(
+        f"Price Unavailable "
+        f"{unavailable_open_positions:>13}"
     )
     lines.append(
         f"Closed Trades     "
@@ -431,11 +441,37 @@ def build_paper_dashboard_text(
                 position["target_price"]
             )
 
-            current_price = float(
-                current_prices.get(
-                    symbol,
-                    entry_price,
+            current_price = current_prices.get(
+                symbol
+            )
+
+            if current_price is None:
+                lines.append(
+                    f">>> {symbol} <<<"
                 )
+                lines.append(
+                    "Status: PRICE UNAVAILABLE"
+                )
+                lines.append(
+                    f"Shares {shares:<5} | "
+                    "P/L N/A | R N/A"
+                )
+                lines.append(
+                    f"Entry ${entry_price:.2f} | "
+                    "Current N/A"
+                )
+                lines.append(
+                    f"Stop  ${stop_price:.2f} | "
+                    f"Target  ${target_price:.2f}"
+                )
+                lines.append(
+                    "Live position metrics unavailable."
+                )
+                lines.append(divider)
+                continue
+
+            current_price = float(
+                current_price
             )
 
             profit_loss = (

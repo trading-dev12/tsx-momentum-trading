@@ -4287,3 +4287,203 @@ Planned measurements include:
 After candidate stability is operational, the next major research component will be the Combination Explorer.
 
 Combination research will remain gated by sufficient enriched trade history and will not alter production strategy rules.
+
+---
+
+## August 10, 2026 - EOD Reliability and Backup Hardening
+
+### Problem Investigated
+
+The August 10 automatic EOD cycle completed its strategy scans but reported an overall WARNING.
+
+The warning investigation identified multiple separate issues:
+
+- Mean Reversion Telegram reporting showed an incorrect Total Pending count
+- Mean Reversion rejected signals were all being labeled Already Pending
+- Internal EOD backup was configured to use the removable external SSD
+- Pipeline validation detected K.TO simultaneously as an open Momentum position and a pending trade
+- Long-running Northstar processes could retain stale in-memory portfolio and pending-queue state
+
+### Mean Reversion EOD Reporting Fix
+
+Updated paper_trading/automatic_eod.py.
+
+Completed:
+
+- Added calculation of the actual Mean Reversion pending queue total
+- Added Already Open reporting
+- Added Already Pending reporting
+- Added Other Rejected reporting
+- Updated Telegram EOD formatting to display each rejection category separately
+- Preserved the existing queue summary structure
+
+The EOD message can now distinguish between a signal rejected because a position is already open and a signal rejected because it is already waiting in the pending queue.
+
+### K.TO Stale-State Investigation
+
+Pipeline validation identified:
+
+- K.TO existed as a valid open Momentum position
+- K.TO also existed in pending_trades.csv
+- The open position was created at the August 10 market open
+- The stale pending record was recreated later during the EOD cycle
+
+This confirmed a cross-process stale-state condition.
+
+The stale pending K.TO record was removed while preserving the legitimate open position.
+
+### Runtime-State Reliability Fix
+
+Updated paper_trading/paper_engine.py.
+
+Added:
+
+refresh_runtime_state()
+
+The engine now reloads persisted portfolio and pending-queue state before:
+
+- queue_eod_signals()
+- execute_pending_trades_for_date()
+
+This prevents a long-running GUI or headless process from making critical trading decisions using an outdated in-memory copy of state written by another Northstar process.
+
+The refresh method was also made compatible with lightweight in-memory test doubles by checking that persistence reload methods exist before calling them.
+
+### Regression Testing
+
+Created an isolated stale-state reproduction test.
+
+Test scenario:
+
+1. PaperTradingEngine starts with no open K.TO position
+2. Another process writes K.TO into the persisted portfolio
+3. The original engine attempts to queue K.TO at EOD
+4. Runtime-state refresh reloads the portfolio
+5. K.TO is correctly classified as Already Open
+6. K.TO is not re-added to the pending queue
+
+Result:
+
+PASS
+
+### Existing Execution Regression Tests
+
+The initial runtime refresh implementation exposed three unit tests that used SimpleNamespace and lightweight fake pending queues.
+
+Initial result:
+
+3 failed
+156 passed
+
+The refresh method was updated so persistence reload functions are called only when supported by the object.
+
+Targeted rerun:
+
+3 passed
+
+Full main suite:
+
+159 passed
+1 non-blocking eventkit deprecation warning
+
+The standalone tools/test_service_ownership.py diagnostic remains incompatible with normal pytest collection while the live HEADLESS_RUNTIME owns the service lock. This is a test-harness issue rather than a trading-system failure and remains a follow-up item.
+
+### Pipeline Validation
+
+Initial validation identified:
+
+- Historical research completeness warning
+- K.TO pending/open conflict
+- Old pending signal-date conflict
+
+After stale K.TO cleanup and policy review:
+
+Historical rows before the research-enrichment start date are now treated as accepted legacy records.
+
+Current rows remain strict:
+
+current_rows_policy = fail
+
+Final result:
+
+PIPELINE VALIDATION: PASS
+
+### Internal Backup Fix
+
+The internal EOD backup had been configured as:
+
+D:\Northstar_Backups
+
+This incorrectly made normal EOD backup success dependent on the removable external SSD being connected.
+
+The internal backup root was changed to:
+
+Northstar_Backups
+
+Confirmed successful local backup:
+
+C:\Users\Chris\Documents\Tsx momentum trading\tsx-momentum-trading-recovered\Northstar_Backups\2026-08-10
+
+The external SSD backup system remains completely separate and continues to provide full-project disaster recovery.
+
+### External SSD Backup System
+
+The automatic external SSD watcher is operational.
+
+Features:
+
+- Detects the Extreme SSD by volume label
+- Does not depend on a permanent drive letter
+- Automatically creates timestamped full-project snapshots
+- Includes the .git repository
+- Includes code
+- Includes configuration
+- Includes paper portfolios
+- Includes pending queues
+- Includes trade journals
+- Includes research files
+- Includes runtime state
+- Excludes disposable cache files
+- Uses success/failure marker files
+- Uses a mutex to prevent duplicate watcher processes
+- Starts automatically with Windows sign-in
+
+### Git / Source Control
+
+Reliability changes were reviewed carefully before staging.
+
+Only the intended files were committed:
+
+- config/research_validation.json
+- config/settings.json
+- paper_trading/automatic_eod.py
+- paper_trading/paper_engine.py
+
+Runtime trading files, journals, pending queues and temporary safety copies were deliberately excluded from the commit.
+
+Commit:
+
+a1c27e0 - Fix EOD reliability and stale trading state
+
+Push:
+
+Successful to origin/main
+
+### End-of-Session Status
+
+Pipeline Validation: PASS
+
+Automated Tests: 159 PASSED
+
+Internal EOD Backup: PASS
+
+External SSD Backup System: OPERATIONAL
+
+GitHub Backup: CURRENT
+
+Stale-State Protection: ACTIVE
+
+Mean Reversion EOD Reporting: FIXED
+
+Northstar is ready to return to normal paper-trading operation, with the next live EOD and next-day execution cycles serving as production confirmation of the reliability improvements.
+

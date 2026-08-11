@@ -1072,3 +1072,80 @@ Candidate History / Stability
 The objective is not to force the current strategies to appear profitable.
 
 The objective is to build a platform capable of discovering, rejecting, and validating market edges using evidence.
+
+---
+
+## August 10, 2026 - Reliability Milestone Completed
+
+### EOD and Trading-State Reliability
+
+- [x] Diagnosed EOD pipeline warning from August 10
+- [x] Corrected Mean Reversion pending-trade reporting
+- [x] Added accurate Total Pending count for Mean Reversion
+- [x] Separated EOD rejection reporting into:
+  - Already Open
+  - Already Pending
+  - Other Rejected
+- [x] Identified K.TO stale pending/open-position conflict
+- [x] Removed stale K.TO pending record without affecting the valid open position
+- [x] Added runtime-state refresh before critical trading actions
+- [x] Portfolio state now reloads before EOD signal queueing
+- [x] Pending-trade state now reloads before EOD queueing and next-day execution
+- [x] Added compatibility protection for in-memory test doubles
+- [x] Reproduced stale-state failure condition in an isolated regression test
+- [x] Confirmed stale-state protection prevents re-queuing an already-open position
+
+### Pipeline Validation
+
+- [x] Pipeline Validation restored to PASS
+- [x] Historical pre-enrichment trades changed from WARNING to accepted legacy data
+- [x] Current research rows remain strict and will continue to FAIL validation if required research data is missing
+
+### Backup Reliability
+
+- [x] Internal EOD backup separated from the removable external SSD
+- [x] Internal EOD backups now save locally to Northstar_Backups
+- [x] External SSD backup remains a separate full-project disaster-recovery layer
+- [x] Automatic external SSD watcher completed
+- [x] SSD is detected by volume label rather than fixed drive letter
+- [x] Timestamped full-project backups are created automatically
+- [x] Git repository history is included in external SSD backups
+- [x] Runtime portfolios, journals, queues, configuration and research data are included
+
+### Validation Results
+
+- [x] Pipeline Validation: PASS
+- [x] Paper-engine regression tests: 3 passed
+- [x] Main automated test suite: 159 passed
+- [x] No functional test failures
+- [x] Known eventkit deprecation warning is non-blocking
+- [x] Reliability changes committed and pushed to GitHub
+- [x] Commit: a1c27e0 - Fix EOD reliability and stale trading state
+
+### Reliability Follow-Up Backlog
+
+- [ ] Convert tools/test_service_ownership.py into a pytest-safe test or permanently exclude it from normal pytest collection
+- [ ] Verify GUI strategy queue counts always refresh from persisted state
+- [ ] Review pipeline validator handling of legitimate older pending trades when an opening price is unavailable
+- [ ] Future-proof TSX holiday calendar beyond 2026
+- [ ] Add tests for future-year TSX holidays
+- [ ] Add Telegram internet-outage alerts
+- [ ] Add Telegram internet-restored alerts
+- [ ] Add power-outage/recovery detection where practical
+- [ ] Add IBKR automatic reconnection protection
+- [ ] Add scanner automatic reconnection after connectivity loss
+- [ ] Continue reducing remaining Yahoo dependency while preserving fallback capability
+
+### Current Reliability Position
+
+Northstar now has multiple independent protection layers:
+
+1. GitHub source-code history
+2. Local automatic EOD backups
+3. Automatic full-project external SSD snapshots
+4. Pipeline validation
+5. Runtime-state refresh protection
+6. Automated regression testing
+
+The next objective is to continue normal paper trading while monitoring the updated EOD and next-day execution workflow under real operating conditions.
+

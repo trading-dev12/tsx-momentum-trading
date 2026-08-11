@@ -1,4 +1,6 @@
-﻿import mobile_dashboard.app as dashboard_module
+import re
+
+import mobile_dashboard.app as dashboard_module
 
 
 def make_portfolio(
@@ -180,18 +182,121 @@ def test_mobile_dashboard_displays_holding_countdown_for_all_strategies(
 
     html = dashboard_module.dashboard()
 
-    assert html.count(
-        "<th>Holding</th>"
-    ) == 3
+    expected_headers = [
+        "Symbol",
+        "Current Price",
+        "Entry Price",
+        "Open P/L",
+        "Stop",
+        "Target",
+        "Days Left",
+        "Position Value",
+        "Shares",
+        "Entry Date",
+        "Holding",
+        "Strategy",
+    ]
 
-    assert html.count(
-        "<th>Days Left</th>"
-    ) == 3
+    position_headers = []
 
-    assert "3 / 10" in html
-    assert "5 / 10" in html
-    assert "9 / 10" in html
+    for section in html.split(
+        "<thead>"
+    )[1:]:
+        header_html = section.split(
+            "</thead>",
+            1,
+        )[0]
 
-    assert "MOM.TO" in html
-    assert "BRK.TO" in html
-    assert "MR.TO" in html
+        if "<th>Symbol</th>" in header_html:
+            position_headers.append(
+                header_html
+            )
+
+    assert len(position_headers) == 3
+
+    for header_html in position_headers:
+        header_positions = [
+            header_html.index(
+                f"<th>{header}</th>"
+            )
+            for header in expected_headers
+        ]
+
+        assert header_positions == sorted(
+            header_positions
+        )
+
+    expected_rows = {
+        "MOM.TO": [
+            "MOM.TO",
+            "$105.00",
+            "$100.00",
+            "$50.00",
+            "$90.00",
+            "$120.00",
+            "7",
+            "$1,050.00",
+            "10",
+            "2026-08-07",
+            "3 / 10",
+            "MOMENTUM",
+        ],
+        "BRK.TO": [
+            "BRK.TO",
+            "$106.00",
+            "$100.00",
+            "$60.00",
+            "$90.00",
+            "$120.00",
+            "5",
+            "$1,060.00",
+            "10",
+            "2026-08-07",
+            "5 / 10",
+            "52_WEEK_BREAKOUT",
+        ],
+        "MR.TO": [
+            "MR.TO",
+            "$107.00",
+            "$100.00",
+            "$70.00",
+            "$90.00",
+            "$120.00",
+            "1",
+            "$1,070.00",
+            "10",
+            "2026-08-07",
+            "9 / 10",
+            "MEAN_REVERSION",
+        ],
+    }
+
+    rows = html.split("<tr>")
+
+    for symbol, expected_cells in (
+        expected_rows.items()
+    ):
+        row_html = next(
+            row
+            for row in rows
+            if symbol in row
+        )
+
+        cells = re.findall(
+            r"<td[^>]*>(.*?)</td>",
+            row_html,
+            flags=re.DOTALL,
+        )
+
+        cell_text = [
+            " ".join(
+                re.sub(
+                    r"<[^>]+>",
+                    " ",
+                    cell,
+                ).split()
+            )
+            for cell in cells
+        ]
+
+        assert cell_text == expected_cells

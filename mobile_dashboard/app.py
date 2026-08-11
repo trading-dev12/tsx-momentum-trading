@@ -797,27 +797,15 @@ def dashboard():
                 </td>
 
                 <td>
-                    {position.get("strategy", "--")}
-                </td>
-
-                <td>
-                    {position.get("entry_date", "--")}
-                </td>
-
-                 <td>
-                    ${entry_price:,.2f}
-                </td>
-
-                <td>
                     ${current_price:,.2f}
+                </td>
+
+                <td>
+                    ${entry_price:,.2f}
                 </td>
 
                 <td style="color: {open_pl_color}; font-weight: bold;">
                     {open_pl_display}
-                </td>
-
-                <td>
-                    {shares}
                 </td>
 
                 <td>
@@ -829,15 +817,27 @@ def dashboard():
                 </td>
 
                 <td>
-                    {holding_display}
-                </td>
-
-                <td>
                     {days_left_display}
                 </td>
 
                 <td>
                     ${position_value:,.2f}
+                </td>
+
+                <td>
+                    {shares}
+                </td>
+
+                <td>
+                    {position.get("entry_date", "--")}
+                </td>
+
+                <td>
+                    {holding_display}
+                </td>
+
+                <td>
+                    {position.get("strategy", "--")}
                 </td>
             </tr>
             """
@@ -978,27 +978,15 @@ def dashboard():
                 </td>
 
                 <td>
-                    {position.get("strategy", "--")}
-                </td>
-
-                <td>
-                    {position.get("entry_date", "--")}
+                    ${current_price:,.2f}
                 </td>
 
                 <td>
                     ${entry_price:,.2f}
                 </td>
 
-                <td>
-                    ${current_price:,.2f}
-                </td>
-
                 <td style="color: {open_pl_color}; font-weight: bold;">
                     {open_pl_display}
-                </td>
-
-                <td>
-                    {shares}
                 </td>
 
                 <td>
@@ -1010,15 +998,27 @@ def dashboard():
                 </td>
 
                 <td>
-                    {holding_display}
-                </td>
-
-                <td>
                     {days_left_display}
                 </td>
 
                 <td>
                     ${position_value:,.2f}
+                </td>
+
+                <td>
+                    {shares}
+                </td>
+
+                <td>
+                    {position.get("entry_date", "--")}
+                </td>
+
+                <td>
+                    {holding_display}
+                </td>
+
+                <td>
+                    {position.get("strategy", "--")}
                 </td>
             </tr>
             """
@@ -1158,27 +1158,15 @@ def dashboard():
                 </td>
 
                 <td>
-                    {position.get("strategy", "--")}
-                </td>
-
-                <td>
-                    {position.get("entry_date", "--")}
+                    ${current_price:,.2f}
                 </td>
 
                 <td>
                     ${entry_price:,.2f}
                 </td>
 
-                <td>
-                    ${current_price:,.2f}
-                </td>
-
                 <td style="color: {open_pl_color}; font-weight: bold;">
                     {open_pl_display}
-                </td>
-
-                <td>
-                    {shares}
                 </td>
 
                 <td>
@@ -1190,15 +1178,27 @@ def dashboard():
                 </td>
 
                 <td>
-                    {holding_display}
-                </td>
-
-                <td>
                     {days_left_display}
                 </td>
 
                 <td>
                     ${position_value:,.2f}
+                </td>
+
+                <td>
+                    {shares}
+                </td>
+
+                <td>
+                    {position.get("entry_date", "--")}
+                </td>
+
+                <td>
+                    {holding_display}
+                </td>
+
+                <td>
+                    {position.get("strategy", "--")}
                 </td>
             </tr>
             """
@@ -1625,17 +1625,17 @@ def dashboard():
                     <thead>
                         <tr>
                             <th>Symbol</th>
-                            <th>Strategy</th>
-                            <th>Entry Date</th>
-                            <th>Entry</th>
-                            <th>Current</th>
+                            <th>Current Price</th>
+                            <th>Entry Price</th>
                             <th>Open P/L</th>
-                            <th>Shares</th>
                             <th>Stop</th>
                             <th>Target</th>
-                            <th>Holding</th>
                             <th>Days Left</th>
                             <th>Position Value</th>
+                            <th>Shares</th>
+                            <th>Entry Date</th>
+                            <th>Holding</th>
+                            <th>Strategy</th>
                         </tr>
                     </thead>
 
@@ -1748,17 +1748,17 @@ def dashboard():
                     <thead>
                         <tr>
                             <th>Symbol</th>
-                            <th>Strategy</th>
-                            <th>Entry Date</th>
-                            <th>Entry</th>
-                            <th>Current</th>
+                            <th>Current Price</th>
+                            <th>Entry Price</th>
                             <th>Open P/L</th>
-                            <th>Shares</th>
                             <th>Stop</th>
                             <th>Target</th>
-                            <th>Holding</th>
                             <th>Days Left</th>
                             <th>Position Value</th>
+                            <th>Shares</th>
+                            <th>Entry Date</th>
+                            <th>Holding</th>
+                            <th>Strategy</th>
                         </tr>
                     </thead>
 
@@ -1870,17 +1870,17 @@ def dashboard():
                     <thead>
                         <tr>
                             <th>Symbol</th>
-                            <th>Strategy</th>
-                            <th>Entry Date</th>
-                            <th>Entry</th>
-                            <th>Current</th>
+                            <th>Current Price</th>
+                            <th>Entry Price</th>
                             <th>Open P/L</th>
-                            <th>Shares</th>
                             <th>Stop</th>
                             <th>Target</th>
-                            <th>Holding</th>
                             <th>Days Left</th>
                             <th>Position Value</th>
+                            <th>Shares</th>
+                            <th>Entry Date</th>
+                            <th>Holding</th>
+                            <th>Strategy</th>
                         </tr>
                     </thead>
 

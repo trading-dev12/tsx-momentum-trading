@@ -1,4 +1,4 @@
-﻿"""
+"""
 Northstar Quant Research & Trading Platform
 
 Provides a read-only browser dashboard for monitoring the
@@ -17,6 +17,9 @@ from flask import Flask, jsonify, request
 from core.market_hours import get_tsx_market_status
 
 from paper_trading.portfolio import PaperPortfolio
+from paper_trading.dashboard import (
+    calculate_position_holding_window,
+)
 from mobile_dashboard.edge_research_data import (
     build_edge_research_dashboard_data,
 )
@@ -732,6 +735,29 @@ def dashboard():
             "--",
         )
 
+        holding_window = (
+            calculate_position_holding_window(
+                position
+            )
+        )
+
+        if holding_window["available"]:
+            holding_display = (
+                f"{holding_window['trading_days_held']} "
+                f"/ "
+                f"{holding_window['max_hold_days']}"
+            )
+
+            days_left_display = str(
+                holding_window[
+                    "trading_days_remaining"
+                ]
+            )
+
+        else:
+            holding_display = "N/A"
+            days_left_display = "N/A"
+
         current_price = float(
             current_prices.get(
                 symbol,
@@ -803,6 +829,14 @@ def dashboard():
                 </td>
 
                 <td>
+                    {holding_display}
+                </td>
+
+                <td>
+                    {days_left_display}
+                </td>
+
+                <td>
                     ${position_value:,.2f}
                 </td>
             </tr>
@@ -849,7 +883,7 @@ def dashboard():
     else:
         open_positions_html = """
         <tr>
-            <td colspan="10">
+            <td colspan="12">
                 No open positions.
             </td>
         </tr>
@@ -881,6 +915,29 @@ def dashboard():
             "symbol",
             "--",
         )
+
+        holding_window = (
+            calculate_position_holding_window(
+                position
+            )
+        )
+
+        if holding_window["available"]:
+            holding_display = (
+                f"{holding_window['trading_days_held']} "
+                f"/ "
+                f"{holding_window['max_hold_days']}"
+            )
+
+            days_left_display = str(
+                holding_window[
+                    "trading_days_remaining"
+                ]
+            )
+
+        else:
+            holding_display = "N/A"
+            days_left_display = "N/A"
 
         current_price = float(
             current_prices.get(
@@ -953,6 +1010,14 @@ def dashboard():
                 </td>
 
                 <td>
+                    {holding_display}
+                </td>
+
+                <td>
+                    {days_left_display}
+                </td>
+
+                <td>
                     ${position_value:,.2f}
                 </td>
             </tr>
@@ -999,7 +1064,7 @@ def dashboard():
     else:
         breakout_52week_open_positions_html = """
         <tr>
-            <td colspan="10">
+            <td colspan="12">
                 No open positions.
             </td>
         </tr>
@@ -1030,6 +1095,29 @@ def dashboard():
             "symbol",
             "--",
         )
+
+        holding_window = (
+            calculate_position_holding_window(
+                position
+            )
+        )
+
+        if holding_window["available"]:
+            holding_display = (
+                f"{holding_window['trading_days_held']} "
+                f"/ "
+                f"{holding_window['max_hold_days']}"
+            )
+
+            days_left_display = str(
+                holding_window[
+                    "trading_days_remaining"
+                ]
+            )
+
+        else:
+            holding_display = "N/A"
+            days_left_display = "N/A"
 
         current_price = float(
             current_prices.get(
@@ -1102,6 +1190,14 @@ def dashboard():
                 </td>
 
                 <td>
+                    {holding_display}
+                </td>
+
+                <td>
+                    {days_left_display}
+                </td>
+
+                <td>
                     ${position_value:,.2f}
                 </td>
             </tr>
@@ -1148,7 +1244,7 @@ def dashboard():
     else:
         mean_reversion_open_positions_html = """
         <tr>
-            <td colspan="10">
+            <td colspan="12">
                 No open positions.
             </td>
         </tr>
@@ -1537,6 +1633,8 @@ def dashboard():
                             <th>Shares</th>
                             <th>Stop</th>
                             <th>Target</th>
+                            <th>Holding</th>
+                            <th>Days Left</th>
                             <th>Position Value</th>
                         </tr>
                     </thead>
@@ -1658,6 +1756,8 @@ def dashboard():
                             <th>Shares</th>
                             <th>Stop</th>
                             <th>Target</th>
+                            <th>Holding</th>
+                            <th>Days Left</th>
                             <th>Position Value</th>
                         </tr>
                     </thead>
@@ -1778,6 +1878,8 @@ def dashboard():
                             <th>Shares</th>
                             <th>Stop</th>
                             <th>Target</th>
+                            <th>Holding</th>
+                            <th>Days Left</th>
                             <th>Position Value</th>
                         </tr>
                     </thead>

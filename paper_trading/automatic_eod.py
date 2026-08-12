@@ -597,25 +597,55 @@ def run_automatic_eod_cycle(
         else "FAIL"
     )
 
-    has_eod_warning = (
+    core_eod_warning = (
         momentum_status != "PASS"
         or breakout_status != "PASS"
         or mean_reversion_status != "PASS"
         or validation_status == "FAIL"
+    )
+
+    only_backup_warning = (
+        not core_eod_warning
+        and backup_status != "PASS"
+    )
+
+    has_eod_warning = (
+        core_eod_warning
         or backup_status != "PASS"
     )
 
-    overall_health = (
-        "WARNING"
-        if has_eod_warning
-        else "HEALTHY"
-    )
+    if only_backup_warning:
+        overall_health = "WARNING - BACKUP ONLY"
+        telegram_heading = (
+            "NORTHSTAR QUANT EOD COMPLETE - "
+            "BACKUP WARNING"
+        )
+    elif has_eod_warning:
+        overall_health = "WARNING"
+        telegram_heading = (
+            "NORTHSTAR QUANT EOD WARNING"
+        )
+    else:
+        overall_health = "HEALTHY"
+        telegram_heading = (
+            "NORTHSTAR QUANT EOD COMPLETE"
+        )
 
-    telegram_heading = (
-        "NORTHSTAR QUANT EOD WARNING"
-        if has_eod_warning
-        else "NORTHSTAR QUANT EOD COMPLETE"
-    )
+    backup_errors = backup_result.get("errors", [])
+
+    if backup_errors:
+        backup_error_detail = "\n".join(
+            f"- {error}"
+            for error in backup_errors[:3]
+        )
+
+        if len(backup_errors) > 3:
+            backup_error_detail += (
+                "\n- ... and "
+                f"{len(backup_errors) - 3} more error(s)"
+            )
+    else:
+        backup_error_detail = "None"
 
     telegram_message = (
         f"{telegram_heading}\n\n"
@@ -653,8 +683,11 @@ def run_automatic_eod_cycle(
         "SYSTEM CHECKS\n"
         f"Pipeline Validation: {validation_status}\n"
         f"Backup: {backup_status}\n"
-        f"Backup Items: {backup_result['copied']}\n"
-        f"Backup Errors: {len(backup_result['errors'])}\n\n"
+        f"Backup Items Copied: {backup_result.get('copied', 0)}\n"
+        f"Backup Items Skipped: {backup_result.get('skipped', 0)}\n"
+        f"Backup Errors: {len(backup_errors)}\n"
+        "Backup Error Detail:\n"
+        f"{backup_error_detail}\n\n"
 
         f"OVERALL HEALTH: {overall_health}\n\n"
         "Pending signals are ready for next-day execution."

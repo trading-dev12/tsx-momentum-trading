@@ -275,7 +275,18 @@ def run_52_week_shadow_scan(paper_engine=None):
         "errors": len(results["errors"]),
         "queued": queue_summary["added"],
         "duplicates": queue_summary["rejected"],
-        "pending_total": pending_total,
+        "already_open": queue_summary.get(
+            "already_open",
+            0,
+        ),
+        "already_pending": queue_summary.get(
+            "already_pending",
+            0,
+        ),
+        "other_rejected": queue_summary.get(
+            "other_rejected",
+            0,
+        ),
         "pending_total": pending_total,
         "queue_summary": queue_summary,
         "report_path": report_path,
@@ -620,7 +631,11 @@ def run_automatic_eod_cycle(
         "52-WEEK BREAKOUT\n"
         f"Status: {breakout_status}\n"
         f"READY: {shadow_result.get('ready', 0)}\n"
-        f"Queued: {shadow_result.get('queued', 0)}\n"
+        f"Newly Queued: {shadow_result.get('queued', 0)}\n"
+        f"Already Open: {shadow_result.get('already_open', 0)}\n"
+        f"Already Pending: {shadow_result.get('already_pending', 0)}\n"
+        f"Other Rejected: {shadow_result.get('other_rejected', 0)}\n"
+        f"Total Pending: {shadow_result.get('pending_total', 0)}\n"
         f"WATCH: {shadow_result.get('watch', 0)}\n"
         f"Errors: {shadow_result.get('errors', 0)}\n\n"
 

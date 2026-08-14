@@ -32,6 +32,12 @@ from scanner.mean_reversion_scanner import (
     save_results as save_mean_reversion_results,
     scan_mean_reversion,
 )
+from research.market_regime import (
+    calculate_market_regime,
+)
+from strategies.mean_reversion_market_guard import (
+    build_guarded_mean_reversion_queue_results,
+)
 from paper_trading.trading_pipeline_validator import (
     run_validation,
     save_validation_report,
@@ -292,17 +298,88 @@ def run_52_week_shadow_scan(paper_engine=None):
         "report_path": report_path,
     }
 
-def run_mean_reversion_shadow_scan(paper_engine=None):
+def run_mean_reversion_shadow_scan(
+    paper_engine=None,
+    measurement_date=None,
+    market_regime_provider=calculate_market_regime,
+):
     """
     Run the Mean Reversion scan.
 
-    Results are always saved for research. READY signals are
-    queued only when a dedicated paper engine is supplied.
+    Raw results are always preserved for research.
+
+    NEW Mean Reversion entries pass through the broad-market
+    guard before they are allowed into the pending queue.
+    Existing positions are not affected.
     """
 
     watchlist = load_all_watchlists()
-    results = scan_mean_reversion(watchlist)
-    report_path = save_mean_reversion_results(results)
+
+    results = scan_mean_reversion(
+        watchlist
+    )
+
+    # Preserve the unmodified strategy output for research.
+    report_path = save_mean_reversion_results(
+        results
+    )
+
+    if paper_engine is None:
+        # Research/live scanner path only.
+        # Do not perform a historical market-regime lookup
+        # when there is no executable queue to protect.
+        guarded_result = {
+            "guard": {
+                "allow_new_entries": None,
+                "guard_status": "NOT_EVALUATED",
+                "market_regime": "N/A",
+                "reason": (
+                    "No paper engine supplied; "
+                    "market guard not required."
+                ),
+            },
+            "queue_results": {
+                "ready": [],
+                "watch": [],
+                "ignore": [],
+                "errors": [],
+            },
+            "blocked_ready_count": 0,
+            "blocked_ready": [],
+        }
+
+    else:
+        if measurement_date is None:
+            measurement_date = (
+                datetime.now()
+                .date()
+                .isoformat()
+            )
+
+        try:
+            regime_result = (
+                market_regime_provider(
+                    measurement_date
+                )
+            )
+
+        except Exception as error:
+            regime_result = {
+                "status": "UNAVAILABLE",
+                "regime": "",
+                "reason": str(error),
+            }
+
+        guarded_result = (
+            build_guarded_mean_reversion_queue_results(
+                results,
+                regime_result,
+            )
+        )
+
+    queue_results = guarded_result[
+        "queue_results"
+    ]
 
     queue_summary = {
         "attempted": 0,
@@ -314,36 +391,71 @@ def run_mean_reversion_shadow_scan(paper_engine=None):
     pending_total = 0
 
     if paper_engine is not None:
-        queue_summary = paper_engine.queue_eod_signals(
-            results
+        queue_summary = (
+            paper_engine.queue_eod_signals(
+                queue_results
+            )
         )
+
         pending_total = len(
-            paper_engine.pending_trades.get_all()
+            paper_engine
+            .pending_trades
+            .get_all()
         )
 
     return {
         "success": True,
         "results": results,
-        "ready": len(results["ready"]),
-        "watch": len(results["watch"]),
-        "ignored": len(results["ignore"]),
-        "queued": queue_summary["added"],
-        "duplicates": queue_summary["rejected"],
-        "already_open": queue_summary.get(
-            "already_open",
-            0,
+        "ready": len(
+            results["ready"]
         ),
-        "already_pending": queue_summary.get(
-            "already_pending",
-            0,
+        "watch": len(
+            results["watch"]
         ),
-        "other_rejected": queue_summary.get(
-            "other_rejected",
-            0,
+        "ignored": len(
+            results["ignore"]
+        ),
+        "errors": len(
+            results["errors"]
+        ),
+        "queued": queue_summary[
+            "added"
+        ],
+        "duplicates": queue_summary[
+            "rejected"
+        ],
+        "already_open": (
+            queue_summary.get(
+                "already_open",
+                0,
+            )
+        ),
+        "already_pending": (
+            queue_summary.get(
+                "already_pending",
+                0,
+            )
+        ),
+        "other_rejected": (
+            queue_summary.get(
+                "other_rejected",
+                0,
+            )
         ),
         "pending_total": pending_total,
         "queue_summary": queue_summary,
         "report_path": report_path,
+        "market_guard": guarded_result[
+            "guard"
+        ],
+        "market_guard_blocked": (
+            guarded_result[
+                "blocked_ready_count"
+            ]
+        ),
+        "queue_ready": len(
+            queue_results["ready"]
+        ),
     }
 
 
@@ -510,9 +622,20 @@ def run_automatic_eod_cycle(
     summary["breakout_52week_shadow"] = shadow_result
 
     try:
-        mean_reversion_result = mean_reversion_runner(
-            paper_engine=mean_reversion_engine,
-        )
+        try:
+            mean_reversion_result = mean_reversion_runner(
+                paper_engine=mean_reversion_engine,
+                measurement_date=current_date,
+            )
+
+        except TypeError as error:
+            if "measurement_date" not in str(error):
+                raise
+
+            mean_reversion_result = mean_reversion_runner(
+                paper_engine=mean_reversion_engine,
+            )
+
     except Exception as error:
         mean_reversion_result = {
             "success": False,
@@ -672,6 +795,11 @@ def run_automatic_eod_cycle(
         "MEAN REVERSION\n"
         f"Status: {mean_reversion_status}\n"
         f"READY: {mean_reversion_result.get('ready', 0)}\n"
+        f"Market Guard: "
+        f"{mean_reversion_result.get('market_guard', {}).get('guard_status', 'N/A')} "
+        f"({mean_reversion_result.get('market_guard', {}).get('market_regime', 'N/A')})\n"
+        f"Queue-Eligible READY: {mean_reversion_result.get('queue_ready', 0)}\n"
+        f"Guard-Blocked READY: {mean_reversion_result.get('market_guard_blocked', 0)}\n"
         f"Newly Queued: {mean_reversion_result.get('queued', 0)}\n"
         f"Already Open: {mean_reversion_result.get('already_open', 0)}\n"
         f"Already Pending: {mean_reversion_result.get('already_pending', 0)}\n"

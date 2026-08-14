@@ -1,8 +1,15 @@
-﻿"""
-Market regime classification for trade research enrichment.
+"""
+Broad TSX market regime classification.
 
 The regime is measured using XIC.TO data available on or before the
-trade's signal date, preventing look-ahead bias.
+measurement date, preventing look-ahead bias.
+
+The calculation is shared by:
+- trade research enrichment
+- the Mean Reversion new-entry market guard
+
+The regime calculation does not alter Momentum or 52-Week Breakout
+strategy decisions.
 """
 
 from __future__ import annotations
@@ -149,8 +156,8 @@ def calculate_market_regime(
 
     Local saved benchmark history is retained as fallback.
 
-    This module is research-only and does not alter
-    strategy decisions.
+    This classification may be consumed by research
+    enrichment or by the Mean Reversion new-entry market guard.
     """
 
     result: dict[str, Any] = {

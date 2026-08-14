@@ -1149,3 +1149,29 @@ Northstar now has multiple independent protection layers:
 
 The next objective is to continue normal paper trading while monitoring the updated EOD and next-day execution workflow under real operating conditions.
 
+
+
+---
+
+## Completed Reliability / Risk Controls - August 2026
+
+### Mean Reversion Severe-Down-Market Guard - COMPLETE
+
+- [x] Added independent broad-market entry guard for Mean Reversion.
+- [x] XIC market regime used as the broad TSX reference.
+- [x] BULL regime permits new Mean Reversion entries.
+- [x] SIDEWAYS regime permits new Mean Reversion entries.
+- [x] BEAR regime blocks new Mean Reversion entries.
+- [x] Unavailable or unknown market-regime data fails closed and blocks new entries.
+- [x] Existing Mean Reversion positions are not force-closed by the guard.
+- [x] Raw Mean Reversion READY signals remain preserved for research.
+- [x] Momentum strategy remains unaffected.
+- [x] 52-Week Breakout strategy remains unaffected.
+- [x] Missed-EOD recovery evaluates the original trading date.
+- [x] Headless/live scanner refresh does not perform unnecessary historical regime lookups.
+- [x] EOD Telegram report shows Market Guard, Queue-Eligible READY, and Guard-Blocked READY.
+- [x] Full Northstar regression suite passed: 161 tests, 0 failures.
+
+Implementation commit:
+
+513651d - Add Mean Reversion bear-market entry guard

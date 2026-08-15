@@ -35,6 +35,9 @@ from scanner.mean_reversion_scanner import (
 from research.market_regime import (
     calculate_market_regime,
 )
+from research.candidate_history_service import (
+    capture_all_candidate_history,
+)
 from strategies.mean_reversion_market_guard import (
     build_guarded_mean_reversion_queue_results,
 )
@@ -524,6 +527,7 @@ def run_automatic_eod_cycle(
     validation_runner=run_pipeline_validation,
     shadow_scan_runner=run_52_week_shadow_scan,
     mean_reversion_runner=run_mean_reversion_shadow_scan,
+    candidate_history_runner=None,
 ):
     """
     Run one automatic EOD cycle when eligible.
@@ -661,6 +665,32 @@ def run_automatic_eod_cycle(
     )
 
     summary["validation"] = validation_result
+
+    if candidate_history_runner is None:
+        candidate_history_result = {
+            "success": True,
+            "status": "NOT_REQUESTED",
+            "strategies": {},
+        }
+    else:
+        try:
+            candidate_history_result = (
+                candidate_history_runner()
+            )
+        except Exception as error:
+            candidate_history_result = {
+                "success": False,
+                "status": "ERROR",
+                "strategies": {},
+                "message": (
+                    "Candidate history capture failed: "
+                    f"{error}"
+                ),
+            }
+
+    summary["candidate_history"] = (
+        candidate_history_result
+    )
     
 
     try:
@@ -917,6 +947,9 @@ def automatic_eod_worker(
                 current_datetime=cycle_datetime,
                 live_snapshot_provider=(
                     live_snapshot_provider
+                ),
+                candidate_history_runner=(
+                    capture_all_candidate_history
                 ),
             )
 

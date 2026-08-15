@@ -800,6 +800,574 @@ def _render_edge_research_page_base(data):
 """
 
 
+
+def _format_optional_money(value):
+    """
+    Format optional money without treating missing data as zero.
+    """
+
+    if value is None:
+        return "--"
+
+    return _format_money(
+        value
+    )
+
+
+def _format_optional_number(
+    value,
+    decimals=2,
+    suffix="",
+):
+    """
+    Format an optional numeric value.
+    """
+
+    if value is None:
+        return "--"
+
+    try:
+        number = float(
+            value
+        )
+    except (TypeError, ValueError):
+        return "--"
+
+    return (
+        f"{number:.{decimals}f}"
+        f"{suffix}"
+    )
+
+
+def _format_signed_number(
+    value,
+    decimals=2,
+    suffix="",
+):
+    """
+    Format a numeric change with an explicit sign.
+    """
+
+    if value is None:
+        return "--"
+
+    try:
+        number = float(
+            value
+        )
+    except (TypeError, ValueError):
+        return "--"
+
+    sign = (
+        "+"
+        if number > 0
+        else ""
+    )
+
+    return (
+        f"{sign}"
+        f"{number:.{decimals}f}"
+        f"{suffix}"
+    )
+
+
+def _format_signed_money(value):
+    """
+    Format a monetary change with an explicit sign.
+    """
+
+    if value is None:
+        return "--"
+
+    try:
+        number = float(
+            value
+        )
+    except (TypeError, ValueError):
+        return "--"
+
+    if number > 0:
+        return (
+            f"+${number:,.2f}"
+        )
+
+    if number < 0:
+        return (
+            f"-${abs(number):,.2f}"
+        )
+
+    return "$0.00"
+
+
+def _candidate_stability_html(data):
+    """
+    Render Candidate History and Stability information.
+    """
+
+    history = data.get(
+        "candidate_history",
+        {},
+    ) or {}
+
+    candidates = data.get(
+        "candidate_stability",
+        [],
+    ) or []
+
+    raw_history_status = str(
+        history.get(
+            "status",
+            "NO_HISTORY_YET",
+        )
+        or "NO_HISTORY_YET"
+    )
+
+    history_status = escape(
+        raw_history_status.replace(
+            "_",
+            " ",
+        )
+    )
+
+    observation_count = int(
+        history.get(
+            "observation_count",
+            0,
+        )
+        or 0
+    )
+
+    current_count = sum(
+        1
+        for candidate in candidates
+        if candidate.get(
+            "currently_present",
+            False,
+        )
+    )
+
+    tracked_count = len(
+        candidates
+    )
+
+    message = history.get(
+        "message"
+    )
+
+    if (
+        raw_history_status
+        == "NO_HISTORY_YET"
+    ):
+        candidate_cards = """
+        <div class="empty-state"
+             style="margin-top: 16px;">
+            No Candidate Stability history has been
+            recorded yet. The first automatic EOD
+            research capture will establish the
+            starting observation.
+        </div>
+        """
+
+    elif (
+        raw_history_status
+        == "UNAVAILABLE"
+    ):
+        detail = (
+            escape(
+                str(message)
+            )
+            if message
+            else (
+                "Candidate history could not be read."
+            )
+        )
+
+        candidate_cards = f"""
+        <div class="empty-state"
+             style="margin-top: 16px;">
+            Candidate Stability history is currently
+            unavailable.<br>
+            {detail}
+        </div>
+        """
+
+    elif not candidates:
+        candidate_cards = """
+        <div class="empty-state"
+             style="margin-top: 16px;">
+            Candidate history is available, but no
+            quality-gated candidate patterns have
+            been tracked yet.
+        </div>
+        """
+
+    else:
+        cards = []
+
+        for candidate in candidates:
+            factor = escape(
+                str(
+                    candidate.get(
+                        "factor",
+                        "--",
+                    )
+                ).replace(
+                    "_",
+                    " ",
+                ).title().replace(
+                    "Atr ",
+                    "ATR ",
+                )
+            )
+
+            value = escape(
+                str(
+                    candidate.get(
+                        "value",
+                        "--",
+                    )
+                )
+            )
+
+            stability_status = escape(
+                str(
+                    candidate.get(
+                        "stability_status",
+                        "UNKNOWN",
+                    )
+                ).replace(
+                    "_",
+                    " ",
+                )
+            )
+
+            currently_present = bool(
+                candidate.get(
+                    "currently_present",
+                    False,
+                )
+            )
+
+            presence = (
+                "CURRENT"
+                if currently_present
+                else "DISAPPEARED"
+            )
+
+            observations = int(
+                candidate.get(
+                    "observation_count",
+                    0,
+                )
+                or 0
+            )
+
+            presence_rate = float(
+                candidate.get(
+                    "presence_rate_percent",
+                    0.0,
+                )
+                or 0.0
+            )
+
+            current_streak = int(
+                candidate.get(
+                    "current_streak",
+                    0,
+                )
+                or 0
+            )
+
+            disappearance_count = int(
+                candidate.get(
+                    "disappearance_count",
+                    0,
+                )
+                or 0
+            )
+
+            reappearance_count = int(
+                candidate.get(
+                    "reappearance_count",
+                    0,
+                )
+                or 0
+            )
+
+            first_trades = int(
+                candidate.get(
+                    "first_trade_count",
+                    0,
+                )
+                or 0
+            )
+
+            latest_trades = int(
+                candidate.get(
+                    "latest_trade_count",
+                    0,
+                )
+                or 0
+            )
+
+            trade_change = (
+                _format_signed_number(
+                    candidate.get(
+                        "trade_count_change"
+                    ),
+                    decimals=0,
+                )
+            )
+
+            first_expectancy = (
+                _format_optional_money(
+                    candidate.get(
+                        "first_expectancy"
+                    )
+                )
+            )
+
+            latest_expectancy = (
+                _format_optional_money(
+                    candidate.get(
+                        "latest_expectancy"
+                    )
+                )
+            )
+
+            expectancy_change = (
+                _format_signed_money(
+                    candidate.get(
+                        "expectancy_change"
+                    )
+                )
+            )
+
+            first_pf = (
+                _format_profit_factor(
+                    candidate.get(
+                        "first_profit_factor"
+                    )
+                )
+            )
+
+            latest_pf = (
+                _format_profit_factor(
+                    candidate.get(
+                        "latest_profit_factor"
+                    )
+                )
+            )
+
+            pf_change = (
+                _format_signed_number(
+                    candidate.get(
+                        "profit_factor_change"
+                    )
+                )
+            )
+
+            first_win_rate = (
+                _format_optional_number(
+                    candidate.get(
+                        "first_win_rate"
+                    ),
+                    suffix="%",
+                )
+            )
+
+            latest_win_rate = (
+                _format_optional_number(
+                    candidate.get(
+                        "latest_win_rate"
+                    ),
+                    suffix="%",
+                )
+            )
+
+            win_rate_change = (
+                _format_signed_number(
+                    candidate.get(
+                        "win_rate_change"
+                    ),
+                    suffix=" pts",
+                )
+            )
+
+            cards.append(
+                f"""
+                <div
+                    class="metric"
+                    style="margin-top: 14px;"
+                >
+                    <div class="candidate-title">
+                        {factor}: {value}
+                    </div>
+
+                    <div class="candidate-rating">
+                        {stability_status}
+                    </div>
+
+                    <div class="status">
+                        Presence: {presence}
+                    </div>
+
+                    <div class="mini-grid">
+                        <div class="mini-metric">
+                            <span>Observations</span>
+                            <strong>
+                                {observations}
+                            </strong>
+                        </div>
+
+                        <div class="mini-metric">
+                            <span>Presence Rate</span>
+                            <strong>
+                                {presence_rate:.1f}%
+                            </strong>
+                        </div>
+
+                        <div class="mini-metric">
+                            <span>Current Streak</span>
+                            <strong>
+                                {current_streak}
+                            </strong>
+                        </div>
+
+                        <div class="mini-metric">
+                            <span>Disappearances</span>
+                            <strong>
+                                {disappearance_count}
+                            </strong>
+                        </div>
+
+                        <div class="mini-metric">
+                            <span>Reappearances</span>
+                            <strong>
+                                {reappearance_count}
+                            </strong>
+                        </div>
+
+                        <div class="mini-metric">
+                            <span>Candidate Trades</span>
+                            <strong>
+                                {first_trades}
+                                &rarr;
+                                {latest_trades}
+                            </strong>
+                            <span>
+                                Change: {trade_change}
+                            </span>
+                        </div>
+
+                        <div class="mini-metric">
+                            <span>Expectancy</span>
+                            <strong>
+                                {first_expectancy}
+                                &rarr;
+                                {latest_expectancy}
+                            </strong>
+                            <span>
+                                Change:
+                                {expectancy_change}
+                            </span>
+                        </div>
+
+                        <div class="mini-metric">
+                            <span>Profit Factor</span>
+                            <strong>
+                                {first_pf}
+                                &rarr;
+                                {latest_pf}
+                            </strong>
+                            <span>
+                                Change: {pf_change}
+                            </span>
+                        </div>
+
+                        <div class="mini-metric">
+                            <span>Win Rate</span>
+                            <strong>
+                                {first_win_rate}
+                                &rarr;
+                                {latest_win_rate}
+                            </strong>
+                            <span>
+                                Change:
+                                {win_rate_change}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                """
+            )
+
+        candidate_cards = "".join(
+            cards
+        )
+
+    return f"""
+        <section class="section">
+            <h2>
+                Candidate Stability
+            </h2>
+
+            <div class="grid">
+                <div class="metric">
+                    <div class="label">
+                        History Status
+                    </div>
+
+                    <div class="value">
+                        {history_status}
+                    </div>
+                </div>
+
+                <div class="metric">
+                    <div class="label">
+                        History Observations
+                    </div>
+
+                    <div class="value">
+                        {observation_count}
+                    </div>
+                </div>
+
+                <div class="metric">
+                    <div class="label">
+                        Tracked Patterns
+                    </div>
+
+                    <div class="value">
+                        {tracked_count}
+                    </div>
+                </div>
+
+                <div class="metric">
+                    <div class="label">
+                        Current Patterns
+                    </div>
+
+                    <div class="value">
+                        {current_count}
+                    </div>
+                </div>
+            </div>
+
+            <div class="research-note">
+                Stability is descriptive research only.
+                IMPROVING, STABLE, MIXED,
+                REAPPEARED, DETERIORATING, NEW,
+                and DISAPPEARED describe how observed
+                candidate metrics
+                are changing. They do not prove an edge.
+            </div>
+
+            {candidate_cards}
+        </section>
+    """
+
+
 def _enrichment_integrity_html(data):
     """
     Render the read-only enrichment integrity section.
@@ -1093,6 +1661,29 @@ def render_edge_research_page(data):
                 selector_html
                 + "\n"
                 + warning_landmark
+            ),
+            1,
+        )
+
+    stability_html = (
+        _candidate_stability_html(
+            data
+        )
+    )
+
+    research_quality_landmark = (
+        '<section class="section">\n'
+        '            <h2>\n'
+        '                Research Data Quality'
+    )
+
+    if research_quality_landmark in html:
+        html = html.replace(
+            research_quality_landmark,
+            (
+                stability_html
+                + "\n"
+                + research_quality_landmark
             ),
             1,
         )

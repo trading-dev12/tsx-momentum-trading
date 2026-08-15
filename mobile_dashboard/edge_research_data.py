@@ -9,6 +9,13 @@ This module never changes trading rules, signals,
 positions, portfolios, pending trades, or journals.
 """
 
+from pathlib import Path
+
+from research.candidate_history import (
+    analyze_candidate_history,
+    load_candidate_history,
+    normalize_strategy_name,
+)
 from research.enrichment_integrity import (
     analyze_enrichment_integrity_journal,
 )
@@ -19,6 +26,19 @@ from research.shadow_edge_snapshot import (
     build_shadow_snapshot,
 )
 
+
+PROJECT_ROOT = (
+    Path(__file__)
+    .resolve()
+    .parent
+    .parent
+)
+
+CANDIDATE_HISTORY_DIRECTORY = (
+    PROJECT_ROOT
+    / "research"
+    / "candidate_history"
+)
 
 VALIDATION_TRADE_TARGET = 200
 
@@ -52,9 +72,34 @@ def _progress_percent(
     )
 
 
+def _candidate_history_path(
+    strategy_name,
+    history_directory=None,
+):
+    """
+    Return the independent history file for one strategy.
+    """
+
+    if history_directory is None:
+        history_directory = (
+            CANDIDATE_HISTORY_DIRECTORY
+        )
+
+    return (
+        Path(history_directory)
+        / (
+            normalize_strategy_name(
+                strategy_name
+            )
+            + ".jsonl"
+        )
+    )
+
+
 def build_edge_research_dashboard_data(
     journal_path,
     strategy_name="Momentum",
+    history_directory=None,
 ):
     """
     Build one read-only Edge Research dashboard summary.
@@ -63,6 +108,57 @@ def build_edge_research_dashboard_data(
     snapshot = build_shadow_snapshot(
         journal_path
     )
+
+    history_path = (
+        _candidate_history_path(
+            strategy_name,
+            history_directory=(
+                history_directory
+            ),
+        )
+    )
+
+    candidate_history_status = (
+        "NO_HISTORY_YET"
+    )
+    candidate_history_message = None
+
+    try:
+        history_records = (
+            load_candidate_history(
+                history_path
+            )
+        )
+
+    except (OSError, ValueError) as error:
+        history_records = []
+        candidate_history_status = (
+            "UNAVAILABLE"
+        )
+        candidate_history_message = str(
+            error
+        )
+
+    else:
+        if history_records:
+            candidate_history_status = (
+                "AVAILABLE"
+            )
+
+    candidate_stability = (
+        analyze_candidate_history(
+            history_records
+        )
+    )
+
+    current_candidate_stability = [
+        candidate
+        for candidate in candidate_stability
+        if candidate.get(
+            "currently_present",
+            False,
+        )
+    ]
 
     source_quality = (
         calculate_research_source_coverage(
@@ -198,6 +294,29 @@ def build_edge_research_dashboard_data(
         ),
         "candidate_count": len(
             quality_gate
+        ),
+        "candidate_history": {
+            "status": (
+                candidate_history_status
+            ),
+            "message": (
+                candidate_history_message
+            ),
+            "path": str(
+                history_path
+            ),
+            "observation_count": len(
+                history_records
+            ),
+        },
+        "candidate_stability": (
+            candidate_stability
+        ),
+        "current_candidate_stability": (
+            current_candidate_stability
+        ),
+        "candidate_stability_count": len(
+            candidate_stability
         ),
         "source_quality": (
             source_quality

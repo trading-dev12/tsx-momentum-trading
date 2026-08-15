@@ -75,6 +75,81 @@ def normalize_current_datetime(current_datetime=None):
     )
 
 
+def get_pending_trade_count(
+    paper_engine,
+    fallback=0,
+):
+    """
+    Return the current pending-trade count when the engine
+    exposes a pending queue.
+
+    Lightweight test doubles may not provide pending_trades,
+    so fall back to the supplied count without failing EOD.
+    """
+
+    try:
+        fallback = max(
+            0,
+            int(fallback or 0),
+        )
+    except (TypeError, ValueError):
+        fallback = 0
+
+    if paper_engine is None:
+        return fallback
+
+    pending_trades = getattr(
+        paper_engine,
+        "pending_trades",
+        None,
+    )
+
+    get_all = getattr(
+        pending_trades,
+        "get_all",
+        None,
+    )
+
+    if not callable(get_all):
+        return fallback
+
+    try:
+        return len(get_all())
+    except Exception:
+        return fallback
+
+
+def build_pending_execution_footer(
+    total_pending,
+):
+    """Return an accurate EOD pending-execution message."""
+
+    try:
+        total_pending = max(
+            0,
+            int(total_pending or 0),
+        )
+    except (TypeError, ValueError):
+        total_pending = 0
+
+    if total_pending == 0:
+        return (
+            "No pending signals awaiting "
+            "next-day execution."
+        )
+
+    if total_pending == 1:
+        return (
+            "1 pending signal is ready for "
+            "next-day execution."
+        )
+
+    return (
+        f"{total_pending} pending signals are ready "
+        "for next-day execution."
+    )
+
+
 def load_last_run_date(
     state_file=AUTO_EOD_STATE_FILE,
 ):
@@ -587,6 +662,16 @@ def run_automatic_eod_cycle(
         results
     )
 
+    momentum_pending_total = (
+        get_pending_trade_count(
+            paper_engine,
+            fallback=queue_summary.get(
+                "added",
+                0,
+            ),
+        )
+    )
+
     summary = {
         "success": True,
         "status": "COMPLETED",
@@ -597,6 +682,7 @@ def run_automatic_eod_cycle(
         "errors": len(results["errors"]),
         "queued": queue_summary["added"],
         "duplicates": queue_summary["rejected"],
+        "pending_total": momentum_pending_total,
         "scan_results": results,
         "queue_summary": queue_summary,
     }
@@ -800,6 +886,40 @@ def run_automatic_eod_cycle(
     else:
         backup_error_detail = "None"
 
+    breakout_pending_total = (
+        get_pending_trade_count(
+            breakout_52week_engine,
+            fallback=shadow_result.get(
+                "pending_total",
+                0,
+            ),
+        )
+    )
+
+    mean_reversion_pending_total = (
+        get_pending_trade_count(
+            mean_reversion_engine,
+            fallback=mean_reversion_result.get(
+                "pending_total",
+                0,
+            ),
+        )
+    )
+
+    total_pending = (
+        momentum_pending_total
+        + breakout_pending_total
+        + mean_reversion_pending_total
+    )
+
+    summary["total_pending"] = total_pending
+
+    pending_execution_footer = (
+        build_pending_execution_footer(
+            total_pending
+        )
+    )
+
     telegram_message = (
         f"{telegram_heading}\n\n"
         f"Date: {current_date}\n\n"
@@ -808,6 +928,7 @@ def run_automatic_eod_cycle(
         f"Status: {momentum_status}\n"
         f"READY: {summary['ready']}\n"
         f"Queued: {summary['queued']}\n"
+        f"Total Pending: {momentum_pending_total}\n"
         f"WATCH: {summary['watch']}\n"
         f"Errors: {summary['errors']}\n\n"
 
@@ -818,7 +939,7 @@ def run_automatic_eod_cycle(
         f"Already Open: {shadow_result.get('already_open', 0)}\n"
         f"Already Pending: {shadow_result.get('already_pending', 0)}\n"
         f"Other Rejected: {shadow_result.get('other_rejected', 0)}\n"
-        f"Total Pending: {shadow_result.get('pending_total', 0)}\n"
+        f"Total Pending: {breakout_pending_total}\n"
         f"WATCH: {shadow_result.get('watch', 0)}\n"
         f"Errors: {shadow_result.get('errors', 0)}\n\n"
 
@@ -834,7 +955,7 @@ def run_automatic_eod_cycle(
         f"Already Open: {mean_reversion_result.get('already_open', 0)}\n"
         f"Already Pending: {mean_reversion_result.get('already_pending', 0)}\n"
         f"Other Rejected: {mean_reversion_result.get('other_rejected', 0)}\n"
-        f"Total Pending: {mean_reversion_result.get('pending_total', 0)}\n"
+        f"Total Pending: {mean_reversion_pending_total}\n"
         f"WATCH: {mean_reversion_result.get('watch', 0)}\n"
         f"Errors: {mean_reversion_result.get('errors', 0)}\n\n"
 
@@ -848,7 +969,7 @@ def run_automatic_eod_cycle(
         f"{backup_error_detail}\n\n"
 
         f"OVERALL HEALTH: {overall_health}\n\n"
-        "Pending signals are ready for next-day execution."
+        f"{pending_execution_footer}"
     )
 
     try:

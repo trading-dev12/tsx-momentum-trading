@@ -1014,30 +1014,55 @@ When the active Waitress process on port 5000 was deliberately terminated:
 
 This confirms that the mobile research dashboard can recover from an unexpected process interruption.
 
-## NEXT PRIORITY - Candidate History and Stability Tracking
+## COMPLETED - Candidate History and Stability Tracking
 
 ### Objective
 
 Move Edge Research from showing only the best current candidate to measuring whether apparent edges remain stable as new trades accumulate.
 
-### Planned Work
+### Completed Work
 
-- [ ] Store candidate research history over time
-- [ ] Record candidate sample size at each snapshot
-- [ ] Record rolling Profit Factor
-- [ ] Record rolling expectancy
-- [ ] Record rolling win rate
-- [ ] Measure whether candidate strength improves or deteriorates
-- [ ] Detect candidates that disappear as sample size increases
-- [ ] Distinguish persistent patterns from temporary small-sample noise
-- [ ] Display candidate stability on Edge Research
-- [ ] Keep all strategy datasets independent
+- [x] Store candidate research history over time
+- [x] Record candidate sample size at each snapshot
+- [x] Record rolling Profit Factor
+- [x] Record rolling expectancy
+- [x] Record rolling win rate
+- [x] Measure whether candidate strength improves or deteriorates
+- [x] Detect candidates that disappear as sample size increases
+- [x] Distinguish persistent patterns from temporary small-sample noise
+- [x] Display candidate stability on Edge Research
+- [x] Keep all strategy datasets independent
+- [x] Detect candidates that disappear and later reappear
+- [x] Track candidate presence rate
+- [x] Track current persistence streak
+- [x] Track disappearance and reappearance counts
+- [x] Integrate Candidate History capture into Automatic EOD
+- [x] Keep Candidate History failures research-only so they cannot fail the trading EOD pipeline
+- [x] Keep Edge Research dashboard reads non-mutating
+- [x] Add automated Candidate History, EOD integration, dashboard-data, and dashboard-rendering tests
+- [x] Validate live Candidate Stability display through the running mobile dashboard
 
-### After Candidate Stability
+### Completion Validation - August 14, 2026
 
-Combination Explorer
+- Functional implementation commit: `59c891b`
+- Candidate History focused tests: 16 passed
+- Candidate History + dashboard page focused tests: 25 passed
+- Full automated regression suite excluding manual IBKR diagnostic scripts: 193 passed
+- Live `/edge-research` endpoint returned HTTP 200 with Candidate Stability visible
+- First stored observations created independently for Momentum, 52-Week Breakout, and Mean Reversion
+- Stability states include NEW, IMPROVING, STABLE, MIXED, DETERIORATING, DISAPPEARED, REAPPEARED, and UNKNOWN
+- Candidate Stability remains descriptive research only and does not alter frozen strategy rules
+
+## NEXT PRIORITY - Combination Explorer
 
 Only begin meaningful combination research after the readiness gate is satisfied.
+
+Readiness gate:
+
+- at least 60 fully enriched completed trades for the strategy;
+- at least 10 distinct entry dates;
+- Candidate History / Stability infrastructure operational;
+- strategy rules remain frozen during validation.
 
 The Combination Explorer should:
 
@@ -1061,8 +1086,8 @@ The Combination Explorer should:
 
 ### Longer-Term Sequence
 
-Candidate History / Stability
--> Combination Explorer
+Candidate History / Stability [COMPLETED]
+-> Combination Explorer [NEXT - GATED]
 -> 200-Trade Strategy Reviews
 -> Evidence-Based Strategy Optimization
 -> Portfolio Allocation Engine

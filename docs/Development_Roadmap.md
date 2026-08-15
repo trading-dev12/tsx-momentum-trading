@@ -1292,8 +1292,9 @@ It does not prove an edge and does not authorize production rule changes.
 
 - [x] Verify GUI strategy queue counts always refresh from persisted state
 - [x] Review pipeline-validator handling of legitimate older pending trades when an opening price is unavailable
-- [ ] Configure BIOS/UEFI Restore on AC Power Loss if supported
-- [ ] Perform an actual power-loss recovery simulation
+- [x] Configure BIOS/UEFI Restore on AC Power Loss if supported
+- [x] Perform an actual power-loss recovery simulation
+  - Verified by physical unplug/replug test: PC automatically powered back on, Northstar/TWS startup recovery ran, and Yahoo fallback kept Northstar operational while TWS awaited manual authentication.
 - [ ] During an open TSX session, verify the already-running scanner automatically resumes IBKR data after TWS authentication without restarting Northstar
 - [ ] Consider UPS protection for the PC, modem, and router
 - [ ] Continue distinguishing local connectivity failures from upstream provider failures

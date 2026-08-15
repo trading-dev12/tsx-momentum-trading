@@ -994,12 +994,15 @@ The selector has been validated on:
 - Mobile phone
 - Northstar scanner/workstation environment
 
-### Automated Test Baseline
+### Automated Test Baseline - Historical
 
-Current safe full regression suite:
+Baseline when this section was completed:
 
 138 passed
 1 known nonfatal `eventkit` deprecation warning
+
+The current authoritative regression baseline is recorded in the
+August 14, 2026 status refresh below.
 
 ### Dashboard Recovery Validation
 
@@ -1149,15 +1152,15 @@ The objective is to build a platform capable of discovering, rejecting, and vali
 
 ### Reliability Follow-Up Backlog
 
-- [ ] Convert tools/test_service_ownership.py into a pytest-safe test or permanently exclude it from normal pytest collection
+- [x] Verify `tools/test_service_ownership.py` is pytest-safe in normal pytest collection
 - [ ] Verify GUI strategy queue counts always refresh from persisted state
 - [ ] Review pipeline validator handling of legitimate older pending trades when an opening price is unavailable
-- [ ] Future-proof TSX holiday calendar beyond 2026
-- [ ] Add tests for future-year TSX holidays
-- [ ] Add Telegram internet-outage alerts
-- [ ] Add Telegram internet-restored alerts
+- [x] Future-proof recurring full-day TSX holiday generation beyond 2026
+- [x] Add regression tests for future-year TSX holidays
+- [x] Persist internet-outage state for recovery reporting
+- [x] Add Telegram internet-restored alerts
 - [ ] Add power-outage/recovery detection where practical
-- [ ] Add IBKR automatic reconnection protection
+- [x] Add IBKR automatic reconnection protection
 - [ ] Add scanner automatic reconnection after connectivity loss
 - [ ] Continue reducing remaining Yahoo dependency while preserving fallback capability
 
@@ -1200,3 +1203,120 @@ The next objective is to continue normal paper trading while monitoring the upda
 Implementation commit:
 
 513651d - Add Mean Reversion bear-market entry guard
+
+---
+
+## August 14, 2026 - Current Northstar Status
+
+### Current Operating Position
+
+Northstar Quant is now an operational multi-strategy paper-trading and
+quantitative research platform.
+
+The three strategies remain independent:
+
+- Momentum
+- 52-Week Breakout
+- Mean Reversion
+
+Each strategy continues toward its own 200-completed-trade validation
+target. Strategy results must not be pooled to accelerate validation.
+
+Trading rules remain frozen during this evidence-collection period.
+
+### Production and Reliability Completed
+
+- [x] Independent paper-trading infrastructure for all three strategies
+- [x] Automatic EOD scanning and signal queueing
+- [x] Automatic next-trading-day paper execution
+- [x] Missed-EOD recovery safeguards
+- [x] Runtime-state refresh before critical queue and execution actions
+- [x] IBKR live TSX market data as the primary provider
+- [x] Yahoo market-data fallback
+- [x] IBKR opening-price provider with Yahoo fallbacks
+- [x] Internet connectivity monitoring
+- [x] IBKR/TWS connectivity monitoring
+- [x] Automatic IBKR reconnection capability
+- [x] Persistent internet-outage tracking with Telegram recovery notification
+- [x] Pipeline validation
+- [x] Automatic local EOD backup
+- [x] Automatic external SSD disaster-recovery backup
+- [x] Windows/Northstar recovery framework
+- [x] Mean Reversion bear-market entry guard
+- [x] Candidate History and Stability tracking
+- [x] Candidate History capture integrated into Automatic EOD
+- [x] Edge Research dashboards for all three strategies
+
+### Recent Reliability Hardening
+
+- [x] Manual IBKR diagnostic scripts removed from normal pytest collection
+- [x] Normal pytest suite runs successfully without TWS being available
+- [x] Recurring TSX full-day holiday generation supports future years
+- [x] Future-year TSX holiday regression coverage added
+- [x] 2026 Christmas Eve 1:00 PM TSX early close regression coverage added
+- [x] Telegram EOD footer now uses the actual pending-trade total
+- [x] Telegram zero, singular, and plural pending-signal wording tested
+
+### Current Automated Test Baseline
+
+232 passed
+0 failed
+1 known nonfatal `eventkit` deprecation warning
+
+The known warning originates from `eventkit` under Python 3.13 and does
+not currently represent a Northstar functional failure.
+
+### Current Priority
+
+1. Continue collecting clean paper-trade evidence.
+2. Maintain frozen strategy rules.
+3. Verify the next real Automatic EOD cycle under normal operating conditions.
+4. Confirm Candidate History receives additional real observations over time.
+5. Continue toward 200 completed trades independently for each strategy.
+6. Continue reliability and data-quality work that does not alter strategy rules.
+
+### Combination Explorer - Still Gated
+
+Do not begin meaningful Combination Explorer research until the
+readiness gate is satisfied for the strategy being analyzed:
+
+- At least 60 fully enriched completed trades
+- At least 10 distinct entry dates
+- Candidate History / Stability operational
+- Frozen production strategy rules
+
+Passing the gate permits exploratory combination research only.
+It does not prove an edge and does not authorize production rule changes.
+
+### Remaining Operational Reliability Checks
+
+- [ ] Verify GUI strategy queue counts always refresh from persisted state
+- [ ] Review pipeline-validator handling of legitimate older pending trades when an opening price is unavailable
+- [ ] Configure BIOS/UEFI Restore on AC Power Loss if supported
+- [ ] Perform an actual power-loss recovery simulation
+- [ ] During an open TSX session, verify the already-running scanner automatically resumes IBKR data after TWS authentication without restarting Northstar
+- [ ] Consider UPS protection for the PC, modem, and router
+- [ ] Continue distinguishing local connectivity failures from upstream provider failures
+- [ ] Continue reducing unnecessary Yahoo dependency while preserving it as a resilience fallback
+
+### Next Research Sequence
+
+Candidate History / Stability - COMPLETE
+
+-> Continue clean data collection
+
+-> Combination Explorer - GATED
+
+-> 200-Trade Strategy Reviews
+
+-> Evidence-Based Strategy Optimization
+
+-> Portfolio Allocation Engine
+
+-> Post-200-Trade US Expansion
+
+-> Elite Opportunity Selection
+
+The objective remains to discover and validate repeatable market edges
+using evidence rather than changing the strategies in response to
+short-term results.

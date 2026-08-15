@@ -858,43 +858,97 @@ def validate_eod_state(
     pending_rows: list[dict[str, str]],
     report: ValidationReport,
 ) -> None:
-    last_run_date = str(eod_state.get("last_run_date", "")).strip()
+    last_run_date_text = str(
+        eod_state.get("last_run_date", "")
+    ).strip()
 
-    if not last_run_date:
+    if not last_run_date_text:
         report.add_fail(
             "Automatic EOD state",
             "last_run_date is missing or blank.",
         )
         return
 
-    signal_dates = {
-        str(row.get("signal_date", "")).strip()
-        for row in pending_rows
-        if str(row.get("signal_date", "")).strip()
-    }
+    try:
+        last_run_date = datetime.fromisoformat(
+            last_run_date_text
+        ).date()
+    except ValueError:
+        report.add_fail(
+            "Automatic EOD state",
+            (
+                "last_run_date is invalid: "
+                f"{last_run_date_text}."
+            ),
+        )
+        return
 
-    mismatched_dates = sorted(
-        signal_date
-        for signal_date in signal_dates
-        if signal_date != last_run_date
-    )
+    older_dates: set[str] = set()
+    newer_dates: set[str] = set()
+    invalid_dates: set[str] = set()
 
-    if mismatched_dates:
+    for row in pending_rows:
+        signal_date_text = str(
+            row.get("signal_date", "")
+        ).strip()
+
+        if not signal_date_text:
+            continue
+
+        try:
+            signal_date = datetime.fromisoformat(
+                signal_date_text
+            ).date()
+        except ValueError:
+            invalid_dates.add(signal_date_text)
+            continue
+
+        if signal_date < last_run_date:
+            older_dates.add(signal_date_text)
+        elif signal_date > last_run_date:
+            newer_dates.add(signal_date_text)
+
+    if invalid_dates or newer_dates:
+        problems = []
+
+        if newer_dates:
+            problems.append(
+                "pending dates newer than EOD state: "
+                + ", ".join(sorted(newer_dates))
+            )
+
+        if invalid_dates:
+            problems.append(
+                "invalid pending dates: "
+                + ", ".join(sorted(invalid_dates))
+            )
+
         report.add_fail(
             "EOD/pending date match",
-            (
-                f"EOD state is {last_run_date}; pending dates include "
-                f"{', '.join(mismatched_dates)}."
-            ),
+            "; ".join(problems),
         )
-    else:
-        report.add_pass(
+        return
+
+    if older_dates:
+        report.add_warning(
             "EOD/pending date match",
             (
-                f"Pending signals agree with EOD run date "
-                f"{last_run_date}."
+                f"EOD state is {last_run_date_text}; "
+                "older pending dates retained for retry include "
+                f"{', '.join(sorted(older_dates))}."
             ),
         )
+        return
+
+    report.add_pass(
+        "EOD/pending date match",
+        (
+            "Pending signals agree with EOD run date "
+            f"{last_run_date_text}."
+        ),
+    )
+
+
 def build_report_payload(
     report: ValidationReport,
     *,

@@ -1,4 +1,4 @@
-﻿from paper_trading.trading_pipeline_validator import (
+from paper_trading.trading_pipeline_validator import (
     ValidationReport,
     validate_eod_state,
 )

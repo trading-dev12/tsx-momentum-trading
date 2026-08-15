@@ -1154,7 +1154,7 @@ The objective is to build a platform capable of discovering, rejecting, and vali
 
 - [x] Verify `tools/test_service_ownership.py` is pytest-safe in normal pytest collection
 - [x] Verify GUI strategy queue counts always refresh from persisted state
-- [ ] Review pipeline validator handling of legitimate older pending trades when an opening price is unavailable
+- [x] Review pipeline validator handling of legitimate older pending trades when an opening price is unavailable
 - [x] Future-proof recurring full-day TSX holiday generation beyond 2026
 - [x] Add regression tests for future-year TSX holidays
 - [x] Persist internet-outage state for recovery reporting
@@ -1291,7 +1291,7 @@ It does not prove an edge and does not authorize production rule changes.
 ### Remaining Operational Reliability Checks
 
 - [x] Verify GUI strategy queue counts always refresh from persisted state
-- [ ] Review pipeline-validator handling of legitimate older pending trades when an opening price is unavailable
+- [x] Review pipeline-validator handling of legitimate older pending trades when an opening price is unavailable
 - [ ] Configure BIOS/UEFI Restore on AC Power Loss if supported
 - [ ] Perform an actual power-loss recovery simulation
 - [ ] During an open TSX session, verify the already-running scanner automatically resumes IBKR data after TWS authentication without restarting Northstar

@@ -1153,7 +1153,7 @@ The objective is to build a platform capable of discovering, rejecting, and vali
 ### Reliability Follow-Up Backlog
 
 - [x] Verify `tools/test_service_ownership.py` is pytest-safe in normal pytest collection
-- [ ] Verify GUI strategy queue counts always refresh from persisted state
+- [x] Verify GUI strategy queue counts always refresh from persisted state
 - [ ] Review pipeline validator handling of legitimate older pending trades when an opening price is unavailable
 - [x] Future-proof recurring full-day TSX holiday generation beyond 2026
 - [x] Add regression tests for future-year TSX holidays
@@ -1290,7 +1290,7 @@ It does not prove an edge and does not authorize production rule changes.
 
 ### Remaining Operational Reliability Checks
 
-- [ ] Verify GUI strategy queue counts always refresh from persisted state
+- [x] Verify GUI strategy queue counts always refresh from persisted state
 - [ ] Review pipeline-validator handling of legitimate older pending trades when an opening price is unavailable
 - [ ] Configure BIOS/UEFI Restore on AC Power Loss if supported
 - [ ] Perform an actual power-loss recovery simulation

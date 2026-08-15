@@ -1239,6 +1239,8 @@ class TradingWorkstation:
         existing_parts = []
 
         for strategy, label, engine in strategy_engines:
+            engine.refresh_runtime_state()
+
             pending_count = len(
                 engine.pending_trades.get_all()
             )
@@ -2555,6 +2557,9 @@ class TradingWorkstation:
             self.mean_reversion_engine,
         )
 
+        for engine in strategy_engines:
+            engine.refresh_runtime_state()
+
         self.system_health_panel.update_counts(
             pending_trades=sum(
                 len(engine.pending_trades.get_all())
@@ -2865,6 +2870,9 @@ class TradingWorkstation:
             f"Market Info: {session.get('message', '')}",
             "",
         ]
+
+        for _, engine, _ in engines:
+            engine.refresh_runtime_state()
 
         for label, engine, execution_thread in engines:
             lines.extend(

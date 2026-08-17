@@ -180,14 +180,23 @@ def test_position_monitor_updates_all_engines():
             {
                 "symbol": "RY.TO",
                 "price": 201.25,
+                "bid": 201.20,
+                "ask": 201.30,
+                "data_source": "IBKR",
             },
             {
                 "symbol": "SU.TO",
                 "price": 71.50,
+                "bid": 71.48,
+                "ask": 71.52,
+                "data_source": "IBKR",
             },
             {
                 "symbol": "BMO.TO",
                 "price": 189.10,
+                "bid": 189.05,
+                "ask": 189.15,
+                "data_source": "IBKR",
             },
         ]
     )
@@ -219,10 +228,20 @@ def test_position_monitor_updates_all_engines():
         expected_prices
     )
 
+    expected_market_snapshots = {
+        quote["symbol"]: quote
+        for quote in (
+            quote_provider.return_value
+        )
+    }
+
     for engine in engines.values():
         engine.update_positions.assert_called_once_with(
             latest_prices=expected_prices,
             current_date="2026-08-08",
+            market_snapshots=(
+                expected_market_snapshots
+            ),
         )
 
     assert result["status"] == "COMPLETED"

@@ -2108,6 +2108,7 @@ class TradingWorkstation:
             symbol=symbol,
             exit_price=current_price,
             current_date=datetime.now().strftime("%Y-%m-%d"),
+            market_snapshot=quote,
         )
 
         if result.get("success"):
@@ -2174,6 +2175,7 @@ class TradingWorkstation:
             exit_price=current_price,
             current_date=current_date,
             exit_reason="Manual exit",
+            market_snapshot=quote,
         )
 
         if result.get("success"):
@@ -2210,6 +2212,12 @@ class TradingWorkstation:
             for quote in self.latest_quotes
         }
 
+        market_snapshots = {
+            quote["symbol"]: quote
+            for quote in self.latest_quotes
+            if quote.get("symbol")
+        }
+
         print(
             f"Monitoring "
             f"{len(self.paper_engine.portfolio.open_positions)} "
@@ -2230,6 +2238,9 @@ class TradingWorkstation:
             self.paper_engine.update_positions(
                 latest_prices=current_prices,
                 current_date=current_date,
+                market_snapshots=(
+                    market_snapshots
+                ),
             )
         )
 

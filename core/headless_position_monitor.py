@@ -157,6 +157,18 @@ def run_headless_position_monitor_cycle(
         quotes
     )
 
+    market_snapshots = {
+        quote["symbol"]: quote
+        for quote in quotes
+        if (
+            isinstance(
+                quote,
+                dict,
+            )
+            and quote.get("symbol")
+        )
+    }
+
     if current_prices:
         snapshot_writer(
             current_prices
@@ -177,6 +189,9 @@ def run_headless_position_monitor_cycle(
         ] = engine.update_positions(
             latest_prices=current_prices,
             current_date=current_date,
+            market_snapshots=(
+                market_snapshots
+            ),
         )
 
     closed_total = sum(

@@ -73,6 +73,18 @@ FIELDNAMES = [
     "entry_spread_percent",
     "entry_quote_error",
 
+    # Exit Bid/Ask / Spread Research
+    "exit_quote_status",
+    "exit_quote_source",
+    "exit_quote_timestamp",
+    "exit_bid",
+    "exit_ask",
+    "exit_last",
+    "exit_midpoint",
+    "exit_spread_amount",
+    "exit_spread_percent",
+    "exit_quote_error",
+
     # Trade Path / Excursion Research
     "trade_path_status",
     "trade_path_source",

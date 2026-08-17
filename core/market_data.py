@@ -279,6 +279,9 @@ def get_live_quote(symbol, live_quote=None):
 
         ibkr_price = 0.0
         ibkr_volume = 0.0
+        ibkr_last = None
+        ibkr_bid = None
+        ibkr_ask = None
 
         if live_quote is not None:
             ibkr_price = float(
@@ -286,6 +289,16 @@ def get_live_quote(symbol, live_quote=None):
             )
             ibkr_volume = float(
                 live_quote.get("volume", 0) or 0
+            )
+
+            ibkr_last = live_quote.get(
+                "last"
+            )
+            ibkr_bid = live_quote.get(
+                "bid"
+            )
+            ibkr_ask = live_quote.get(
+                "ask"
             )
 
         if ibkr_price > 0:
@@ -391,6 +404,36 @@ def get_live_quote(symbol, live_quote=None):
             ),
             "data_source": data_source,
             "price_source": price_source,
+
+            # Market microstructure research.
+            # These fields are observational only.
+            "last": (
+                ibkr_last
+                if (
+                    data_source == "IBKR"
+                    and ibkr_last is not None
+                )
+                else price
+            ),
+            "bid": (
+                ibkr_bid
+                if data_source == "IBKR"
+                else None
+            ),
+            "ask": (
+                ibkr_ask
+                if data_source == "IBKR"
+                else None
+            ),
+            "quote_timestamp": (
+                datetime.now(
+                    ZoneInfo(
+                        "America/Toronto"
+                    )
+                ).isoformat(
+                    timespec="seconds"
+                )
+            ),
         }
 
         quote["score"] = calculate_score(quote)

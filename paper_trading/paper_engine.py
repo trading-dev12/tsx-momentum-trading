@@ -887,11 +887,80 @@ class PaperTradingEngine:
 
         return path_result
 
+    def _attach_exit_market_snapshot(
+        self,
+        trade,
+        market_snapshot=None,
+    ):
+        """
+        Attach best-effort exit bid/ask research.
+
+        The paper position has already been closed before this
+        function runs. Snapshot failure cannot prevent or reverse
+        the trading action.
+        """
+
+        source = ""
+
+        if isinstance(
+            market_snapshot,
+            dict,
+        ):
+            source = (
+                market_snapshot.get(
+                    "data_source",
+                    market_snapshot.get(
+                        "source",
+                        "",
+                    ),
+                )
+                or ""
+            )
+
+        try:
+            snapshot = build_market_snapshot(
+                "exit",
+                market_snapshot,
+                source=source,
+                captured_at=trade.get(
+                    "exit_timestamp",
+                    "",
+                ),
+            )
+
+        except Exception as error:
+            snapshot = {
+                "exit_quote_status": "ERROR",
+                "exit_quote_source": source,
+                "exit_quote_timestamp": (
+                    trade.get(
+                        "exit_timestamp",
+                        "",
+                    )
+                ),
+                "exit_bid": "",
+                "exit_ask": "",
+                "exit_last": "",
+                "exit_midpoint": "",
+                "exit_spread_amount": "",
+                "exit_spread_percent": "",
+                "exit_quote_error": str(
+                    error
+                ),
+            }
+
+        trade.update(
+            snapshot
+        )
+
+        return snapshot
+
     def update_positions(
         self,
         latest_prices,
         current_date,
         current_datetime=None,
+        market_snapshots=None,
     ):
         closed_trades = monitor_positions(
             portfolio=self.portfolio,
@@ -901,6 +970,19 @@ class PaperTradingEngine:
         )
 
         for trade in closed_trades:
+            market_snapshot = (
+                (market_snapshots or {}).get(
+                    trade["symbol"]
+                )
+            )
+
+            self._attach_exit_market_snapshot(
+                trade,
+                market_snapshot=(
+                    market_snapshot
+                ),
+            )
+
             self._capture_closed_trade_path(
                 trade
             )
@@ -923,6 +1005,7 @@ class PaperTradingEngine:
         current_date,
         exit_reason="Manual exit",
         current_datetime=None,
+        market_snapshot=None,
     ):
         if current_datetime is None:
             current_datetime = datetime.now(
@@ -957,6 +1040,13 @@ class PaperTradingEngine:
 
         if result.get("success"):
             trade = result["trade"]
+
+            self._attach_exit_market_snapshot(
+                trade,
+                market_snapshot=(
+                    market_snapshot
+                ),
+            )
 
             self._capture_closed_trade_path(
                 trade

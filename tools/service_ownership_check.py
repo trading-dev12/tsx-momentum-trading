@@ -81,7 +81,7 @@ child_result = subprocess.run(
     [
         sys.executable,
         "-m",
-        "tools.test_service_ownership",
+        "tools.service_ownership_check",
         "--child",
     ],
     capture_output=True,
@@ -121,7 +121,7 @@ holder_process = subprocess.Popen(
     [
         sys.executable,
         "-m",
-        "tools.test_service_ownership",
+        "tools.service_ownership_check",
         "--holder",
     ],
     stdout=subprocess.PIPE,
@@ -226,3 +226,4 @@ else:
     print(
         "ALL OWNERSHIP TESTS: FAIL"
     )
+

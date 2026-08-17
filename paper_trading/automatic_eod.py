@@ -44,6 +44,9 @@ from research.momentum_universe_snapshot import (
 from research.candidate_forward_outcome_service import (
     run_candidate_forward_outcome_refresh,
 )
+from research.mean_reversion_guard_research import (
+    save_mean_reversion_guard_research,
+)
 from strategies.mean_reversion_market_guard import (
     build_guarded_mean_reversion_queue_results,
 )
@@ -528,6 +531,42 @@ def run_mean_reversion_shadow_scan(
             )
         )
 
+    guard_research_capture = {
+        "success": True,
+        "status": "NOT_REQUESTED",
+        "report_path": None,
+        "rows_saved": 0,
+        "blocked_ready_count": 0,
+    }
+
+    try:
+        guard_research_capture = (
+            save_mean_reversion_guard_research(
+                raw_results=results,
+                guarded_result=guarded_result,
+                measurement_date=(
+                    measurement_date
+                ),
+            )
+        )
+
+    except Exception as error:
+        guard_research_capture = {
+            "success": False,
+            "status": "ERROR",
+            "report_path": None,
+            "rows_saved": 0,
+            "blocked_ready_count": 0,
+            "message": str(
+                error
+            ),
+        }
+
+        print(
+            "Mean Reversion guard research warning: "
+            f"{error}"
+        )
+
     queue_results = guarded_result[
         "queue_results"
     ]
@@ -606,6 +645,9 @@ def run_mean_reversion_shadow_scan(
         ),
         "queue_ready": len(
             queue_results["ready"]
+        ),
+        "market_guard_research": (
+            guard_research_capture
         ),
     }
 

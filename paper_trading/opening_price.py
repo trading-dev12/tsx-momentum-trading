@@ -17,6 +17,10 @@ from datetime import date, datetime, timedelta
 import yfinance as yf
 
 from core.ibkr_data_provider import IBKRDataProvider
+from research.market_snapshot import (
+    build_market_snapshot,
+    copy_market_snapshot,
+)
 
 IBKR_OPENING_PRICE_CLIENT_ID = 15
 
@@ -138,6 +142,35 @@ def get_ibkr_open_price(
             requested_date,
         )
 
+        # Best-effort research snapshot only.
+        # Failure here must never invalidate a usable
+        # IBKR opening price.
+        if result.get("success"):
+            try:
+                live_quote = provider.get_quote(
+                    symbol
+                )
+
+                result.update(
+                    build_market_snapshot(
+                        "entry",
+                        live_quote,
+                        source="IBKR",
+                    )
+                )
+
+            except Exception as quote_error:
+                result.update(
+                    build_market_snapshot(
+                        "entry",
+                        source="IBKR",
+                        error=(
+                            "IBKR bid/ask snapshot "
+                            f"unavailable: {quote_error}"
+                        ),
+                    )
+                )
+
     except Exception as exc:
         return {
             "success": False,
@@ -237,7 +270,7 @@ def get_market_open_price(symbol, trading_date):
     )
 
     if ibkr_result.get("success"):
-        return {
+        response = {
             "success": True,
             "symbol": yahoo_symbol,
             "trading_date": requested_date_text,
@@ -250,6 +283,15 @@ def get_market_open_price(symbol, trading_date):
                 "IBKR_ONE_MINUTE_OPEN",
             ),
         }
+
+        response.update(
+            copy_market_snapshot(
+                "entry",
+                ibkr_result,
+            )
+        )
+
+        return response
 
     open_price = get_intraday_open_price(
         yahoo_symbol,

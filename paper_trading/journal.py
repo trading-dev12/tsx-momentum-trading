@@ -61,6 +61,18 @@ FIELDNAMES = [
     "entry_fingerprint_status",
     "entry_fingerprint_error",
 
+    # Entry Bid/Ask / Spread Research
+    "entry_quote_status",
+    "entry_quote_source",
+    "entry_quote_timestamp",
+    "entry_bid",
+    "entry_ask",
+    "entry_last",
+    "entry_midpoint",
+    "entry_spread_amount",
+    "entry_spread_percent",
+    "entry_quote_error",
+
     # Trade Path / Excursion Research
     "trade_path_status",
     "trade_path_source",

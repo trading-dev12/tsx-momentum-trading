@@ -19,6 +19,10 @@ from research.enrichment_engine import enrich_trade
 from research.entry_context import (
     build_entry_context,
 )
+from research.market_snapshot import (
+    build_market_snapshot,
+    copy_market_snapshot,
+)
 from research.trade_path_analysis import (
     capture_trade_path,
 )
@@ -248,6 +252,9 @@ class PaperTradingEngine:
                     "price_source",
                     "",
                 ),
+                entry_market_snapshot=(
+                    price_result
+                ),
                 atr_multiplier=atr_multiplier,
                 reward_multiplier=reward_multiplier,
                 max_hold_days=max_hold_days,
@@ -319,6 +326,7 @@ class PaperTradingEngine:
         entry_price,
         entry_date,
         price_source="",
+        entry_market_snapshot=None,
         atr_multiplier=2.0,
         reward_multiplier=2.5,
         max_hold_days=10,
@@ -440,6 +448,22 @@ class PaperTradingEngine:
 
         position.update(
             entry_context
+        )
+
+        entry_snapshot = copy_market_snapshot(
+            "entry",
+            entry_market_snapshot,
+        )
+
+        if not entry_snapshot:
+            entry_snapshot = build_market_snapshot(
+                "entry",
+                entry_market_snapshot,
+                source=price_source,
+            )
+
+        position.update(
+            entry_snapshot
         )
 
         position["research"] = enrich_trade(position)
@@ -583,6 +607,17 @@ class PaperTradingEngine:
 
         position.update(
             entry_context
+        )
+
+        position.update(
+            build_market_snapshot(
+                "entry",
+                signal,
+                source=signal.get(
+                    "data_source",
+                    "",
+                ),
+            )
         )
 
         position["research"] = enrich_trade(position)

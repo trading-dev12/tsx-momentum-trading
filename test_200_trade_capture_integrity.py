@@ -346,3 +346,97 @@ def test_invalid_runtime_fingerprint_fails():
             "fields"
         ]
     )
+
+def test_fully_available_count_requires_same_trade_intersection():
+    entry_missing = complete_trade(
+        symbol="ENTRY-MISSING.TO"
+    )
+
+    entry_missing[
+        "entry_quote_status"
+    ] = "UNAVAILABLE"
+
+    entry_missing[
+        "entry_quote_source"
+    ] = "YAHOO_FALLBACK"
+
+    entry_missing[
+        "entry_quote_error"
+    ] = "Entry quote unavailable"
+
+    exit_missing = complete_trade(
+        symbol="EXIT-MISSING.TO"
+    )
+
+    exit_missing[
+        "exit_quote_status"
+    ] = "UNAVAILABLE"
+
+    exit_missing[
+        "exit_quote_source"
+    ] = "YAHOO_FALLBACK"
+
+    exit_missing[
+        "exit_quote_error"
+    ] = "Exit quote unavailable"
+
+    path_missing = complete_trade(
+        symbol="PATH-MISSING.TO"
+    )
+
+    path_missing[
+        "trade_path_status"
+    ] = "ERROR"
+
+    path_missing[
+        "trade_path_source"
+    ] = "IBKR"
+
+    path_missing[
+        "trade_path_error"
+    ] = "Historical request failed"
+
+    result = (
+        analyze_200_trade_capture_integrity(
+            [
+                entry_missing,
+                exit_missing,
+                path_missing,
+            ]
+        )
+    )
+
+    # Each aggregate category has 2/3 available, but those
+    # available observations occur on different trades.
+    assert (
+        result["entry_quote_status_counts"][
+            "AVAILABLE"
+        ]
+        == 2
+    )
+
+    assert (
+        result["exit_quote_status_counts"][
+            "AVAILABLE"
+        ]
+        == 2
+    )
+
+    assert (
+        result["trade_path_status_counts"][
+            "COMPLETE"
+        ]
+        == 2
+    )
+
+    # No single trade has all three preferred datasets.
+    assert (
+        result["fully_available_count"]
+        == 0
+    )
+
+    assert (
+        result["data_availability_status"]
+        == "PARTIAL"
+    )
+

@@ -1094,6 +1094,8 @@ def analyze_200_trade_capture_integrity(
     exit_quote_status_counts = {}
     trade_path_status_counts = {}
 
+    fully_available_count = 0
+
     for trade in trades:
         entry_date = _parse_entry_date(
             trade.get(
@@ -1168,6 +1170,16 @@ def analyze_200_trade_capture_integrity(
             )
             + 1
         )
+
+        if (
+            entry_quote_status
+            == "AVAILABLE"
+            and exit_quote_status
+            == "AVAILABLE"
+            and path_status
+            == "COMPLETE"
+        ):
+            fully_available_count += 1
 
         issues = (
             missing_200_trade_capture_fields(
@@ -1255,42 +1267,9 @@ def analyze_200_trade_capture_integrity(
         else 0.0
     )
 
-    fully_available_count = 0
-
     if monitored_trade_count:
-        entry_available = (
-            entry_quote_status_counts.get(
-                "AVAILABLE",
-                0,
-            )
-        )
-
-        exit_available = (
-            exit_quote_status_counts.get(
-                "AVAILABLE",
-                0,
-            )
-        )
-
-        path_complete = (
-            trade_path_status_counts.get(
-                "COMPLETE",
-                0,
-            )
-        )
-
-        fully_available_count = min(
-            entry_available,
-            exit_available,
-            path_complete,
-        )
-
         if (
-            entry_available
-            == monitored_trade_count
-            and exit_available
-            == monitored_trade_count
-            and path_complete
+            fully_available_count
             == monitored_trade_count
         ):
             data_availability_status = (

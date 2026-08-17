@@ -54,6 +54,8 @@ FIELDNAMES = [
     "breakout_score",
     "volume_score",
     "price_score",
+    "pre_cap_score",
+    "quality_cap_points_removed",
 ]
 
 

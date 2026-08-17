@@ -45,6 +45,8 @@ def make_signal(
         "breakout_score": 25.0,
         "volume_score": 24.0,
         "price_score": 25.0,
+        "pre_cap_score": 74.0,
+        "quality_cap_points_removed": 4.0,
         "data_source": "YAHOO_DAILY_EOD",
     }
 
@@ -117,6 +119,11 @@ def test_build_snapshot_keeps_entire_momentum_universe():
     assert rows[0]["breakout_score"] == 25.0
     assert rows[0]["volume_score"] == 24.0
     assert rows[0]["price_score"] == 25.0
+    assert rows[0]["pre_cap_score"] == 74.0
+    assert (
+        rows[0]["quality_cap_points_removed"]
+        == 4.0
+    )
     assert rows[0]["previous_close"] == 99.0
     assert rows[0]["capture_status"] == "OK"
 
@@ -232,6 +239,33 @@ def test_authoritative_eod_signal_retains_raw_inputs():
     assert "breakout_score" in signal
     assert "volume_score" in signal
     assert "price_score" in signal
+    assert "pre_cap_score" in signal
+    assert (
+        "quality_cap_points_removed"
+        in signal
+    )
+
+    assert signal["pre_cap_score"] == round(
+        (
+            signal["breakout_score"]
+            + signal["volume_score"]
+            + signal["price_score"]
+        ),
+        2,
+    )
+
+    assert (
+        signal["quality_cap_points_removed"]
+        == round(
+            max(
+                0.0,
+                signal["pre_cap_score"]
+                - signal["tmqs"],
+            ),
+            2,
+        )
+    )
+
     assert (
         signal["data_source"]
         == "YAHOO_DAILY_EOD"

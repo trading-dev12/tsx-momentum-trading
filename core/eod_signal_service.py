@@ -291,6 +291,49 @@ def build_eod_signal_from_rows(
         * signal_volume
     )
 
+    breakout_score = float(
+        signal.get(
+            "breakout_score",
+            0,
+        )
+        or 0
+    )
+
+    volume_score = float(
+        signal.get(
+            "volume_score",
+            0,
+        )
+        or 0
+    )
+
+    price_score = float(
+        signal.get(
+            "price_score",
+            0,
+        )
+        or 0
+    )
+
+    pre_cap_score = (
+        breakout_score
+        + volume_score
+        + price_score
+    )
+
+    final_tmqs = float(
+        signal.get(
+            "tmqs",
+            0,
+        )
+        or 0
+    )
+
+    quality_cap_points_removed = max(
+        0.0,
+        pre_cap_score - final_tmqs,
+    )
+
     return {
         "symbol": symbol,
         "strategy": "MOMENTUM",
@@ -331,17 +374,25 @@ def build_eod_signal_from_rows(
         "breakout": signal["breakout"],
         "decision": signal["decision"],
         "reason": signal["reason"],
-        "breakout_score": signal.get(
-            "breakout_score",
-            0,
+        "breakout_score": round(
+            breakout_score,
+            2,
         ),
-        "volume_score": signal.get(
-            "volume_score",
-            0,
+        "volume_score": round(
+            volume_score,
+            2,
         ),
-        "price_score": signal.get(
-            "price_score",
-            0,
+        "price_score": round(
+            price_score,
+            2,
+        ),
+        "pre_cap_score": round(
+            pre_cap_score,
+            2,
+        ),
+        "quality_cap_points_removed": round(
+            quality_cap_points_removed,
+            2,
         ),
         "data_source": "YAHOO_DAILY_EOD",
     }

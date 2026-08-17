@@ -7,6 +7,7 @@ automatic next-day execution, and risk-based sizing.
 """
 
 import threading
+from datetime import datetime
 
 from notifications.telegram_notifier import send_telegram_message
 from paper_trading.journal import JOURNAL_FILE, save_trade
@@ -15,6 +16,10 @@ from paper_trading.pending_trades import PendingTradeQueue
 from paper_trading.portfolio import PaperPortfolio
 from paper_trading.position_manager import monitor_positions
 from research.enrichment_engine import enrich_trade
+from research.trade_path_analysis import (
+    capture_trade_path,
+)
+from core.market_hours import TORONTO_TIMEZONE
 
 
 PORTFOLIO_STATE_FILE = "paper_portfolio_state.json"
@@ -387,6 +392,18 @@ class PaperTradingEngine:
             "symbol": symbol,
             "strategy": pending_trade.get("strategy", "MOMENTUM"),
             "signal_date": pending_trade["signal_date"],
+            "signal_close": pending_trade.get(
+                "signal_close",
+                "",
+            ),
+            "signal_reason": pending_trade.get(
+                "reason",
+                "",
+            ),
+            "signal_snapshot_json": pending_trade.get(
+                "signal_snapshot_json",
+                "",
+            ),
             "entry_date": entry_date,
             "entry_price": entry_price,
             "price_source": price_source,
@@ -726,20 +743,68 @@ class PaperTradingEngine:
 
         return final_shares
 
+    def _capture_closed_trade_path(
+        self,
+        trade,
+    ):
+        """
+        Attach post-close research path metrics.
+
+        The paper position has already been closed before this
+        function runs. Research failure therefore cannot prevent
+        or reverse the trading action.
+        """
+
+        try:
+            path_result = (
+                capture_trade_path(
+                    trade
+                )
+            )
+
+        except Exception as error:
+            path_result = {
+                "trade_path_status": "ERROR",
+                "trade_path_source": "IBKR",
+                "trade_path_bar_count": 0,
+                "trade_path_bars_saved": 0,
+                "trade_path_error": str(
+                    error
+                ),
+            }
+
+        trade.update(
+            path_result
+        )
+
+        return path_result
+
     def update_positions(
         self,
         latest_prices,
         current_date,
+        current_datetime=None,
     ):
         closed_trades = monitor_positions(
             portfolio=self.portfolio,
             current_prices=latest_prices,
             current_date=current_date,
+            current_datetime=current_datetime,
         )
 
         for trade in closed_trades:
-            save_trade(trade, file_path=self.journal_file)
-            self._notify_trade_closed(trade)
+            self._capture_closed_trade_path(
+                trade
+            )
+
+            save_trade(
+                trade,
+                file_path=self.journal_file,
+            )
+
+            self._notify_trade_closed(
+                trade
+            )
 
         return closed_trades
 
@@ -749,17 +814,54 @@ class PaperTradingEngine:
         exit_price,
         current_date,
         exit_reason="Manual exit",
+        current_datetime=None,
     ):
+        if current_datetime is None:
+            current_datetime = datetime.now(
+                TORONTO_TIMEZONE
+            )
+
+        elif current_datetime.tzinfo is None:
+            current_datetime = (
+                current_datetime.replace(
+                    tzinfo=TORONTO_TIMEZONE
+                )
+            )
+
+        else:
+            current_datetime = (
+                current_datetime.astimezone(
+                    TORONTO_TIMEZONE
+                )
+            )
+
         result = self.portfolio.close_position(
             symbol=symbol,
             exit_price=exit_price,
             exit_date=current_date,
             exit_reason=exit_reason,
+            exit_timestamp=(
+                current_datetime.isoformat(
+                    timespec="seconds"
+                )
+            ),
         )
 
         if result.get("success"):
-            save_trade(result["trade"], file_path=self.journal_file)
-            self._notify_trade_closed(result["trade"])
+            trade = result["trade"]
+
+            self._capture_closed_trade_path(
+                trade
+            )
+
+            save_trade(
+                trade,
+                file_path=self.journal_file,
+            )
+
+            self._notify_trade_closed(
+                trade
+            )
 
         return result
 

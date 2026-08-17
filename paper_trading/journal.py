@@ -14,8 +14,13 @@ JOURNAL_FILE = "paper_trade_journal.csv"
 FIELDNAMES = [
     "symbol",
     "strategy",
+    "signal_date",
+    "signal_close",
+    "signal_reason",
+    "signal_snapshot_json",
     "entry_date",
     "exit_date",
+    "exit_timestamp",
     "entry_price",
     "price_source",
     "exit_price",
@@ -27,6 +32,23 @@ FIELDNAMES = [
     "exit_reason",
     "profit_loss",
     "profit_loss_percent",
+
+    # Trade Path / Excursion Research
+    "trade_path_status",
+    "trade_path_source",
+    "trade_path_bar_count",
+    "trade_path_bars_saved",
+    "trade_path_error",
+    "highest_price",
+    "lowest_price",
+    "mfe_amount",
+    "mfe_percent",
+    "mfe_r",
+    "mfe_timestamp",
+    "mae_amount",
+    "mae_percent",
+    "mae_r",
+    "mae_timestamp",
 
     # Relative Strength research
     "stock_return_20",

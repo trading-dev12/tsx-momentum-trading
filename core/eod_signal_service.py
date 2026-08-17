@@ -218,11 +218,114 @@ def build_eod_signal_from_rows(
         previous_row,
     )
 
+    signal_open = float(
+        signal_row["open"]
+    )
+    signal_high = float(
+        signal_row["high"]
+    )
+    signal_low = float(
+        signal_row["low"]
+    )
+    signal_close = float(
+        signal_row["close"]
+    )
+    signal_volume = int(
+        signal_row["volume"]
+    )
+
+    previous_open = float(
+        previous_row["open"]
+    )
+    previous_high = float(
+        previous_row["high"]
+    )
+    previous_low = float(
+        previous_row["low"]
+    )
+    previous_close = float(
+        previous_row["close"]
+    )
+    previous_volume = int(
+        previous_row["volume"]
+    )
+
+    gap_percent = (
+        (
+            (signal_open - previous_close)
+            / previous_close
+        )
+        * 100
+        if previous_close > 0
+        else 0.0
+    )
+
+    price_change_percent = (
+        (
+            (signal_close - previous_close)
+            / previous_close
+        )
+        * 100
+        if previous_close > 0
+        else 0.0
+    )
+
+    breakout_percent = (
+        (
+            (signal_close - previous_high)
+            / previous_high
+        )
+        * 100
+        if previous_high > 0
+        else 0.0
+    )
+
+    atr_percent = (
+        (float(atr) / signal_close) * 100
+        if atr is not None and signal_close > 0
+        else 0.0
+    )
+
+    dollar_volume = (
+        signal_close
+        * signal_volume
+    )
+
     return {
         "symbol": symbol,
+        "strategy": "MOMENTUM",
         "signal_date": signal_row["date"],
-        "close": signal_row["close"],
+        "open": signal_open,
+        "high": signal_high,
+        "low": signal_low,
+        "close": signal_close,
+        "volume": signal_volume,
+        "previous_open": previous_open,
+        "previous_high": previous_high,
+        "previous_low": previous_low,
+        "previous_close": previous_close,
+        "previous_volume": previous_volume,
+        "gap_percent": round(
+            gap_percent,
+            6,
+        ),
+        "price_change_percent": round(
+            price_change_percent,
+            6,
+        ),
+        "breakout_percent": round(
+            breakout_percent,
+            6,
+        ),
+        "dollar_volume": round(
+            dollar_volume,
+            2,
+        ),
         "atr": atr,
+        "atr_percent": round(
+            atr_percent,
+            6,
+        ),
         "tmqs": signal["tmqs"],
         "rvol": signal["rvol"],
         "breakout": signal["breakout"],
@@ -240,6 +343,7 @@ def build_eod_signal_from_rows(
             "price_score",
             0,
         ),
+        "data_source": "YAHOO_DAILY_EOD",
     }
 
 

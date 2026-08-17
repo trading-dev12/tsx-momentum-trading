@@ -38,6 +38,9 @@ from research.market_regime import (
 from research.candidate_history_service import (
     capture_all_candidate_history,
 )
+from research.momentum_universe_snapshot import (
+    save_momentum_universe_snapshot,
+)
 from strategies.mean_reversion_market_guard import (
     build_guarded_mean_reversion_queue_results,
 )
@@ -603,6 +606,7 @@ def run_automatic_eod_cycle(
     shadow_scan_runner=run_52_week_shadow_scan,
     mean_reversion_runner=run_mean_reversion_shadow_scan,
     candidate_history_runner=None,
+    momentum_research_saver=None,
 ):
     """
     Run one automatic EOD cycle when eligible.
@@ -657,6 +661,38 @@ def run_automatic_eod_cycle(
         results["ready"],
         current_datetime.date(),
     )
+
+    momentum_research_capture = {
+        "success": True,
+        "status": "NOT_REQUESTED",
+        "report_path": None,
+        "rows_saved": 0,
+        "error_rows": 0,
+    }
+
+    if momentum_research_saver is not None:
+        try:
+            momentum_research_capture = (
+                momentum_research_saver(
+                    results=results,
+                    signal_date=current_date,
+                    captured_at=current_datetime,
+                )
+            )
+        except Exception as error:
+            momentum_research_capture = {
+                "success": False,
+                "status": "ERROR",
+                "report_path": None,
+                "rows_saved": 0,
+                "error_rows": 0,
+                "message": str(error),
+            }
+
+            print(
+                "Momentum research capture warning: "
+                f"{error}"
+            )
     
     queue_summary = paper_engine.queue_eod_signals(
         results
@@ -685,6 +721,9 @@ def run_automatic_eod_cycle(
         "pending_total": momentum_pending_total,
         "scan_results": results,
         "queue_summary": queue_summary,
+        "momentum_research_capture": (
+            momentum_research_capture
+        ),
     }
     
     try:
@@ -1071,6 +1110,9 @@ def automatic_eod_worker(
                 ),
                 candidate_history_runner=(
                     capture_all_candidate_history
+                ),
+                momentum_research_saver=(
+                    save_momentum_universe_snapshot
                 ),
             )
 

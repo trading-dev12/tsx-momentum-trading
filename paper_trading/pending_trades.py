@@ -6,10 +6,25 @@ executed using an actual next-trading-day entry price.
 """
 
 import csv
+import json
 import os
 
 
 PENDING_TRADES_FILE = "pending_trades.csv"
+
+
+def serialize_signal_snapshot(signal):
+    """
+    Preserve the exact signal payload that entered the pending queue.
+
+    The JSON snapshot is research-only metadata. It does not alter
+    queue eligibility, execution, sizing, stops, targets, or exits.
+    """
+    return json.dumps(
+        signal,
+        sort_keys=True,
+        default=str,
+    )
 
 
 class PendingTradeQueue:
@@ -45,6 +60,9 @@ class PendingTradeQueue:
             "rvol": float(signal["rvol"]),
             "breakout": signal["breakout"],
             "reason": signal.get("reason", ""),
+            "signal_snapshot_json": serialize_signal_snapshot(
+                signal
+            ),
             "status": "PENDING",
     }
 
@@ -105,6 +123,10 @@ class PendingTradeQueue:
                 row["rvol"] = float(row["rvol"])
 
                 row.setdefault("strategy", "MOMENTUM")
+                row.setdefault(
+                    "signal_snapshot_json",
+                    "",
+                )
 
                 self.pending_trades.append(row)
 
@@ -119,6 +141,7 @@ class PendingTradeQueue:
             "rvol",
             "breakout",
             "reason",
+            "signal_snapshot_json",
             "status",
         ]
 

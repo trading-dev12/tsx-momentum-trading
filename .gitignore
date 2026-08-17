@@ -246,3 +246,6 @@ research/52_week_results/
 
 # Generated Shadow Edge research snapshots
 research/shadow_edge_snapshots/
+
+# Generated Momentum EOD research results
+research/momentum_results/

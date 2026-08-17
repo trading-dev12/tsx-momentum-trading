@@ -12,12 +12,16 @@ from datetime import datetime
 
 import yfinance as yf
 
+from core.ibkr_data_provider import IBKRDataProvider
 from core.market_hours import TORONTO_TIMEZONE
 from paper_trading.morning_database import (
     DEFAULT_DATABASE_FILE,
     save_observation,
 )
 from paper_trading.opening_price import normalize_symbol
+
+
+MORNING_RESEARCH_IBKR_CLIENT_ID = 18
 
 
 def normalize_current_datetime(current_datetime=None):
@@ -49,7 +53,7 @@ def read_numeric_value(value):
     return float(value)
 
 
-def get_latest_one_minute_bar(
+def get_latest_yahoo_one_minute_bar(
     symbol,
     current_datetime=None,
 ):
@@ -189,6 +193,273 @@ def get_latest_one_minute_bar(
         "cumulative_volume": cumulative_volume,
         "data_source": "YAHOO_ONE_MINUTE",
     }
+
+
+def normalize_ibkr_bar_datetime(
+    bar_date,
+):
+    """
+    Normalize an IBKR historical-bar timestamp to Toronto time.
+    """
+
+    if hasattr(
+        bar_date,
+        "to_pydatetime",
+    ):
+        bar_date = (
+            bar_date.to_pydatetime()
+        )
+
+    if isinstance(
+        bar_date,
+        datetime,
+    ):
+        if bar_date.tzinfo is None:
+            return bar_date.replace(
+                tzinfo=TORONTO_TIMEZONE
+            )
+
+        return bar_date.astimezone(
+            TORONTO_TIMEZONE
+        )
+
+    text_value = str(
+        bar_date
+    ).strip()
+
+    formats = [
+        "%Y%m%d %H:%M:%S",
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%dT%H:%M:%S",
+    ]
+
+    for format_string in formats:
+        try:
+            parsed = datetime.strptime(
+                text_value[:19],
+                format_string,
+            )
+
+            return parsed.replace(
+                tzinfo=TORONTO_TIMEZONE
+            )
+
+        except ValueError:
+            continue
+
+    raise ValueError(
+        "Unsupported IBKR bar timestamp: "
+        f"{bar_date}"
+    )
+
+
+def get_latest_ibkr_one_minute_bar(
+    symbol,
+    current_datetime=None,
+    provider=None,
+):
+    """
+    Return the latest regular-session one-minute IBKR bar.
+
+    This is research-only and does not affect execution.
+    """
+
+    current_datetime = (
+        normalize_current_datetime(
+            current_datetime
+        )
+    )
+
+    owns_provider = (
+        provider is None
+    )
+
+    if provider is None:
+        provider = IBKRDataProvider(
+            client_id=(
+                MORNING_RESEARCH_IBKR_CLIENT_ID
+            )
+        )
+
+    try:
+        bars = provider.get_historical_bars(
+            symbol=symbol,
+            duration="2 D",
+            bar_size="1 min",
+            use_rth=True,
+            what_to_show="TRADES",
+        )
+
+        matching_bars = []
+
+        for bar in bars:
+            try:
+                bar_datetime = (
+                    normalize_ibkr_bar_datetime(
+                        bar.date
+                    )
+                )
+            except (
+                TypeError,
+                ValueError,
+            ):
+                continue
+
+            if (
+                bar_datetime.date()
+                != current_datetime.date()
+            ):
+                continue
+
+            if (
+                bar_datetime
+                > current_datetime
+            ):
+                continue
+
+            matching_bars.append(
+                (
+                    bar_datetime,
+                    bar,
+                )
+            )
+
+        if not matching_bars:
+            return {
+                "success": False,
+                "symbol": symbol,
+                "message": (
+                    "No matching IBKR one-minute "
+                    "bar is available."
+                ),
+            }
+
+        matching_bars.sort(
+            key=lambda item: item[0]
+        )
+
+        latest_datetime, latest_bar = (
+            matching_bars[-1]
+        )
+
+        cumulative_volume = sum(
+            int(
+                float(
+                    getattr(
+                        bar,
+                        "volume",
+                        0,
+                    )
+                    or 0
+                )
+            )
+            for _, bar in matching_bars
+        )
+
+        return {
+            "success": True,
+            "symbol": str(
+                symbol
+            ).upper(),
+            "bar_timestamp": (
+                latest_datetime
+            ),
+            "open_price": float(
+                latest_bar.open
+            ),
+            "high_price": float(
+                latest_bar.high
+            ),
+            "low_price": float(
+                latest_bar.low
+            ),
+            "close_price": float(
+                latest_bar.close
+            ),
+            "volume": int(
+                float(
+                    latest_bar.volume
+                    or 0
+                )
+            ),
+            "cumulative_volume": (
+                cumulative_volume
+            ),
+            "data_source": (
+                "IBKR_ONE_MINUTE"
+            ),
+        }
+
+    except Exception as error:
+        return {
+            "success": False,
+            "symbol": str(
+                symbol
+            ).upper(),
+            "message": (
+                "IBKR one-minute data "
+                f"unavailable: {error}"
+            ),
+        }
+
+    finally:
+        if owns_provider:
+            provider.disconnect()
+
+
+def get_latest_one_minute_bar(
+    symbol,
+    current_datetime=None,
+):
+    """
+    Retrieve one-minute research data using:
+
+    1. IBKR historical one-minute bars
+    2. Yahoo one-minute fallback
+
+    Provider provenance is retained in the observation.
+    """
+
+    ibkr_result = (
+        get_latest_ibkr_one_minute_bar(
+            symbol,
+            current_datetime,
+        )
+    )
+
+    if ibkr_result.get(
+        "success"
+    ):
+        return ibkr_result
+
+    yahoo_result = (
+        get_latest_yahoo_one_minute_bar(
+            symbol,
+            current_datetime,
+        )
+    )
+
+    if yahoo_result.get(
+        "success"
+    ):
+        yahoo_result = dict(
+            yahoo_result
+        )
+
+        yahoo_result[
+            "data_source"
+        ] = (
+            "YAHOO_ONE_MINUTE_FALLBACK"
+        )
+
+        yahoo_result[
+            "primary_source_error"
+        ] = ibkr_result.get(
+            "message",
+            "",
+        )
+
+    return yahoo_result
 
 
 def build_observation(

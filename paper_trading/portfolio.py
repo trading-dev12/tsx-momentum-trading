@@ -58,6 +58,7 @@ class PaperPortfolio:
         exit_price,
         exit_date,
         exit_reason,
+        exit_timestamp=None,
     ):
         for position in self.open_positions:
             if position["symbol"] == symbol:
@@ -85,6 +86,9 @@ class PaperPortfolio:
                 closed_trade["exit_price"] = exit_price
                 closed_trade["exit_date"] = exit_date
                 closed_trade["exit_reason"] = exit_reason
+                closed_trade["exit_timestamp"] = (
+                    exit_timestamp or ""
+                )
                 closed_trade["profit_loss"] = profit_loss
                 closed_trade["profit_loss_percent"] = (
                     profit_loss_percent

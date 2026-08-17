@@ -67,6 +67,46 @@ ON intraday_observations (
 """
 
 
+CREATE_TRADE_MINUTE_BARS_TABLE = """
+CREATE TABLE IF NOT EXISTS trade_minute_bars (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    strategy TEXT NOT NULL,
+    symbol TEXT NOT NULL,
+    signal_date TEXT,
+    entry_date TEXT NOT NULL,
+    exit_date TEXT,
+    bar_timestamp TEXT NOT NULL,
+    bar_date TEXT NOT NULL,
+    bar_time TEXT NOT NULL,
+    open_price REAL,
+    high_price REAL,
+    low_price REAL,
+    close_price REAL,
+    volume INTEGER,
+    data_source TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (
+        strategy,
+        symbol,
+        entry_date,
+        bar_timestamp
+    )
+)
+"""
+
+
+CREATE_TRADE_MINUTE_INDEX = """
+CREATE INDEX IF NOT EXISTS
+idx_trade_minute_bars_identity
+ON trade_minute_bars (
+    strategy,
+    symbol,
+    entry_date,
+    bar_timestamp
+)
+"""
+
+
 def ensure_database_folder(database_file):
     """
     Create the database's parent folder when necessary.
@@ -116,6 +156,14 @@ def initialize_database(
 
         connection.execute(
             CREATE_SYMBOL_INDEX
+        )
+
+        connection.execute(
+            CREATE_TRADE_MINUTE_BARS_TABLE
+        )
+
+        connection.execute(
+            CREATE_TRADE_MINUTE_INDEX
         )
 
         connection.commit()
@@ -271,6 +319,152 @@ def get_observations(
         rows = connection.execute(
             query,
             parameters,
+        ).fetchall()
+
+    return [
+        dict(row)
+        for row in rows
+    ]
+
+def save_trade_minute_bars(
+    trade,
+    bars,
+    database_file=DEFAULT_DATABASE_FILE,
+):
+    """
+    Save normalized one-minute bars for one paper trade.
+
+    Duplicate bars are ignored so research capture can be
+    retried or backfilled safely.
+    """
+
+    initialize_database(
+        database_file=database_file
+    )
+
+    strategy = str(
+        trade.get(
+            "strategy",
+            "MOMENTUM",
+        )
+    )
+
+    symbol = str(
+        trade["symbol"]
+    )
+
+    signal_date = str(
+        trade.get(
+            "signal_date",
+            "",
+        )
+    )
+
+    entry_date = str(
+        trade["entry_date"]
+    )
+
+    exit_date = str(
+        trade.get(
+            "exit_date",
+            "",
+        )
+    )
+
+    inserted = 0
+
+    insert_sql = """
+        INSERT OR IGNORE INTO trade_minute_bars (
+            strategy,
+            symbol,
+            signal_date,
+            entry_date,
+            exit_date,
+            bar_timestamp,
+            bar_date,
+            bar_time,
+            open_price,
+            high_price,
+            low_price,
+            close_price,
+            volume,
+            data_source
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """
+
+    with get_connection(
+        database_file
+    ) as connection:
+        for bar in bars:
+            cursor = connection.execute(
+                insert_sql,
+                (
+                    strategy,
+                    symbol,
+                    signal_date,
+                    entry_date,
+                    exit_date,
+                    bar["bar_timestamp"],
+                    bar["bar_date"],
+                    bar["bar_time"],
+                    bar.get("open_price"),
+                    bar.get("high_price"),
+                    bar.get("low_price"),
+                    bar.get("close_price"),
+                    bar.get("volume"),
+                    bar.get(
+                        "data_source",
+                        "IBKR_ONE_MINUTE",
+                    ),
+                ),
+            )
+
+            if cursor.rowcount == 1:
+                inserted += 1
+
+        connection.commit()
+
+    return {
+        "success": True,
+        "bars_received": len(bars),
+        "bars_inserted": inserted,
+    }
+
+
+def get_trade_minute_bars(
+    strategy,
+    symbol,
+    entry_date,
+    database_file=DEFAULT_DATABASE_FILE,
+):
+    """
+    Load one trade's saved minute path chronologically.
+    """
+
+    initialize_database(
+        database_file=database_file
+    )
+
+    query = """
+        SELECT *
+        FROM trade_minute_bars
+        WHERE strategy = ?
+          AND symbol = ?
+          AND entry_date = ?
+        ORDER BY bar_timestamp ASC
+    """
+
+    with get_connection(
+        database_file
+    ) as connection:
+        rows = connection.execute(
+            query,
+            (
+                strategy,
+                symbol,
+                entry_date,
+            ),
         ).fetchall()
 
     return [

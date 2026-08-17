@@ -6,7 +6,10 @@ target, or maximum holding-period rules are triggered.
 """
 
 from datetime import datetime, timedelta
-from core.market_hours import is_tsx_trading_day
+from core.market_hours import (
+    TORONTO_TIMEZONE,
+    is_tsx_trading_day,
+)
 
 
 def count_trading_days(entry_date, current_date):
@@ -88,11 +91,41 @@ def check_exit(position, current_price, current_date):
     }
 
 
-def monitor_positions(portfolio, current_prices, current_date):
+def monitor_positions(
+    portfolio,
+    current_prices,
+    current_date,
+    current_datetime=None,
+):
     """
     Check every open paper position and close positions
     whose exit rules have been triggered.
     """
+
+    if current_datetime is None:
+        current_datetime = datetime.now(
+            TORONTO_TIMEZONE
+        )
+
+    elif current_datetime.tzinfo is None:
+        current_datetime = (
+            current_datetime.replace(
+                tzinfo=TORONTO_TIMEZONE
+            )
+        )
+
+    else:
+        current_datetime = (
+            current_datetime.astimezone(
+                TORONTO_TIMEZONE
+            )
+        )
+
+    exit_timestamp = (
+        current_datetime.isoformat(
+            timespec="seconds"
+        )
+    )
 
     closed_trades = []
 
@@ -125,6 +158,7 @@ def monitor_positions(portfolio, current_prices, current_date):
                 exit_price=exit_signal["exit_price"],
                 exit_date=exit_signal["exit_date"],
                 exit_reason=exit_signal["exit_reason"],
+                exit_timestamp=exit_timestamp,
             )
 
             if result["success"]:

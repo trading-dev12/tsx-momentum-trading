@@ -9,6 +9,7 @@ This module does not place or manage broker orders.
 
 from __future__ import annotations
 
+import asyncio
 import math
 from typing import Any
 
@@ -27,6 +28,30 @@ IBKR_SYMBOL_ALIASES = {
     "TECK-B.TO": "TECK.B",
 }
 
+
+def ensure_thread_event_loop():
+    """
+    Ensure synchronous ib_insync calls have an asyncio
+    event loop in the current thread.
+
+    Python worker threads do not automatically receive an
+    event loop, but ib_insync expects one to exist.
+    """
+
+    try:
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        return loop
+
+    if loop.is_closed():
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+    return loop
+
+
 class IBKRDataProvider:
     """
     Read-only Interactive Brokers market-data provider.
@@ -41,6 +66,8 @@ class IBKRDataProvider:
         self.host = host
         self.port = int(port)
         self.client_id = int(client_id)
+
+        self.event_loop = ensure_thread_event_loop()
         self.ib = IB()
 
     def connect(self) -> None:

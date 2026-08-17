@@ -6,6 +6,9 @@ from datetime import datetime
 
 from core.watchlist_loader import load_all_watchlists
 from core.market_data import get_live_quote
+from research.market_snapshot import (
+    build_market_snapshot,
+)
 from strategies.breakout_52week_adapter import build_breakout_52week_input
 from strategies.breakout_52week_strategy import (
     Breakout52WeekStrategy,
@@ -58,29 +61,205 @@ def scan_52_week_breakouts(
             strategy_input = build_breakout_52week_input(quote)
             strategy_result = strategy.evaluate(strategy_input)
 
+            price = float(
+                quote.get("price", 0)
+                or 0
+            )
+
+            atr = float(
+                quote.get("atr", 0)
+                or 0
+            )
+
+            volume = float(
+                quote.get("volume", 0)
+                or 0
+            )
+
+            prior_high = float(
+                quote.get(
+                    "prior_52_week_high",
+                    0,
+                )
+                or 0
+            )
+
+            sma_50 = float(
+                quote.get("sma_50", 0)
+                or 0
+            )
+
+            sma_200 = float(
+                quote.get("sma_200", 0)
+                or 0
+            )
+
+            grades = quote.get(
+                "grades",
+                {},
+            ) or {}
+
+            distance_to_high_percent = (
+                (
+                    (price - prior_high)
+                    / prior_high
+                )
+                * 100
+                if prior_high > 0
+                else 0.0
+            )
+
+            price_vs_sma50_percent = (
+                (
+                    (price - sma_50)
+                    / sma_50
+                )
+                * 100
+                if sma_50 > 0
+                else 0.0
+            )
+
+            price_vs_sma200_percent = (
+                (
+                    (price - sma_200)
+                    / sma_200
+                )
+                * 100
+                if sma_200 > 0
+                else 0.0
+            )
+
+            sma50_vs_sma200_percent = (
+                (
+                    (sma_50 - sma_200)
+                    / sma_200
+                )
+                * 100
+                if sma_200 > 0
+                else 0.0
+            )
+
             record = {
                 "symbol": symbol,
                 "strategy": "52_WEEK_BREAKOUT",
                 "decision": strategy_result.decision.value,
                 "signal_date": signal_date,
-                "close": quote.get("price", 0),
-                "atr": quote.get("atr", 0),
+                "close": price,
+                "atr": atr,
                 "tmqs": quote.get("tmqs", 0),
                 "reason": strategy_result.reason,
-                "price": quote.get("price", 0),
-                "prior_52_week_high": quote.get(
-                    "prior_52_week_high",
-                    0,
-                ),
+                "price": price,
+                "prior_52_week_high": prior_high,
                 "average_volume": quote.get(
                     "average_volume",
                     0,
                 ),
                 "rvol": quote.get("relative_volume", 0),
-                "sma_50": quote.get("sma_50", 0),
-                "sma_200": quote.get("sma_200", 0),
+                "sma_50": sma_50,
+                "sma_200": sma_200,
                 "breakout": strategy_result.breakout,
+
+                # Existing scanner context preserved for
+                # post-validation research.
+                "live_data_source": quote.get(
+                    "data_source",
+                    "",
+                ),
+                "price_source": quote.get(
+                    "price_source",
+                    "",
+                ),
+                "previous_close": quote.get(
+                    "previous_close",
+                    0,
+                ),
+                "previous_high": quote.get(
+                    "previous_high",
+                    0,
+                ),
+                "previous_low": quote.get(
+                    "previous_low",
+                    0,
+                ),
+                "gap_percent": quote.get(
+                    "gap_percent",
+                    0,
+                ),
+                "change_percent": quote.get(
+                    "change_percent",
+                    0,
+                ),
+                "volume": volume,
+                "dollar_volume": round(
+                    price * volume,
+                    2,
+                ),
+                "atr_percent": round(
+                    (
+                        atr
+                        / price
+                        * 100
+                    )
+                    if price > 0
+                    else 0.0,
+                    6,
+                ),
+                "score": quote.get(
+                    "score",
+                    0,
+                ),
+                "confidence_score": quote.get(
+                    "confidence_score",
+                    0,
+                ),
+                "rvol_status": quote.get(
+                    "rvol_status",
+                    "",
+                ),
+                "momentum_grade": grades.get(
+                    "Momentum",
+                    "",
+                ),
+                "liquidity_grade": grades.get(
+                    "Liquidity",
+                    "",
+                ),
+                "rvol_grade": grades.get(
+                    "RVOL",
+                    "",
+                ),
+                "breakout_status": quote.get(
+                    "breakout_status",
+                    "",
+                ),
+                "distance_to_52_week_high_percent": round(
+                    distance_to_high_percent,
+                    6,
+                ),
+                "price_vs_sma50_percent": round(
+                    price_vs_sma50_percent,
+                    6,
+                ),
+                "price_vs_sma200_percent": round(
+                    price_vs_sma200_percent,
+                    6,
+                ),
+                "sma50_vs_sma200_percent": round(
+                    sma50_vs_sma200_percent,
+                    6,
+                ),
             }
+
+            record.update(
+                build_market_snapshot(
+                    "signal",
+                    quote,
+                    source=quote.get(
+                        "data_source",
+                        "",
+                    ),
+                )
+            )
 
             if strategy_result.decision == Decision.READY:
                 results["ready"].append(record)
@@ -167,6 +346,37 @@ def save_results(
         "sma_50",
         "sma_200",
         "breakout",
+        "live_data_source",
+        "price_source",
+        "previous_close",
+        "previous_high",
+        "previous_low",
+        "gap_percent",
+        "change_percent",
+        "volume",
+        "dollar_volume",
+        "atr_percent",
+        "score",
+        "confidence_score",
+        "rvol_status",
+        "momentum_grade",
+        "liquidity_grade",
+        "rvol_grade",
+        "breakout_status",
+        "distance_to_52_week_high_percent",
+        "price_vs_sma50_percent",
+        "price_vs_sma200_percent",
+        "sma50_vs_sma200_percent",
+        "signal_quote_status",
+        "signal_quote_source",
+        "signal_quote_timestamp",
+        "signal_bid",
+        "signal_ask",
+        "signal_last",
+        "signal_midpoint",
+        "signal_spread_amount",
+        "signal_spread_percent",
+        "signal_quote_error",
     ]
 
     with open(

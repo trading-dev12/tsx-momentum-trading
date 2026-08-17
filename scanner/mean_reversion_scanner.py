@@ -11,6 +11,9 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from core.market_data import get_live_quote
+from research.market_snapshot import (
+    build_market_snapshot,
+)
 from core.watchlist_loader import load_all_watchlists
 from strategies.mean_reversion_adapter import (
     build_mean_reversion_input,
@@ -105,6 +108,31 @@ def scan_mean_reversion(
                 quote.get("bollinger_lower", 0) or 0
             )
 
+            sma_50 = float(
+                quote.get("sma_50", 0)
+                or 0
+            )
+
+            sma_200 = float(
+                quote.get("sma_200", 0)
+                or 0
+            )
+
+            volume = float(
+                quote.get("volume", 0)
+                or 0
+            )
+
+            atr = float(
+                quote.get("atr", 0)
+                or 0
+            )
+
+            grades = quote.get(
+                "grades",
+                {},
+            ) or {}
+
             price_vs_sma20_percent = (
                 ((price / sma_20) - 1) * 100
                 if sma_20 > 0
@@ -117,14 +145,42 @@ def scan_mean_reversion(
                 else 0.0
             )
 
+            price_vs_sma50_percent = (
+                (
+                    (price - sma_50)
+                    / sma_50
+                )
+                * 100
+                if sma_50 > 0
+                else 0.0
+            )
+
+            price_vs_sma200_percent = (
+                (
+                    (price - sma_200)
+                    / sma_200
+                )
+                * 100
+                if sma_200 > 0
+                else 0.0
+            )
+
+            sma50_vs_sma200_percent = (
+                (
+                    (sma_50 - sma_200)
+                    / sma_200
+                )
+                * 100
+                if sma_200 > 0
+                else 0.0
+            )
+
             record = {
                 "symbol": symbol,
                 "strategy": "MEAN_REVERSION",
                 "signal_date": signal_date,
                 "close": price,
-                "atr": float(
-                    quote.get("atr", 0) or 0
-                ),
+                "atr": atr,
                 "tmqs": float(
                     quote.get("tmqs", 0) or 0
                 ),
@@ -154,7 +210,110 @@ def scan_mean_reversion(
                     price_vs_lower_band_percent,
                     4,
                 ),
+
+                # Existing scanner context preserved for
+                # post-validation research.
+                "sma_50": sma_50,
+                "sma_200": sma_200,
+                "live_data_source": quote.get(
+                    "data_source",
+                    "",
+                ),
+                "price_source": quote.get(
+                    "price_source",
+                    "",
+                ),
+                "previous_close": quote.get(
+                    "previous_close",
+                    0,
+                ),
+                "previous_high": quote.get(
+                    "previous_high",
+                    0,
+                ),
+                "previous_low": quote.get(
+                    "previous_low",
+                    0,
+                ),
+                "gap_percent": quote.get(
+                    "gap_percent",
+                    0,
+                ),
+                "change_percent": quote.get(
+                    "change_percent",
+                    0,
+                ),
+                "volume": volume,
+                "average_volume": quote.get(
+                    "average_volume",
+                    0,
+                ),
+                "dollar_volume": round(
+                    price * volume,
+                    2,
+                ),
+                "atr_percent": round(
+                    (
+                        atr
+                        / price
+                        * 100
+                    )
+                    if price > 0
+                    else 0.0,
+                    6,
+                ),
+                "score": quote.get(
+                    "score",
+                    0,
+                ),
+                "confidence_score": quote.get(
+                    "confidence_score",
+                    0,
+                ),
+                "rvol_status": quote.get(
+                    "rvol_status",
+                    "",
+                ),
+                "momentum_grade": grades.get(
+                    "Momentum",
+                    "",
+                ),
+                "liquidity_grade": grades.get(
+                    "Liquidity",
+                    "",
+                ),
+                "rvol_grade": grades.get(
+                    "RVOL",
+                    "",
+                ),
+                "breakout_status": quote.get(
+                    "breakout_status",
+                    "",
+                ),
+                "price_vs_sma50_percent": round(
+                    price_vs_sma50_percent,
+                    6,
+                ),
+                "price_vs_sma200_percent": round(
+                    price_vs_sma200_percent,
+                    6,
+                ),
+                "sma50_vs_sma200_percent": round(
+                    sma50_vs_sma200_percent,
+                    6,
+                ),
             }
+
+            record.update(
+                build_market_snapshot(
+                    "signal",
+                    quote,
+                    source=quote.get(
+                        "data_source",
+                        "",
+                    ),
+                )
+            )
 
             if scan_result.decision == "READY":
                 results["ready"].append(record)
@@ -245,6 +404,39 @@ def save_results(
         "bollinger_lower",
         "price_vs_sma20_percent",
         "price_vs_lower_band_percent",
+        "sma_50",
+        "sma_200",
+        "live_data_source",
+        "price_source",
+        "previous_close",
+        "previous_high",
+        "previous_low",
+        "gap_percent",
+        "change_percent",
+        "volume",
+        "average_volume",
+        "dollar_volume",
+        "atr_percent",
+        "score",
+        "confidence_score",
+        "rvol_status",
+        "momentum_grade",
+        "liquidity_grade",
+        "rvol_grade",
+        "breakout_status",
+        "price_vs_sma50_percent",
+        "price_vs_sma200_percent",
+        "sma50_vs_sma200_percent",
+        "signal_quote_status",
+        "signal_quote_source",
+        "signal_quote_timestamp",
+        "signal_bid",
+        "signal_ask",
+        "signal_last",
+        "signal_midpoint",
+        "signal_spread_amount",
+        "signal_spread_percent",
+        "signal_quote_error",
     ]
 
     with open(

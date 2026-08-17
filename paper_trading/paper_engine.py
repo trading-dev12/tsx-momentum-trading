@@ -6,6 +6,7 @@ position manager, trade journal, pending trade queue,
 automatic next-day execution, and risk-based sizing.
 """
 
+import json
 import threading
 from datetime import datetime
 
@@ -573,6 +574,19 @@ class PaperTradingEngine:
             ),
         )
 
+        signal_snapshot_json = signal.get(
+            "signal_snapshot_json",
+            "",
+        )
+
+        if not signal_snapshot_json:
+            signal_snapshot_json = json.dumps(
+                signal,
+                sort_keys=True,
+                separators=(",", ":"),
+                default=str,
+            )
+
         position = {
             "symbol": symbol,
             "strategy": signal.get("strategy", "MOMENTUM"),
@@ -583,14 +597,39 @@ class PaperTradingEngine:
                     "2026-07-09",
                 ),
             ),
+            "signal_close": signal.get(
+                "signal_close",
+                signal.get(
+                    "close",
+                    price,
+                ),
+            ),
+            "signal_reason": signal.get(
+                "reason",
+                "",
+            ),
+            "signal_snapshot_json": (
+                signal_snapshot_json
+            ),
             "entry_date": signal.get(
                 "date",
                 "2026-07-09",
             ),
             "entry_price": price,
+            "price_source": signal.get(
+                "price_source",
+                signal.get(
+                    "data_source",
+                    "",
+                ),
+            ),
             "shares": shares,
             "stop_price": stop_price,
             "target_price": target_price,
+            "atr": signal.get(
+                "atr",
+                0,
+            ),
             "tmqs": signal.get(
                 "tmqs",
                 100,
@@ -598,6 +637,13 @@ class PaperTradingEngine:
             "rvol": signal.get(
                 "rvol",
                 2.5,
+            ),
+            "breakout": signal.get(
+                "breakout",
+                signal.get(
+                    "breakout_status",
+                    "",
+                ),
             ),
             "max_hold_days": signal.get(
                 "max_hold_days",

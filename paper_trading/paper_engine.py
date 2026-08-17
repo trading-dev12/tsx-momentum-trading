@@ -16,6 +16,9 @@ from paper_trading.pending_trades import PendingTradeQueue
 from paper_trading.portfolio import PaperPortfolio
 from paper_trading.position_manager import monitor_positions
 from research.enrichment_engine import enrich_trade
+from research.entry_context import (
+    build_entry_context,
+)
 from research.trade_path_analysis import (
     capture_trade_path,
 )
@@ -388,6 +391,24 @@ class PaperTradingEngine:
                 "diagnostics": diagnostics,
             }
 
+        entry_context = build_entry_context(
+            portfolio=self.portfolio,
+            sizing_diagnostics=(
+                self.last_position_size_diagnostics
+            ),
+            entry_price=entry_price,
+            stop_price=stop_price,
+            target_price=target_price,
+            shares=shares,
+            atr_multiplier=atr_multiplier,
+            reward_multiplier=reward_multiplier,
+            max_hold_days=max_hold_days,
+            signal_close=pending_trade.get(
+                "signal_close",
+                "",
+            ),
+        )
+
         position = {
             "symbol": symbol,
             "strategy": pending_trade.get("strategy", "MOMENTUM"),
@@ -416,6 +437,11 @@ class PaperTradingEngine:
             "breakout": pending_trade["breakout"],
             "max_hold_days": max_hold_days,
         }
+
+        position.update(
+            entry_context
+        )
+
         position["research"] = enrich_trade(position)
 
         result = self.portfolio.open_position(position)
@@ -481,6 +507,48 @@ class PaperTradingEngine:
                 "diagnostics": diagnostics,
             }
 
+        risk_per_share = (
+            price - stop_price
+        )
+
+        derived_reward_multiple = (
+            (
+                target_price - price
+            )
+            / risk_per_share
+            if risk_per_share > 0
+            else 0.0
+        )
+
+        entry_context = build_entry_context(
+            portfolio=self.portfolio,
+            sizing_diagnostics=(
+                self.last_position_size_diagnostics
+            ),
+            entry_price=price,
+            stop_price=stop_price,
+            target_price=target_price,
+            shares=shares,
+            atr_multiplier=signal.get(
+                "atr_multiplier",
+                "",
+            ),
+            reward_multiplier=(
+                derived_reward_multiple
+            ),
+            max_hold_days=signal.get(
+                "max_hold_days",
+                10,
+            ),
+            signal_close=signal.get(
+                "signal_close",
+                signal.get(
+                    "close",
+                    price,
+                ),
+            ),
+        )
+
         position = {
             "symbol": symbol,
             "strategy": signal.get("strategy", "MOMENTUM"),
@@ -512,6 +580,11 @@ class PaperTradingEngine:
                 10,
             ),
         }
+
+        position.update(
+            entry_context
+        )
+
         position["research"] = enrich_trade(position)
         
         result = self.portfolio.open_position(position)

@@ -1767,8 +1767,21 @@ class TradingWorkstation:
         )
 
         if new_ready_symbols:
+            session = get_tsx_market_status()
+
+            if not session.get("is_open"):
+                logging.info(
+                    (
+                        "Suppressing post-close live READY alert: %s"
+                    ),
+                    ", ".join(
+                        sorted(new_ready_symbols)
+                    ),
+                )
+                return
+
             print(
-                "NEW READY ALERT:",
+                "LIVE READY ALERT:",
                 ", ".join(sorted(new_ready_symbols)),
             )
 
@@ -1779,7 +1792,13 @@ class TradingWorkstation:
             ]
 
             message_lines = [
-                "NORTHSTAR QUANT - NEW READY ALERT",
+                "NORTHSTAR QUANT - LIVE READY ALERT",
+                "",
+                "INFORMATIONAL ONLY - NOT QUEUED",
+                (
+                    "Official next-day entries are determined "
+                    "by the EOD scan."
+                ),
                 "",
             ]
 

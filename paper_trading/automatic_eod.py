@@ -41,6 +41,9 @@ from research.candidate_history_service import (
 from research.momentum_universe_snapshot import (
     save_momentum_universe_snapshot,
 )
+from research.candidate_forward_outcome_service import (
+    run_candidate_forward_outcome_refresh,
+)
 from strategies.mean_reversion_market_guard import (
     build_guarded_mean_reversion_queue_results,
 )
@@ -58,6 +61,53 @@ from paper_trading.eod_recovery import (
 AUTO_EOD_STATE_FILE = "automatic_eod_state.json"
 AUTO_EOD_DELAY_MINUTES = 5
 DEFAULT_CHECK_SECONDS = 60
+
+
+def run_forward_outcome_research_capture(
+    runner,
+    current_date,
+):
+    """
+    Run candidate forward-outcome research without allowing
+    research availability to fail the production EOD cycle.
+    """
+
+    if runner is None:
+        return {
+            "success": True,
+            "status": "NOT_REQUESTED",
+            "as_of_date": str(
+                current_date
+            ),
+        }
+
+    try:
+        result = runner(
+            as_of_date=current_date,
+        )
+
+        if not isinstance(
+            result,
+            dict,
+        ):
+            raise TypeError(
+                "Forward outcome runner did not "
+                "return a result dictionary."
+            )
+
+        return result
+
+    except Exception as error:
+        return {
+            "success": False,
+            "status": "ERROR",
+            "as_of_date": str(
+                current_date
+            ),
+            "message": str(
+                error
+            ),
+        }
 
 
 def normalize_current_datetime(current_datetime=None):
@@ -627,6 +677,7 @@ def run_automatic_eod_cycle(
     mean_reversion_runner=run_mean_reversion_shadow_scan,
     candidate_history_runner=None,
     momentum_research_saver=None,
+    forward_outcome_runner=None,
 ):
     """
     Run one automatic EOD cycle when eligible.
@@ -837,6 +888,26 @@ def run_automatic_eod_cycle(
     summary["mean_reversion_shadow"] = (
         mean_reversion_result
     )
+
+    forward_outcome_result = (
+        run_forward_outcome_research_capture(
+            runner=forward_outcome_runner,
+            current_date=current_date,
+        )
+    )
+
+    summary[
+        "candidate_forward_outcomes"
+    ] = forward_outcome_result
+
+    if not forward_outcome_result.get(
+        "success",
+        False,
+    ):
+        print(
+            "Candidate forward-outcome research warning: "
+            f"{forward_outcome_result.get('message', '')}"
+        )
 
     save_last_run_date(
         current_date,
@@ -1171,6 +1242,9 @@ def automatic_eod_worker(
                 ),
                 momentum_research_saver=(
                     save_momentum_universe_snapshot
+                ),
+                forward_outcome_runner=(
+                    run_candidate_forward_outcome_refresh
                 ),
             )
 

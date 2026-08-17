@@ -323,7 +323,10 @@ def run_pipeline_validation(
                 f"{error}"
             ),
         }
-def run_52_week_shadow_scan(paper_engine=None):
+def run_52_week_shadow_scan(
+    paper_engine=None,
+    measurement_date=None,
+):
     """
     Run the 52-week breakout scan.
 
@@ -331,9 +334,24 @@ def run_52_week_shadow_scan(paper_engine=None):
     queued only when a dedicated paper engine is supplied.
     """
 
+    if measurement_date is None:
+        measurement_date = (
+            datetime.now()
+            .date()
+            .isoformat()
+        )
+
     watchlist = load_all_watchlists()
-    results = scan_52_week_breakouts(watchlist)
-    report_path = save_52_week_results(results)
+
+    results = scan_52_week_breakouts(
+        watchlist,
+        signal_date=measurement_date,
+    )
+
+    report_path = save_52_week_results(
+        results,
+        signal_date=measurement_date,
+    )
 
     queue_summary = {
         "attempted": 0,
@@ -394,15 +412,24 @@ def run_mean_reversion_shadow_scan(
     Existing positions are not affected.
     """
 
+    if measurement_date is None:
+        measurement_date = (
+            datetime.now()
+            .date()
+            .isoformat()
+        )
+
     watchlist = load_all_watchlists()
 
     results = scan_mean_reversion(
-        watchlist
+        watchlist,
+        measurement_date=measurement_date,
     )
 
     # Preserve the unmodified strategy output for research.
     report_path = save_mean_reversion_results(
-        results
+        results,
+        measurement_date=measurement_date,
     )
 
     if paper_engine is None:
@@ -430,13 +457,6 @@ def run_mean_reversion_shadow_scan(
         }
 
     else:
-        if measurement_date is None:
-            measurement_date = (
-                datetime.now()
-                .date()
-                .isoformat()
-            )
-
         try:
             regime_result = (
                 market_regime_provider(
@@ -730,12 +750,50 @@ def run_automatic_eod_cycle(
         try:
             shadow_result = shadow_scan_runner(
                 paper_engine=breakout_52week_engine,
+                measurement_date=current_date,
             )
-        except TypeError as error:
-            if "paper_engine" not in str(error):
-                raise
 
-            shadow_result = shadow_scan_runner()
+        except TypeError as error:
+            error_text = str(
+                error
+            )
+
+            if (
+                "measurement_date"
+                in error_text
+            ):
+                try:
+                    shadow_result = (
+                        shadow_scan_runner(
+                            paper_engine=(
+                                breakout_52week_engine
+                            ),
+                        )
+                    )
+
+                except TypeError as nested_error:
+                    if (
+                        "paper_engine"
+                        not in str(
+                            nested_error
+                        )
+                    ):
+                        raise
+
+                    shadow_result = (
+                        shadow_scan_runner()
+                    )
+
+            elif (
+                "paper_engine"
+                in error_text
+            ):
+                shadow_result = (
+                    shadow_scan_runner()
+                )
+
+            else:
+                raise
 
     except Exception as error:
         shadow_result = {

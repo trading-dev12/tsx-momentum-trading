@@ -67,12 +67,15 @@ def prepare_scan(
     monkeypatch.setattr(
         automatic_eod,
         "scan_mean_reversion",
-        lambda watchlist: raw_results,
+        lambda watchlist, measurement_date=None: raw_results,
     )
 
     saved_results = []
 
-    def fake_save(results):
+    def fake_save(
+        results,
+        measurement_date=None,
+    ):
         saved_results.append(
             results
         )

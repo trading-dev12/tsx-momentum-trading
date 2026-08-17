@@ -13,7 +13,10 @@ from strategies.breakout_52week_strategy import (
 )
 
 
-def scan_52_week_breakouts(watchlist):
+def scan_52_week_breakouts(
+    watchlist,
+    signal_date=None,
+):
     """
     Evaluate every symbol using the 52-week breakout strategy.
 
@@ -24,6 +27,13 @@ def scan_52_week_breakouts(watchlist):
     """
 
     strategy = Breakout52WeekStrategy()
+
+    if signal_date is None:
+        signal_date = (
+            datetime.now()
+            .date()
+            .isoformat()
+        )
 
     results = {
         "ready": [],
@@ -52,7 +62,7 @@ def scan_52_week_breakouts(watchlist):
                 "symbol": symbol,
                 "strategy": "52_WEEK_BREAKOUT",
                 "decision": strategy_result.decision.value,
-                "signal_date": datetime.now().strftime("%Y-%m-%d"),
+                "signal_date": signal_date,
                 "close": quote.get("price", 0),
                 "atr": quote.get("atr", 0),
                 "tmqs": quote.get("tmqs", 0),
@@ -90,7 +100,10 @@ def scan_52_week_breakouts(watchlist):
     return results
 
 
-def save_results(results):
+def save_results(
+    results,
+    signal_date=None,
+):
     folder = "research/52_week_results"
     os.makedirs(folder, exist_ok=True)
 
@@ -104,9 +117,38 @@ def save_results(results):
         print("\nNo 52-week results to save.")
         return None
 
+    if signal_date is None:
+        signal_date = next(
+            (
+                str(
+                    row.get(
+                        "signal_date",
+                        "",
+                    )
+                    or ""
+                ).strip()
+                for row in rows
+                if str(
+                    row.get(
+                        "signal_date",
+                        "",
+                    )
+                    or ""
+                ).strip()
+            ),
+            "",
+        )
+
+    if not signal_date:
+        signal_date = (
+            datetime.now()
+            .date()
+            .isoformat()
+        )
+
     filename = os.path.join(
         folder,
-        datetime.now().strftime("%Y-%m-%d") + ".csv",
+        f"{signal_date}.csv",
     )
 
     fieldnames = [

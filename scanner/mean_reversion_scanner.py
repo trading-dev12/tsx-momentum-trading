@@ -50,7 +50,10 @@ class MeanReversionScanner:
         )
 
 
-def scan_mean_reversion(watchlist):
+def scan_mean_reversion(
+    watchlist,
+    measurement_date=None,
+):
     """
     Evaluate every symbol using the Mean Reversion strategy.
 
@@ -61,7 +64,14 @@ def scan_mean_reversion(watchlist):
     """
 
     scanner = MeanReversionScanner()
-    signal_date = datetime.now().date().isoformat()
+
+    signal_date = (
+        measurement_date
+        or datetime.now()
+        .date()
+        .isoformat()
+    )
+
     results = {
         "ready": [],
         "watch": [],
@@ -164,7 +174,10 @@ def scan_mean_reversion(watchlist):
     return results
 
 
-def save_results(results):
+def save_results(
+    results,
+    measurement_date=None,
+):
     """Save the daily Mean Reversion research scan to CSV."""
 
     folder = "research/mean_reversion_results"
@@ -180,9 +193,38 @@ def save_results(results):
         print("\nNo Mean Reversion results to save.")
         return None
 
+    if measurement_date is None:
+        measurement_date = next(
+            (
+                str(
+                    row.get(
+                        "signal_date",
+                        "",
+                    )
+                    or ""
+                ).strip()
+                for row in rows
+                if str(
+                    row.get(
+                        "signal_date",
+                        "",
+                    )
+                    or ""
+                ).strip()
+            ),
+            "",
+        )
+
+    if not measurement_date:
+        measurement_date = (
+            datetime.now()
+            .date()
+            .isoformat()
+        )
+
     filename = os.path.join(
         folder,
-        datetime.now().strftime("%Y-%m-%d") + ".csv",
+        f"{measurement_date}.csv",
     )
 
     fieldnames = [

@@ -119,7 +119,13 @@ class TradingWorkstation:
         self.refresh_interval_seconds = 300
         self.countdown_seconds = self.refresh_interval_seconds
         self.is_refreshing = False
-        self.refresh_timeout_ms = 240_000
+
+        # A slow scan is not automatically a failed scan.
+        # Yahoo fallback can legitimately take several minutes.
+        self.refresh_slow_warning_ms = 240_000
+        self.refresh_timeout_ms = 600_000
+        self.refresh_slow_warning_active = False
+
         self.refresh_sequence = 0
         self.active_refresh_id = None
         self.latest_quotes = []
@@ -403,6 +409,10 @@ class TradingWorkstation:
 
         startup_session = get_tsx_market_status()
 
+        self.last_market_open_state = bool(
+            startup_session["is_open"]
+        )
+
         if startup_session["is_open"]:
             self.refresh_data()
         else:
@@ -465,6 +475,7 @@ class TradingWorkstation:
 
         self.active_refresh_id = refresh_id
         self.is_refreshing = True
+        self.refresh_slow_warning_active = False
 
         self.write_scanner_health(
             status="REFRESHING",
@@ -485,6 +496,15 @@ class TradingWorkstation:
         )
 
         self.root.after(
+            self.refresh_slow_warning_ms,
+            lambda rid=refresh_id: (
+                self.handle_refresh_slow_warning(
+                    rid
+                )
+            ),
+        )
+
+        self.root.after(
             self.refresh_timeout_ms,
             lambda rid=refresh_id: (
                 self.handle_refresh_timeout(
@@ -501,6 +521,82 @@ class TradingWorkstation:
 
         thread.start()
 
+    def handle_market_session_transition(
+        self,
+        session,
+    ):
+        """
+        Start an immediate scanner refresh when the TSX
+        transitions from closed to open.
+
+        Normal five-minute refresh timing continues after the
+        market-open scan.
+        """
+
+        market_is_open = bool(
+            session.get("is_open")
+        )
+
+        previous_state = getattr(
+            self,
+            "last_market_open_state",
+            market_is_open,
+        )
+
+        self.last_market_open_state = market_is_open
+
+        if (
+            market_is_open
+            and not previous_state
+            and not self.is_refreshing
+        ):
+            logging.info(
+                "TSX market-open transition detected; "
+                "starting immediate scanner refresh"
+            )
+
+            self.refresh_data()
+            return True
+
+        return False
+
+    def handle_refresh_slow_warning(
+        self,
+        refresh_id,
+    ):
+        """
+        Report a slow scanner refresh without discarding it.
+
+        A Yahoo fallback scan may legitimately require more
+        than four minutes. The worker remains authoritative
+        until the separate hard timeout is reached.
+        """
+
+        if (
+            not self.is_refreshing
+            or self.active_refresh_id != refresh_id
+        ):
+            return
+
+        self.refresh_slow_warning_active = True
+
+        logging.warning(
+            (
+                "Scanner refresh %s is taking longer than "
+                "usual after %.1f seconds; worker remains active"
+            ),
+            refresh_id,
+            self.refresh_slow_warning_ms / 1000,
+        )
+
+        self.status_label.config(
+            text=(
+                "Scanner refresh is taking longer than usual. "
+                "Worker remains active and Northstar is "
+                "waiting for completion."
+            )
+        )
+
     def handle_refresh_timeout(self, refresh_id):
         if (
             not self.is_refreshing
@@ -516,6 +612,7 @@ class TradingWorkstation:
 
         self.active_refresh_id = None
         self.is_refreshing = False
+        self.refresh_slow_warning_active = False
         self.countdown_seconds = (
             self.refresh_interval_seconds
         )
@@ -822,6 +919,7 @@ class TradingWorkstation:
             )
 
             self.active_refresh_id = None
+            self.refresh_slow_warning_active = False
 
             self.status_label.config(
                 text=(
@@ -859,6 +957,7 @@ class TradingWorkstation:
             return
 
         self.active_refresh_id = None
+        self.refresh_slow_warning_active = False
         self.show_error(error)
 
     def run_position_monitor_safely(self):
@@ -3257,6 +3356,11 @@ class TradingWorkstation:
             heartbeat = now.strftime("%H:%M:%S")
 
             session = self.update_market_session_status()
+
+            self.handle_market_session_transition(
+                session
+            )
+
             self.update_system_health()
             self.check_morning_health_telegram(
                 now,
@@ -3365,10 +3469,21 @@ class TradingWorkstation:
             )
 
             if self.is_refreshing:
-                status = (
-                    f"{diagnostics} | "
-                    "Refreshing scanner data..."
-                )
+                if getattr(
+                    self,
+                    "refresh_slow_warning_active",
+                    False,
+                ):
+                    status = (
+                        f"{diagnostics} | "
+                        "Scanner refresh is taking longer "
+                        "than usual; worker remains active."
+                    )
+                else:
+                    status = (
+                        f"{diagnostics} | "
+                        "Refreshing scanner data..."
+                    )
 
             elif not session["is_open"]:
                 self.countdown_seconds = (

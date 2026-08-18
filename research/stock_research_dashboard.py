@@ -32,6 +32,9 @@ from research.relative_strength import (
 from research.volatility_regime import (
     calculate_volatility_regime,
 )
+from research.oversold_context import (
+    calculate_oversold_context,
+)
 
 
 STOCK_RESEARCH_IBKR_CLIENT_ID = 30
@@ -241,6 +244,9 @@ def build_stock_research_report(
     volatility_provider=(
         calculate_volatility_regime
     ),
+    oversold_provider=(
+        calculate_oversold_context
+    ),
 ):
     """
     Build one read-only Northstar research report.
@@ -297,6 +303,13 @@ def build_stock_research_report(
         measurement_date,
     )
 
+    oversold = _run_component(
+        "Oversold / pullback context",
+        oversold_provider,
+        normalized_symbol,
+        measurement_date,
+    )
+
     components = {
         "quote": quote,
         "market_regime": (
@@ -309,6 +322,7 @@ def build_stock_research_report(
             moving_average
         ),
         "volatility": volatility,
+        "oversold": oversold,
     }
 
     available_count = sum(

@@ -274,6 +274,11 @@ def render_stock_research_page(
             {},
         )
 
+        oversold = report.get(
+            "oversold",
+            {},
+        )
+
         results_html = f"""
         <section class="section">
             <div class="symbol-row">
@@ -497,6 +502,224 @@ def render_stock_research_page(
             </div>
 
             {_status_message(moving)}
+        </section>
+
+        <section class="section">
+            <h2>
+                Pullback / Oversold Context
+            </h2>
+
+            <div class="subtitle">
+                Technical condition only - not a BUY signal.
+            </div>
+
+            <div
+                class="grid"
+                style="margin-top: 14px;"
+            >
+                {_metric(
+                    "Overall Condition",
+                    _text(
+                        oversold.get(
+                            "overall_context"
+                        )
+                    ).replace(
+                        "_",
+                        " ",
+                    ),
+                )}
+
+                {_metric(
+                    "Recovery",
+                    _text(
+                        oversold.get(
+                            "recovery_state"
+                        )
+                    ).replace(
+                        "_",
+                        " ",
+                    ),
+                )}
+
+                {_metric(
+                    "RSI 14",
+                    (
+                        _number(
+                            oversold.get(
+                                "rsi_14"
+                            ),
+                            1,
+                        )
+                        + " | "
+                        + _text(
+                            oversold.get(
+                                "rsi_state"
+                            )
+                        ).replace(
+                            "_",
+                            " ",
+                        )
+                    ),
+                )}
+
+                {_metric(
+                    "Stoch RSI",
+                    (
+                        _number(
+                            oversold.get(
+                                "stoch_rsi_14"
+                            ),
+                            1,
+                        )
+                        + " | "
+                        + _text(
+                            oversold.get(
+                                "stoch_rsi_state"
+                            )
+                        ).replace(
+                            "_",
+                            " ",
+                        )
+                    ),
+                )}
+
+                {_metric(
+                    "Money Flow Index",
+                    (
+                        _number(
+                            oversold.get(
+                                "mfi_14"
+                            ),
+                            1,
+                        )
+                        + " | "
+                        + _text(
+                            oversold.get(
+                                "mfi_state"
+                            )
+                        ).replace(
+                            "_",
+                            " ",
+                        )
+                    ),
+                )}
+
+                {_metric(
+                    "Bollinger %B",
+                    (
+                        _number(
+                            oversold.get(
+                                "bollinger_percent_b"
+                            ),
+                            2,
+                        )
+                        + " | "
+                        + _text(
+                            oversold.get(
+                                "bollinger_state"
+                            )
+                        ).replace(
+                            "_",
+                            " ",
+                        )
+                    ),
+                )}
+
+                {_metric(
+                    "Distance From SMA20",
+                    (
+                        _number(
+                            oversold.get(
+                                "atr_distance_from_sma20"
+                            ),
+                            2,
+                            " ATR",
+                        )
+                        + " | "
+                        + _text(
+                            oversold.get(
+                                "atr_pullback_state"
+                            )
+                        ).replace(
+                            "_",
+                            " ",
+                        )
+                    ),
+                )}
+
+                {_metric(
+                    "52W Drawdown",
+                    _number(
+                        oversold.get(
+                            "drawdown_from_52week_high_percent"
+                        ),
+                        1,
+                        "%",
+                    ),
+                )}
+
+                {_metric(
+                    "52W Position",
+                    _number(
+                        oversold.get(
+                            "week_52_position_percent"
+                        ),
+                        1,
+                        "%",
+                    ),
+                )}
+
+                {_metric(
+                    "Above 52W Low",
+                    _number(
+                        oversold.get(
+                            "distance_from_52week_low_percent"
+                        ),
+                        1,
+                        "%",
+                    ),
+                )}
+
+                {_metric(
+                    "Oversold Flags",
+                    (
+                        _number(
+                            oversold.get(
+                                "oversold_signal_count"
+                            ),
+                            0,
+                        )
+                        + " / 5"
+                    ),
+                )}
+
+                {_metric(
+                    "Extension Flags",
+                    (
+                        _number(
+                            oversold.get(
+                                "extension_signal_count"
+                            ),
+                            0,
+                        )
+                        + " / 5"
+                    ),
+                )}
+
+                {_metric(
+                    "Source",
+                    _text(
+                        oversold.get(
+                            "data_source"
+                        )
+                    ).replace(
+                        "_",
+                        " ",
+                    ),
+                )}
+            </div>
+
+            {_status_message(oversold)}
         </section>
 
         <section class="section">

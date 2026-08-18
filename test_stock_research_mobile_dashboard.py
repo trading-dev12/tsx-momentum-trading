@@ -46,6 +46,32 @@ def sample_report():
             "volatility_percentile_252": 48.0,
             "volatility_regime": "NORMAL",
         },
+        "oversold": {
+            "status": "AVAILABLE",
+            "data_source": "IBKR_TRADES",
+            "overall_context": "PULLBACK",
+            "recovery_state": (
+                "PULLBACK_NOT_OVERSOLD"
+            ),
+            "rsi_14": 45.6,
+            "rsi_state": "NEUTRAL",
+            "stoch_rsi_14": 0.0,
+            "stoch_rsi_state": "OVERSOLD",
+            "mfi_14": 50.7,
+            "mfi_state": "NEUTRAL",
+            "bollinger_percent_b": 0.32,
+            "bollinger_state": (
+                "INSIDE_BANDS"
+            ),
+            "atr_distance_from_sma20": -0.64,
+            "atr_pullback_state": "NORMAL",
+            "drawdown_from_52week_high_percent": 10.7,
+            "distance_from_52week_low_percent": 13.0,
+            "week_52_position_percent": 49.0,
+            "oversold_signal_count": 1,
+            "extension_signal_count": 0,
+            "research_only": True,
+        },
     }
 
 
@@ -119,6 +145,23 @@ def test_stock_research_page_renders_report():
     assert "RS vs XIC" in html
     assert "NORMAL" in html
     assert "$150.00" in html
+    assert (
+        "Pullback / Oversold Context"
+        in html
+    )
+    assert "PULLBACK" in html
+    assert "PULLBACK NOT OVERSOLD" in html
+    assert "RSI 14" in html
+    assert "45.6" in html
+    assert "Stoch RSI" in html
+    assert "OVERSOLD" in html
+    assert "52W Drawdown" in html
+    assert "10.7%" in html
+    assert "Oversold Flags" in html
+    assert "1 / 5" in html
+    assert "Extension Flags" in html
+    assert "0 / 5" in html
+    assert "not a BUY signal" in html
 
 
 def test_flask_stock_research_route(

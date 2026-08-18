@@ -143,6 +143,28 @@ def test_arbitrary_symbol_runs_all_research_components():
             ),
         }
 
+    def oversold(
+        symbol,
+        date,
+    ):
+        calls.append(
+            (
+                "oversold",
+                symbol,
+                date,
+            )
+        )
+
+        return {
+            "status": "AVAILABLE",
+            "overall_context": "PULLBACK",
+            "recovery_state": (
+                "PULLBACK_NOT_OVERSOLD"
+            ),
+            "rsi_14": 45.6,
+            "research_only": True,
+        }
+
     report = (
         build_stock_research_report(
             "DOL",
@@ -161,6 +183,9 @@ def test_arbitrary_symbol_runs_all_research_components():
             ),
             volatility_provider=(
                 volatility
+            ),
+            oversold_provider=(
+                oversold
             ),
         )
     )
@@ -189,7 +214,7 @@ def test_arbitrary_symbol_runs_all_research_components():
         report[
             "available_components"
         ]
-        == 5
+        == 6
     )
 
     assert (
@@ -226,6 +251,20 @@ def test_arbitrary_symbol_runs_all_research_components():
     )
 
     assert (
+        report[
+            "oversold"
+        ]["overall_context"]
+        == "PULLBACK"
+    )
+
+    assert (
+        report[
+            "oversold"
+        ]["research_only"]
+        is True
+    )
+
+    assert (
         (
             "quote",
             "DOL.TO",
@@ -236,6 +275,15 @@ def test_arbitrary_symbol_runs_all_research_components():
     assert (
         (
             "relative",
+            "DOL.TO",
+            "2026-08-17",
+        )
+        in calls
+    )
+
+    assert (
+        (
+            "oversold",
             "DOL.TO",
             "2026-08-17",
         )
@@ -286,6 +334,9 @@ def test_one_failed_component_does_not_break_report():
             volatility_provider=(
                 research
             ),
+            oversold_provider=(
+                research
+            ),
         )
     )
 
@@ -310,7 +361,7 @@ def test_one_failed_component_does_not_break_report():
         report[
             "available_components"
         ]
-        == 4
+        == 5
     )
 
 
@@ -337,6 +388,9 @@ def test_research_report_has_no_trading_actions():
                 available
             ),
             volatility_provider=(
+                available
+            ),
+            oversold_provider=(
                 available
             ),
         )

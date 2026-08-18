@@ -35,6 +35,12 @@ from research.volatility_regime import (
 from research.oversold_context import (
     calculate_oversold_context,
 )
+from research.fundamental_valuation import (
+    calculate_fundamental_valuation,
+)
+from research.fundamental_health import (
+    calculate_fundamental_health,
+)
 
 
 STOCK_RESEARCH_IBKR_CLIENT_ID = 30
@@ -247,6 +253,12 @@ def build_stock_research_report(
     oversold_provider=(
         calculate_oversold_context
     ),
+    valuation_provider=(
+        calculate_fundamental_valuation
+    ),
+    fundamental_health_provider=(
+        calculate_fundamental_health
+    ),
 ):
     """
     Build one read-only Northstar research report.
@@ -310,6 +322,18 @@ def build_stock_research_report(
         measurement_date,
     )
 
+    valuation = _run_component(
+        "Fundamental valuation",
+        valuation_provider,
+        normalized_symbol,
+    )
+
+    fundamental_health = _run_component(
+        "Fundamental health",
+        fundamental_health_provider,
+        normalized_symbol,
+    )
+
     components = {
         "quote": quote,
         "market_regime": (
@@ -323,6 +347,10 @@ def build_stock_research_report(
         ),
         "volatility": volatility,
         "oversold": oversold,
+        "valuation": valuation,
+        "fundamental_health": (
+            fundamental_health
+        ),
     }
 
     available_count = sum(

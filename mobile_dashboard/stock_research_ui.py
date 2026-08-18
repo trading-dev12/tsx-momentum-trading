@@ -169,6 +169,113 @@ def _money(value):
         return "--"
 
 
+def _context_text(
+    value,
+):
+    return (
+        _text(value)
+        .replace(
+            "_",
+            " ",
+        )
+    )
+
+
+def _valuation_display(
+    metric,
+):
+    if not isinstance(
+        metric,
+        dict,
+    ):
+        return "--"
+
+    current = _number(
+        metric.get(
+            "current"
+        ),
+        2,
+    )
+
+    if current == "--":
+        return "--"
+
+    parts = [
+        f"{current}x"
+    ]
+
+    median = _number(
+        metric.get(
+            "recent_median"
+        ),
+        2,
+    )
+
+    if median != "--":
+        parts.append(
+            f"Med {median}x"
+        )
+
+    difference = _number(
+        metric.get(
+            "vs_recent_median_percent"
+        ),
+        1,
+        "%",
+    )
+
+    if difference != "--":
+        parts.append(
+            difference
+        )
+
+    context = _context_text(
+        metric.get(
+            "context"
+        )
+    )
+
+    if context != "--":
+        parts.append(
+            context
+        )
+
+    return " | ".join(
+        parts
+    )
+
+
+def _trend_display(
+    trend,
+):
+    if not isinstance(
+        trend,
+        dict,
+    ):
+        return "--"
+
+    change = _number(
+        trend.get(
+            "change_percent"
+        ),
+        1,
+        "%",
+    )
+
+    direction = _context_text(
+        trend.get(
+            "direction"
+        )
+    )
+
+    if change == "--":
+        return direction
+
+    return (
+        f"{change} | {direction}"
+    )
+
+
 def _metric(
     label,
     value,
@@ -277,6 +384,39 @@ def render_stock_research_page(
         oversold = report.get(
             "oversold",
             {},
+        )
+
+        valuation = report.get(
+            "valuation",
+            {},
+        )
+
+        valuation_metrics = (
+            valuation.get(
+                "metrics",
+                {},
+            )
+        )
+
+        fundamental_health = (
+            report.get(
+                "fundamental_health",
+                {},
+            )
+        )
+
+        fundamental_current = (
+            fundamental_health.get(
+                "current",
+                {},
+            )
+        )
+
+        fundamental_trends = (
+            fundamental_health.get(
+                "annual_trends",
+                {},
+            )
         )
 
         results_html = f"""
@@ -720,6 +860,362 @@ def render_stock_research_page(
             </div>
 
             {_status_message(oversold)}
+        </section>
+
+        <section class="section">
+            <h2>Fundamental Valuation</h2>
+
+            <div class="subtitle">
+                Current valuation compared with the stock's
+                recent Yahoo valuation snapshots.
+                Lower multiples are cheaper relative to its
+                own recent history. Research only.
+            </div>
+
+            <div
+                class="grid"
+                style="margin-top: 14px;"
+            >
+                {_metric(
+                    "Valuation Context",
+                    _context_text(
+                        valuation.get(
+                            "valuation_context"
+                        )
+                    ),
+                )}
+
+                {_metric(
+                    "History Snapshots",
+                    _number(
+                        valuation.get(
+                            "history_snapshot_count"
+                        ),
+                        0,
+                    ),
+                )}
+
+                {_metric(
+                    "Below / Near / Above",
+                    (
+                        _number(
+                            valuation.get(
+                                "below_recent_count"
+                            ),
+                            0,
+                        )
+                        + " / "
+                        + _number(
+                            valuation.get(
+                                "near_recent_count"
+                            ),
+                            0,
+                        )
+                        + " / "
+                        + _number(
+                            valuation.get(
+                                "above_recent_count"
+                            ),
+                            0,
+                        )
+                    ),
+                )}
+
+                {_metric(
+                    "Trailing P/E",
+                    _valuation_display(
+                        valuation_metrics.get(
+                            "trailing_pe"
+                        )
+                    ),
+                )}
+
+                {_metric(
+                    "Forward P/E",
+                    _valuation_display(
+                        valuation_metrics.get(
+                            "forward_pe"
+                        )
+                    ),
+                )}
+
+                {_metric(
+                    "Price / Sales",
+                    _valuation_display(
+                        valuation_metrics.get(
+                            "price_sales"
+                        )
+                    ),
+                )}
+
+                {_metric(
+                    "Price / Book",
+                    _valuation_display(
+                        valuation_metrics.get(
+                            "price_book"
+                        )
+                    ),
+                )}
+
+                {_metric(
+                    "EV / Revenue",
+                    _valuation_display(
+                        valuation_metrics.get(
+                            "ev_revenue"
+                        )
+                    ),
+                )}
+
+                {_metric(
+                    "EV / EBITDA",
+                    _valuation_display(
+                        valuation_metrics.get(
+                            "ev_ebitda"
+                        )
+                    ),
+                )}
+
+                {_metric(
+                    "Source",
+                    "YAHOO VALUATION",
+                )}
+            </div>
+
+            {_status_message(valuation)}
+        </section>
+
+        <section class="section">
+            <h2>
+                Fundamental Health / Value-Trap Check
+            </h2>
+
+            <div class="subtitle">
+                Helps distinguish a supported valuation
+                discount from apparent cheapness occurring
+                alongside weakening business fundamentals.
+                This is not a BUY signal.
+            </div>
+
+            <div
+                class="grid"
+                style="margin-top: 14px;"
+            >
+                {_metric(
+                    "Fundamental Context",
+                    _context_text(
+                        fundamental_health.get(
+                            "fundamental_context"
+                        )
+                    ),
+                )}
+
+                {_metric(
+                    "Financial Base",
+                    _context_text(
+                        fundamental_health.get(
+                            "financial_base"
+                        )
+                    ),
+                )}
+
+                {_metric(
+                    "Trend Context",
+                    _context_text(
+                        fundamental_health.get(
+                            "trend_context"
+                        )
+                    ),
+                )}
+
+                {_metric(
+                    "FCF Yield",
+                    _number(
+                        fundamental_current.get(
+                            "fcf_yield_percent"
+                        ),
+                        2,
+                        "%",
+                    ),
+                )}
+
+                {_metric(
+                    "Dividend Yield",
+                    _number(
+                        fundamental_current.get(
+                            "dividend_yield_percent"
+                        ),
+                        2,
+                        "%",
+                    ),
+                )}
+
+                {_metric(
+                    "Payout Ratio",
+                    (
+                        _number(
+                            fundamental_current.get(
+                                "payout_ratio_percent"
+                            ),
+                            1,
+                            "%",
+                        )
+                        + " | "
+                        + _context_text(
+                            fundamental_current.get(
+                                "payout_context"
+                            )
+                        )
+                    ),
+                )}
+
+                {_metric(
+                    "Net Debt / EBITDA",
+                    (
+                        _number(
+                            fundamental_current.get(
+                                "net_debt_to_ebitda"
+                            ),
+                            2,
+                            "x",
+                        )
+                        + " | "
+                        + _context_text(
+                            fundamental_current.get(
+                                "leverage_context"
+                            )
+                        )
+                    ),
+                )}
+
+                {_metric(
+                    "Latest Revenue Growth",
+                    _number(
+                        fundamental_current.get(
+                            "revenue_growth_percent"
+                        ),
+                        1,
+                        "%",
+                    ),
+                )}
+
+                {_metric(
+                    "Latest Earnings Growth",
+                    _number(
+                        fundamental_current.get(
+                            "earnings_growth_percent"
+                        ),
+                        1,
+                        "%",
+                    ),
+                )}
+
+                {_metric(
+                    "ROE",
+                    _number(
+                        fundamental_current.get(
+                            "return_on_equity_percent"
+                        ),
+                        1,
+                        "%",
+                    ),
+                )}
+
+                {_metric(
+                    "ROA",
+                    _number(
+                        fundamental_current.get(
+                            "return_on_assets_percent"
+                        ),
+                        1,
+                        "%",
+                    ),
+                )}
+
+                {_metric(
+                    "Profit Margin",
+                    _number(
+                        fundamental_current.get(
+                            "profit_margin_percent"
+                        ),
+                        1,
+                        "%",
+                    ),
+                )}
+
+                {_metric(
+                    "Operating Margin",
+                    _number(
+                        fundamental_current.get(
+                            "operating_margin_percent"
+                        ),
+                        1,
+                        "%",
+                    ),
+                )}
+
+                {_metric(
+                    "Annual Revenue Trend",
+                    _trend_display(
+                        fundamental_trends.get(
+                            "revenue"
+                        )
+                    ),
+                )}
+
+                {_metric(
+                    "Annual EBITDA Trend",
+                    _trend_display(
+                        fundamental_trends.get(
+                            "ebitda"
+                        )
+                    ),
+                )}
+
+                {_metric(
+                    "Annual Net Income Trend",
+                    _trend_display(
+                        fundamental_trends.get(
+                            "net_income"
+                        )
+                    ),
+                )}
+
+                {_metric(
+                    "Annual Operating Cash Flow Trend",
+                    _trend_display(
+                        fundamental_trends.get(
+                            "operating_cash_flow"
+                        )
+                    ),
+                )}
+
+                {_metric(
+                    "Annual Free Cash Flow Trend",
+                    _trend_display(
+                        fundamental_trends.get(
+                            "free_cash_flow"
+                        )
+                    ),
+                )}
+
+                {_metric(
+                    "Annual Debt Trend",
+                    _trend_display(
+                        fundamental_trends.get(
+                            "debt"
+                        )
+                    ),
+                )}
+
+                {_metric(
+                    "Source",
+                    "YAHOO FUNDAMENTALS",
+                )}
+            </div>
+
+            {_status_message(
+                fundamental_health
+            )}
         </section>
 
         <section class="section">

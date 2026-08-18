@@ -72,6 +72,126 @@ def sample_report():
             "extension_signal_count": 0,
             "research_only": True,
         },
+        "valuation": {
+            "status": "AVAILABLE",
+            "data_source": (
+                "YAHOO_VALUATION_MEASURES"
+            ),
+            "valuation_context": "MIXED",
+            "history_snapshot_count": 5,
+            "below_recent_count": 2,
+            "near_recent_count": 1,
+            "above_recent_count": 3,
+            "metrics": {
+                "trailing_pe": {
+                    "current": 11.98,
+                    "recent_median": 13.42,
+                    "vs_recent_median_percent": -10.8,
+                    "context": (
+                        "BELOW_RECENT_MEDIAN"
+                    ),
+                },
+                "forward_pe": {
+                    "current": 10.15,
+                    "recent_median": 14.60,
+                    "vs_recent_median_percent": -30.5,
+                    "context": (
+                        "WELL_BELOW_RECENT_MEDIAN"
+                    ),
+                },
+                "price_sales": {
+                    "current": 1.37,
+                    "recent_median": 0.77,
+                    "vs_recent_median_percent": 78.7,
+                    "context": (
+                        "WELL_ABOVE_RECENT_MEDIAN"
+                    ),
+                },
+                "price_book": {
+                    "current": 2.32,
+                    "recent_median": 1.55,
+                    "vs_recent_median_percent": 50.2,
+                    "context": (
+                        "WELL_ABOVE_RECENT_MEDIAN"
+                    ),
+                },
+                "ev_revenue": {
+                    "current": 1.52,
+                    "recent_median": 0.94,
+                    "vs_recent_median_percent": 60.6,
+                    "context": (
+                        "WELL_ABOVE_RECENT_MEDIAN"
+                    ),
+                },
+                "ev_ebitda": {
+                    "current": 5.96,
+                    "recent_median": 5.58,
+                    "vs_recent_median_percent": 6.8,
+                    "context": (
+                        "NEAR_RECENT_MEDIAN"
+                    ),
+                },
+            },
+            "research_only": True,
+        },
+        "fundamental_health": {
+            "status": "AVAILABLE",
+            "data_source": (
+                "YAHOO_INFO_AND_STATEMENTS"
+            ),
+            "fundamental_context": (
+                "HEALTHY_WITH_MIXED_TRENDS"
+            ),
+            "financial_base": (
+                "FINANCIALLY_SOUND"
+            ),
+            "trend_context": (
+                "MIXED_TRENDS"
+            ),
+            "current": {
+                "fcf_yield_percent": 6.66,
+                "dividend_yield_percent": 2.04,
+                "payout_ratio_percent": 22.78,
+                "payout_context": "LOW_PAYOUT",
+                "net_debt_to_ebitda": 0.59,
+                "leverage_context": (
+                    "LOW_NET_DEBT"
+                ),
+                "revenue_growth_percent": 41.5,
+                "earnings_growth_percent": 239.1,
+                "return_on_equity_percent": 20.9,
+                "return_on_assets_percent": 9.2,
+                "profit_margin_percent": 12.4,
+                "operating_margin_percent": 23.8,
+            },
+            "annual_trends": {
+                "revenue": {
+                    "change_percent": -8.62,
+                    "direction": "DECLINING",
+                },
+                "ebitda": {
+                    "change_percent": 7.71,
+                    "direction": "IMPROVING",
+                },
+                "net_income": {
+                    "change_percent": 25.08,
+                    "direction": "IMPROVING",
+                },
+                "operating_cash_flow": {
+                    "change_percent": -10.9,
+                    "direction": "DECLINING",
+                },
+                "free_cash_flow": {
+                    "change_percent": -21.3,
+                    "direction": "DECLINING",
+                },
+                "debt": {
+                    "change_percent": 33.6,
+                    "direction": "INCREASING",
+                },
+            },
+            "research_only": True,
+        },
     }
 
 
@@ -162,6 +282,25 @@ def test_stock_research_page_renders_report():
     assert "Extension Flags" in html
     assert "0 / 5" in html
     assert "not a BUY signal" in html
+
+    assert "Fundamental Valuation" in html
+    assert "MIXED" in html
+    assert "Trailing P/E" in html
+    assert "11.98x" in html
+    assert "Med 13.42x" in html
+    assert "Fundamental Health / Value-Trap Check" in html
+    assert "HEALTHY WITH MIXED TRENDS" in html
+    assert "FINANCIALLY SOUND" in html
+    assert "6.66%" in html
+    assert "0.59x" in html
+    assert "Annual Revenue Trend" in html
+    assert "DECLINING" in html
+    assert "Annual Debt Trend" in html
+    assert "INCREASING" in html
+    assert "Latest Revenue Growth" in html
+    assert "Latest Earnings Growth" in html
+    assert "YAHOO VALUATION" in html
+    assert "YAHOO FUNDAMENTALS" in html
 
 
 def test_flask_stock_research_route(

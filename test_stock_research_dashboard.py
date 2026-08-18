@@ -165,6 +165,36 @@ def test_arbitrary_symbol_runs_all_research_components():
             "research_only": True,
         }
 
+    def valuation(symbol):
+        calls.append(
+            (
+                "valuation",
+                symbol,
+            )
+        )
+
+        return {
+            "status": "AVAILABLE",
+            "valuation_context": "MIXED",
+            "research_only": True,
+        }
+
+    def fundamental_health(symbol):
+        calls.append(
+            (
+                "fundamental_health",
+                symbol,
+            )
+        )
+
+        return {
+            "status": "AVAILABLE",
+            "fundamental_context": (
+                "HEALTHY_WITH_MIXED_TRENDS"
+            ),
+            "research_only": True,
+        }
+
     report = (
         build_stock_research_report(
             "DOL",
@@ -186,6 +216,12 @@ def test_arbitrary_symbol_runs_all_research_components():
             ),
             oversold_provider=(
                 oversold
+            ),
+            valuation_provider=(
+                valuation
+            ),
+            fundamental_health_provider=(
+                fundamental_health
             ),
         )
     )
@@ -214,7 +250,7 @@ def test_arbitrary_symbol_runs_all_research_components():
         report[
             "available_components"
         ]
-        == 6
+        == 8
     )
 
     assert (
@@ -265,6 +301,20 @@ def test_arbitrary_symbol_runs_all_research_components():
     )
 
     assert (
+        report[
+            "valuation"
+        ]["valuation_context"]
+        == "MIXED"
+    )
+
+    assert (
+        report[
+            "fundamental_health"
+        ]["fundamental_context"]
+        == "HEALTHY_WITH_MIXED_TRENDS"
+    )
+
+    assert (
         (
             "quote",
             "DOL.TO",
@@ -290,6 +340,22 @@ def test_arbitrary_symbol_runs_all_research_components():
         in calls
     )
 
+    assert (
+        (
+            "valuation",
+            "DOL.TO",
+        )
+        in calls
+    )
+
+    assert (
+        (
+            "fundamental_health",
+            "DOL.TO",
+        )
+        in calls
+    )
+
 
 def test_one_failed_component_does_not_break_report():
     def broken_quote(
@@ -308,6 +374,13 @@ def test_one_failed_component_does_not_break_report():
     def research(
         symbol,
         date,
+    ):
+        return {
+            "status": "AVAILABLE",
+        }
+
+    def research_symbol_only(
+        symbol,
     ):
         return {
             "status": "AVAILABLE",
@@ -337,6 +410,12 @@ def test_one_failed_component_does_not_break_report():
             oversold_provider=(
                 research
             ),
+            valuation_provider=(
+                research_symbol_only
+            ),
+            fundamental_health_provider=(
+                research_symbol_only
+            ),
         )
     )
 
@@ -361,7 +440,7 @@ def test_one_failed_component_does_not_break_report():
         report[
             "available_components"
         ]
-        == 5
+        == 7
     )
 
 
@@ -391,6 +470,12 @@ def test_research_report_has_no_trading_actions():
                 available
             ),
             oversold_provider=(
+                available
+            ),
+            valuation_provider=(
+                available
+            ),
+            fundamental_health_provider=(
                 available
             ),
         )

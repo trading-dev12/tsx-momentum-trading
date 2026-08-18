@@ -29,6 +29,13 @@ from mobile_dashboard.edge_research_page import (
 from mobile_dashboard.edge_research_shortcut import (
     inject_edge_research_shortcut,
 )
+from research.stock_research_dashboard import (
+    build_stock_research_report,
+)
+from mobile_dashboard.stock_research_ui import (
+    inject_stock_research_form,
+    render_stock_research_page,
+)
 
 
 app = Flask(__name__)
@@ -150,6 +157,74 @@ def add_edge_research_shortcut_to_dashboard(
 
     return response
 
+
+@app.after_request
+def add_stock_research_form_to_dashboard(
+    response,
+):
+    """
+    Add the read-only stock research form to the main dashboard.
+    """
+
+    if request.path != "/":
+        return response
+
+    if response.mimetype != "text/html":
+        return response
+
+    html = response.get_data(
+        as_text=True
+    )
+
+    updated_html = (
+        inject_stock_research_form(
+            html
+        )
+    )
+
+    if updated_html != html:
+        response.set_data(
+            updated_html
+        )
+
+    return response
+
+
+@app.get("/stock-research")
+def stock_research_dashboard():
+    """
+    Run read-only research for one arbitrary TSX ticker.
+    """
+
+    symbol = request.args.get(
+        "symbol",
+        "",
+    )
+
+    if not str(symbol).strip():
+        return render_stock_research_page()
+
+    try:
+        report = (
+            build_stock_research_report(
+                symbol
+            )
+        )
+
+    except ValueError as error:
+        return (
+            render_stock_research_page(
+                report=None,
+                query=symbol,
+                error=str(error),
+            ),
+            400,
+        )
+
+    return render_stock_research_page(
+        report=report,
+        query=symbol,
+    )
 
 @app.get("/edge-research")
 def edge_research_dashboard():

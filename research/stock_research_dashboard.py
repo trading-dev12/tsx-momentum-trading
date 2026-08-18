@@ -73,10 +73,13 @@ def normalize_tsx_symbol(symbol):
 
 def load_live_quote(symbol):
     """
-    Retrieve an observational IBKR quote.
+    Retrieve and sanitize an observational IBKR quote.
 
-    A dedicated client ID keeps on-demand research separate
-    from Northstar's trading/scanner connections.
+    IBKR may return -1 for unavailable market-data fields.
+    Those sentinel values are never displayed as real prices.
+
+    This normalization is research-only and does not alter
+    Northstar's scanner or execution market-data provider.
     """
 
     provider = IBKRDataProvider(
@@ -86,21 +89,83 @@ def load_live_quote(symbol):
     )
 
     try:
-        result = provider.get_quote(
-            symbol
-        )
-
         result = dict(
-            result
+            provider.get_quote(
+                symbol
+            )
         )
 
-        result["status"] = (
-            "AVAILABLE"
+        def usable_price(value):
+            try:
+                number = float(
+                    value
+                )
+            except (
+                TypeError,
+                ValueError,
+            ):
+                return None
+
+            if number <= 0:
+                return None
+
+            return number
+
+        last = usable_price(
+            result.get("last")
         )
 
-        result.setdefault(
-            "reason",
-            "",
+        bid = usable_price(
+            result.get("bid")
+        )
+
+        ask = usable_price(
+            result.get("ask")
+        )
+
+        close = usable_price(
+            result.get("close")
+        )
+
+        if last is not None:
+            price = last
+            price_source = "LAST"
+
+        elif (
+            bid is not None
+            and ask is not None
+        ):
+            price = (
+                bid + ask
+            ) / 2.0
+
+            price_source = (
+                "MIDPOINT"
+            )
+
+        elif close is not None:
+            price = close
+            price_source = "CLOSE"
+
+        else:
+            raise ValueError(
+                "IBKR returned no usable "
+                f"price for {symbol}."
+            )
+
+        result.update(
+            {
+                "price": price,
+                "price_source": (
+                    price_source
+                ),
+                "last": last,
+                "bid": bid,
+                "ask": ask,
+                "close": close,
+                "status": "AVAILABLE",
+                "reason": "",
+            }
         )
 
         return result

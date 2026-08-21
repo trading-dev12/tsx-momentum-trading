@@ -8,6 +8,7 @@ target, or maximum holding-period rules are triggered.
 from datetime import datetime, timedelta
 from core.market_hours import (
     TORONTO_TIMEZONE,
+    get_tsx_market_close_time,
     is_tsx_trading_day,
 )
 
@@ -39,7 +40,12 @@ def count_trading_days(entry_date, current_date):
     return trading_days
 
 
-def check_exit(position, current_price, current_date):
+def check_exit(
+    position,
+    current_price,
+    current_date,
+    current_datetime=None,
+):
     """
     Check whether an open position should be closed.
 
@@ -48,6 +54,15 @@ def check_exit(position, current_price, current_date):
     1. Stop loss
     2. Profit target
     3. Maximum holding period
+
+    The entry session counts as Day 1.
+
+    On the exact maximum-hold day, stop and target monitoring
+    remain active through the full trading session. A time exit
+    becomes eligible only at the TSX close.
+
+    Positions already beyond their maximum holding period are
+    immediately eligible for a recovery time exit.
     """
 
     if current_price <= position["stop_price"]:
@@ -66,16 +81,86 @@ def check_exit(position, current_price, current_date):
             "exit_reason": "Target hit",
         }
 
-    entry_date = position.get("entry_date")
-    max_hold_days = position.get("max_hold_days", 10)
+    entry_date = position.get(
+        "entry_date"
+    )
+
+    max_hold_days = int(
+        position.get(
+            "max_hold_days",
+            10,
+        )
+        or 10
+    )
 
     if entry_date:
-        trading_days_held = count_trading_days(
-            entry_date,
-            current_date,
+        trading_days_held = (
+            count_trading_days(
+                entry_date,
+                current_date,
+            )
         )
 
-        if trading_days_held >= max_hold_days:
+        time_exit_due = (
+            trading_days_held
+            >= max_hold_days
+        )
+
+        if (
+            time_exit_due
+            and trading_days_held
+            == max_hold_days
+            and current_datetime is not None
+        ):
+            if current_datetime.tzinfo is None:
+                current_datetime = (
+                    current_datetime.replace(
+                        tzinfo=TORONTO_TIMEZONE
+                    )
+                )
+            else:
+                current_datetime = (
+                    current_datetime.astimezone(
+                        TORONTO_TIMEZONE
+                    )
+                )
+
+            trading_date = (
+                datetime.strptime(
+                    current_date,
+                    "%Y-%m-%d",
+                ).date()
+            )
+
+            market_close_time = (
+                get_tsx_market_close_time(
+                    trading_date
+                )
+            )
+
+            monitor_date = (
+                current_datetime.date()
+            )
+
+            monitor_time = (
+                current_datetime.time()
+                .replace(
+                    tzinfo=None
+                )
+            )
+
+            if (
+                monitor_date < trading_date
+                or (
+                    monitor_date
+                    == trading_date
+                    and monitor_time
+                    < market_close_time
+                )
+            ):
+                time_exit_due = False
+
+        if time_exit_due:
             return {
                 "exit": True,
                 "exit_price": current_price,
@@ -141,6 +226,7 @@ def monitor_positions(
             position,
             current_price,
             current_date,
+            current_datetime=current_datetime,
         )
         print(
             f"{symbol}: exit={exit_signal['exit']} "

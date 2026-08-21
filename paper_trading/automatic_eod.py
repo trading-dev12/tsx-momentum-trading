@@ -50,6 +50,9 @@ from research.mean_reversion_guard_research import (
 from strategies.mean_reversion_market_guard import (
     build_guarded_mean_reversion_queue_results,
 )
+from paper_trading.eod_time_exit import (
+    run_eod_time_exits,
+)
 from paper_trading.trading_pipeline_validator import (
     run_validation,
     save_validation_report,
@@ -720,6 +723,7 @@ def run_automatic_eod_cycle(
     candidate_history_runner=None,
     momentum_research_saver=None,
     forward_outcome_runner=None,
+    time_exit_runner=run_eod_time_exits,
 ):
     """
     Run one automatic EOD cycle when eligible.
@@ -748,6 +752,36 @@ def run_automatic_eod_cycle(
             ),
         }
     
+    strategy_engines = {
+        "momentum": paper_engine,
+        "52_week_breakout": (
+            breakout_52week_engine
+        ),
+        "mean_reversion": (
+            mean_reversion_engine
+        ),
+    }
+
+    time_exit_result = time_exit_runner(
+        engines=strategy_engines,
+        current_date=current_date,
+    )
+
+    if not time_exit_result.get(
+        "success",
+        False,
+    ):
+        return {
+            "success": False,
+            "status": "TIME_EXIT_FAILED",
+            "run_date": current_date,
+            "time_exits": time_exit_result,
+            "message": (
+                "End-of-day maximum-hold "
+                "exit processing failed."
+            ),
+        }
+
     live_quotes = []
 
     if live_snapshot_provider is not None:
@@ -837,6 +871,7 @@ def run_automatic_eod_cycle(
         "momentum_research_capture": (
             momentum_research_capture
         ),
+        "time_exits": time_exit_result,
     }
     
     try:

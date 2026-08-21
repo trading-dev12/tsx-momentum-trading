@@ -22,6 +22,9 @@ from notifications.telegram_notifier import send_telegram_message
 from core.config_loader import load_settings
 from core.watchlist_loader import load_all_watchlists
 from core.market_data import get_quotes
+from core.headless_position_monitor import (
+    run_headless_position_monitor_cycle,
+)
 from core.connectivity_monitor import (
     check_internet_connectivity,
 )
@@ -2199,88 +2202,54 @@ class TradingWorkstation:
         self.update_paper_portfolio_panel()
 
     def monitor_paper_positions(self):
+        """
+        Monitor every open paper position when the GUI owns
+        the trading services.
+
+        The headless runtime already uses the shared
+        multi-strategy position-monitor cycle. Reuse that same
+        cycle here so Momentum, 52-Week Breakout, and Mean
+        Reversion receive identical stop, target, and time-exit
+        handling.
+        """
         if is_headless_service_running(
             "market_services_status"
         ):
             return
 
-        if not self.paper_engine.portfolio.open_positions:
+        strategy_engines = {
+            "momentum": self.paper_engine,
+            "52_week_breakout": (
+                self.breakout_52week_engine
+            ),
+            "mean_reversion": (
+                self.mean_reversion_engine
+            ),
+        }
+
+        if not any(
+            engine.portfolio.open_positions
+            for engine in strategy_engines.values()
+        ):
             return
 
-        current_prices = {
-            quote["symbol"]: quote["price"]
-            for quote in self.latest_quotes
-        }
-
-        market_snapshots = {
-            quote["symbol"]: quote
-            for quote in self.latest_quotes
-            if quote.get("symbol")
-        }
-
-        print(
-            f"Monitoring "
-            f"{len(self.paper_engine.portfolio.open_positions)} "
-            f"open positions"
-        )
-
-        for position in self.paper_engine.portfolio.open_positions:
-            print(
-                position["symbol"],
-                position["symbol"] in current_prices,
-            )
-
-        current_date = datetime.now().strftime(
-            "%Y-%m-%d"
-        )
-
-        closed_trades = (
-            self.paper_engine.update_positions(
-                latest_prices=current_prices,
-                current_date=current_date,
-                market_snapshots=(
-                    market_snapshots
-                ),
+        result = (
+            run_headless_position_monitor_cycle(
+                strategy_engines
             )
         )
 
-        for trade in closed_trades:
-            telegram_message = (
-                "Northstar Quant - Paper Trade Closed\n\n"
-                f"Symbol: {trade['symbol']}\n"
-                f"Exit Price: ${trade['exit_price']:.2f}\n"
-                f"Reason: {trade['exit_reason']}\n"
-                f"Profit/Loss: ${trade['profit_loss']:.2f}\n"
-                f"Return: {trade['profit_loss_percent']:.2f}%"
+        closed_total = int(
+            result.get(
+                "closed_total",
+                0,
             )
+            or 0
+        )
 
-            def send_closed_trade_telegram_alert(
-                message=telegram_message,
-            ):
-                try:
-                    result = send_telegram_message(
-                        message
-                    )
+        if closed_total:
+            self.update_paper_portfolio_panel()
 
-                    if not result.get("success"):
-                        print(
-                            "Telegram closed-trade alert warning: "
-                            f"{result.get('message', '')}"
-                        )
-
-                except Exception as error:
-                    print(
-                        "Unexpected Telegram "
-                        "closed-trade alert error: "
-                        f"{error}"
-                    )
-
-            threading.Thread(
-                target=(
-                    send_closed_trade_telegram_alert
-                ),
-                daemon=True,
-            ).start()
     def update_paper_portfolio_panel(self):
         runtime_folder = (
             Path(__file__).resolve().parent.parent

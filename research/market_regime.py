@@ -19,6 +19,9 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
+from core.market_hours import (
+    get_latest_tsx_trading_day_on_or_before,
+)
 from research.ibkr_historical_research import (
     load_ibkr_daily_history,
 )
@@ -250,6 +253,43 @@ def calculate_market_regime(
             for item in history
             if item[0] <= normalized_date
         ]
+
+        if (
+            available_history
+            and result["data_source"]
+            in {
+                "LOCAL_BENCHMARK_FILE",
+                "LOCAL_FALLBACK",
+            }
+        ):
+            expected_date = (
+                get_latest_tsx_trading_day_on_or_before(
+                    normalized_date
+                )
+            )
+
+            latest_date = available_history[-1][0]
+
+            if latest_date != expected_date:
+                result["reason"] = (
+                    "Local benchmark history is stale: "
+                    f"expected through "
+                    f"{expected_date.isoformat()}, "
+                    f"latest available is "
+                    f"{latest_date.isoformat()}."
+                )
+
+                if ibkr_error:
+                    result["reason"] += (
+                        " IBKR error: "
+                        f"{ibkr_error}"
+                    )
+
+                result["data_source"] = (
+                    "UNAVAILABLE"
+                )
+
+                return result
 
         if len(available_history) < 200:
             result["reason"] = (

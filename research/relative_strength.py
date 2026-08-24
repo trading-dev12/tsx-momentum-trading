@@ -11,6 +11,9 @@ from pathlib import Path
 
 import pandas as pd
 
+from core.market_hours import (
+    get_latest_tsx_trading_day_on_or_before,
+)
 from research.ibkr_historical_research import (
     load_ibkr_daily_history,
 )
@@ -296,7 +299,24 @@ def load_adjusted_close_history(symbol, measurement_date):
             f"{cutoff_date.date()}."
         )
 
-    return prices.sort_index()
+    prices = prices.sort_index()
+
+    expected_date = (
+        get_latest_tsx_trading_day_on_or_before(
+            cutoff_date.date()
+        )
+    )
+
+    latest_date = prices.index[-1].date()
+
+    if latest_date != expected_date:
+        raise ValueError(
+            f"Local historical data for {symbol} is stale: "
+            f"expected through {expected_date.isoformat()}, "
+            f"latest available is {latest_date.isoformat()}."
+        )
+
+    return prices
 
 
 def calculate_period_return(prices, lookback_days):

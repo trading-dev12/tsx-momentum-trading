@@ -294,6 +294,32 @@ def is_tsx_trading_day(trading_date):
     return trading_date not in holidays
 
 
+def get_latest_tsx_trading_day_on_or_before(start_date):
+    """
+    Return the latest TSX trading day on or before start_date.
+
+    This is used when validating whether historical data is
+    current enough for a requested measurement date.
+    """
+
+    if isinstance(start_date, datetime):
+        start_date = normalize_tsx_datetime(
+            start_date
+        ).date()
+
+    if not isinstance(start_date, date):
+        raise TypeError(
+            "start_date must be a date or datetime."
+        )
+
+    candidate = start_date
+
+    while not is_tsx_trading_day(candidate):
+        candidate -= timedelta(days=1)
+
+    return candidate
+
+
 def get_next_tsx_trading_day(start_date):
     """
     Return the first TSX trading day after start_date.

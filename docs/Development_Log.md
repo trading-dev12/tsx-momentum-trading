@@ -4487,3 +4487,162 @@ Mean Reversion EOD Reporting: FIXED
 
 Northstar is ready to return to normal paper-trading operation, with the next live EOD and next-day execution cycles serving as production confirmation of the reliability improvements.
 
+---
+
+## 2026-08-17 - On-Demand Stock Research Expansion
+
+### Completed
+
+- Added read-only Stock Research Mode for arbitrary TSX-listed stocks.
+- Added IBKR quote, market regime, relative strength, trend and volatility research.
+- Added Pullback / Oversold Context:
+  - RSI(14)
+  - StochRSI
+  - Money Flow Index
+  - Bollinger %B
+  - ATR-normalized pullback/extension
+  - 52-week position and drawdown
+  - oversold and extension flags
+  - recovery-state classification
+- Added Fundamental Valuation research:
+  - Trailing P/E
+  - Forward P/E
+  - Price/Sales
+  - Price/Book
+  - EV/Revenue
+  - EV/EBITDA
+  - comparison with the stock's own recent valuation history
+- Added Fundamental Health / Value-Trap research:
+  - FCF yield
+  - dividend yield and payout ratio
+  - net debt / EBITDA
+  - ROE and ROA
+  - profit and operating margins
+  - revenue and earnings growth
+  - annual revenue, EBITDA, earnings, cash-flow, FCF and debt trends
+- Added mobile dashboard panels for all Stock Research components.
+- Real-data validation completed with CVE.TO and DOL.TO.
+- CVE.TO demonstrated:
+  - Technical: EXTENDED
+  - Valuation: MIXED
+  - Fundamentals: HEALTHY WITH MIXED TRENDS
+- Full regression suite: 328 passed, 1 existing eventkit warning.
+
+### Safety / Architecture
+
+Stock Research remains observational and read-only.
+
+It does not modify Momentum, 52-Week Breakout, Mean Reversion,
+scanner membership, trade queues, portfolios, strategy rules,
+or the 200-trade validation samples.
+
+No composite BUY or bargain score will be introduced without
+evidence supporting the weighting of its inputs.
+
+---
+
+## August 24, 2026 - Research Data Integrity Repair
+
+### Issue Discovered
+
+A manual review of completed-trade journals identified repeated Relative Strength and Market Regime values across different historical measurement dates.
+
+Investigation confirmed that the local Yahoo historical fallback files for XIC and XIU ended on July 17, 2026.
+
+When IBKR historical research requests temporarily failed, Northstar correctly fell back to the local files, but the fallback logic did not verify that the files contained data through the requested historical measurement date.
+
+As a result, stale July 17 benchmark data could be recorded as research metadata for later July/August signal dates.
+
+### Scope
+
+The issue affected research/enrichment metadata.
+
+It did not alter:
+
+- Trade signals
+- READY/WATCH classifications
+- Entry prices
+- Position sizing
+- Stops
+- Targets
+- Exit decisions
+- Trade P&L
+
+Seven completed trades contained stale fallback Relative Strength / Market Regime research data:
+
+Momentum:
+- K.TO - 2026-08-07
+- ATH.TO - 2026-08-10
+
+Mean Reversion:
+- NTR.TO - 2026-08-07
+- ENB.TO - 2026-08-10
+- AQN.TO - 2026-08-10
+- EMA.TO - 2026-08-10
+- FTS.TO - 2026-08-10
+
+52-Week Breakout:
+- No affected completed trades
+
+### Permanent Fix
+
+Added shared TSX historical-date freshness validation.
+
+Local research fallback data must now contain history through the most recent valid TSX trading day on or before the requested measurement date.
+
+Behavior is now:
+
+- IBKR historical data available -> use IBKR
+- IBKR unavailable + current local fallback -> allow fallback
+- IBKR unavailable + stale local fallback -> reject data as unavailable
+- Weekends and TSX holidays correctly permit the preceding valid trading session
+
+This prevents stale historical data from silently appearing as valid research evidence.
+
+Implementation commit:
+
+4e54eab - Reject stale research fallback data
+
+### Historical Journal Repair
+
+The seven affected completed-trade rows were recalculated using IBKR historical data for their original signal dates.
+
+Only Relative Strength and Market Regime research fields were modified.
+
+All trading fields remained unchanged.
+
+Corrected research sources:
+
+- Relative Strength: IBKR_ADJUSTED_LAST
+- Market Regime: IBKR_TRADES
+
+All corrected historical Market Regime classifications remained BULL.
+
+Therefore, no evidence was found that the stale benchmark data changed a historical Mean Reversion market-guard decision.
+
+### Validation
+
+Focused stale-fallback regression tests:
+
+6 passed
+
+Full Northstar automated regression suite:
+
+347 passed
+0 failed
+1 known nonfatal eventkit deprecation warning
+
+Post-repair journal audit:
+
+- 7 affected rows repaired
+- No stale LOCAL_ADJUSTED_FALLBACK observations remain
+- No stale LOCAL_FALLBACK Market Regime observations remain
+
+### Reliability Principle
+
+Historical research data must never be treated as valid solely because data exists.
+
+Northstar must verify that research data is temporally appropriate for the requested measurement date before allowing it into the evidence dataset.
+
+This protects the future Combination Explorer, 200-trade strategy reviews, and Edge Discovery analysis from stale-data contamination.
+

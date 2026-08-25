@@ -35,6 +35,10 @@ def render_backup_health_panel(
         data["local_fallback_health"]
     )
 
+    restore_class = health_class(
+        data["restore_test_health"]
+    )
+
     return f"""
     <section class="health-card"
              id="backup-health-panel">
@@ -120,6 +124,46 @@ def render_backup_health_panel(
 
                 <div class="health-value {reminder_class}">
                     {escape(data["reminder"])}
+                </div>
+            </div>
+
+            <div class="health-item">
+                <div class="health-label">
+                    Restore Test Status
+                </div>
+
+                <div class="health-value {restore_class}">
+                    {escape(data["restore_test_status"])}
+                </div>
+            </div>
+
+            <div class="health-item">
+                <div class="health-label">
+                    Last Restore Test
+                </div>
+
+                <div class="health-value">
+                    {escape(data["last_restore_test"])}
+                </div>
+            </div>
+
+            <div class="health-item">
+                <div class="health-label">
+                    Next Restore Test Due
+                </div>
+
+                <div class="health-value">
+                    {escape(data["next_restore_test"])}
+                </div>
+            </div>
+
+            <div class="health-item">
+                <div class="health-label">
+                    Restore Test Countdown
+                </div>
+
+                <div class="health-value {restore_class}">
+                    {escape(data["restore_test_countdown"])}
                 </div>
             </div>
 

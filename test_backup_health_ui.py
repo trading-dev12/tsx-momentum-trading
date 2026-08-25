@@ -3,23 +3,61 @@
 
 def sample_backup_data():
     return {
-        "drive_status": "DISCONNECTED",
-        "drive_health": "WARNING",
-        "last_external": "Aug 24, 2026 4:10 PM",
-        "backup_age": "17h 20m",
-        "next_expected": "Aug 25, 2026 4:05 PM",
-        "countdown": "6h 35m",
-        "reminder": (
-            "Connect SanDisk - next EOD "
-            "backup in 6h 35m"
-        ),
-        "reminder_health": "WARNING",
-        "last_backup_type": "LOCAL_FALLBACK",
+        "drive_status": "DISCONNECTED - OK",
+        "drive_health": "PASS",
+
+        "last_external":
+            "Aug 25, 2026 9:19 AM",
+
+        "backup_age":
+            "1d 0h 0m",
+
+        "next_expected":
+            "Sep 1, 2026 9:19 AM",
+
+        "countdown":
+            "6d 0h 0m",
+
+        "reminder":
+            "Physical backup due in 6d 0h 0m",
+
+        "reminder_health": "PASS",
+
+        "last_backup_type":
+            "LOCAL_FALLBACK",
+
         "last_backup_path": (
             r"C:\Northstar_Backups\2026-08-25"
         ),
-        "local_fallback": "USED LAST BACKUP",
-        "local_fallback_health": "WARNING",
+
+        "local_fallback":
+            "DAILY LOCAL BACKUP OK",
+
+        "local_fallback_health":
+            "PASS",
+
+        "restore_test_status":
+            "PASS",
+
+        "restore_test_health":
+            "PASS",
+
+        "last_restore_test":
+            "Aug 25, 2026 9:35 AM",
+
+        "last_successful_restore_test":
+            "Aug 25, 2026 9:35 AM",
+
+        "next_restore_test":
+            "Sep 24, 2026 9:35 AM",
+
+        "restore_test_countdown":
+            "29d 23h 30m",
+
+        "restore_test_backup_path": (
+            r"D:\Northstar_Backups\2026-08-25"
+        ),
+
         "external_root": (
             r"D:\Northstar_Backups"
         ),
@@ -27,15 +65,49 @@ def sample_backup_data():
 
 
 def test_render_backup_health_panel():
-    html = backup_ui.render_backup_health_panel(
-        sample_backup_data()
+    html = (
+        backup_ui
+        .render_backup_health_panel(
+            sample_backup_data()
+        )
     )
 
     assert "Backup Health" in html
-    assert "DISCONNECTED" in html
-    assert "LOCAL_FALLBACK" in html
-    assert "USED LAST BACKUP" in html
-    assert "Connect SanDisk" in html
+
+    assert (
+        "DISCONNECTED - OK"
+        in html
+    )
+
+    assert (
+        "DAILY LOCAL BACKUP OK"
+        in html
+    )
+
+    assert (
+        "Restore Test Status"
+        in html
+    )
+
+    assert (
+        "Last Restore Test"
+        in html
+    )
+
+    assert (
+        "Next Restore Test Due"
+        in html
+    )
+
+    assert (
+        "Restore Test Countdown"
+        in html
+    )
+
+    assert (
+        "Sep 24, 2026 9:35 AM"
+        in html
+    )
 
 
 def test_inject_before_system_health(
@@ -67,8 +139,12 @@ def test_inject_before_system_health(
     assert "Backup Health" in updated
 
     assert (
-        updated.index("Backup Health")
-        < updated.index("System Health")
+        updated.index(
+            "Backup Health"
+        )
+        < updated.index(
+            "System Health"
+        )
     )
 
 

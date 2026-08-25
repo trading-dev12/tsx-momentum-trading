@@ -13,6 +13,10 @@ from utilities.backup_manager import (
     load_local_backup_settings,
     resolve_backup_root,
 )
+from utilities.restore_verifier import (
+    get_restore_test_schedule,
+    load_restore_test_status,
+)
 
 
 BACKUP_DELAY_MINUTES = 5
@@ -280,6 +284,16 @@ def build_backup_health_data(
 
     status = load_backup_status()
 
+    restore_status_data = (
+        load_restore_test_status()
+    )
+
+    restore_schedule = (
+        get_restore_test_schedule(
+            now
+        )
+    )
+
     local_settings = (
         load_local_backup_settings()
     )
@@ -432,6 +446,114 @@ def build_backup_health_data(
         )
         fallback_health = "PASS"
 
+    restore_last_success = (
+        restore_status_data.get(
+            "last_success"
+        )
+    )
+
+    restore_last_attempt = (
+        restore_status_data.get(
+            "last_attempt"
+        )
+    )
+
+    restore_last_test_success = (
+        restore_status_data.get(
+            "last_test_success"
+        )
+    )
+
+    restore_due = bool(
+        restore_schedule.get(
+            "due",
+            True,
+        )
+    )
+
+    restore_seconds = (
+        restore_schedule.get(
+            "seconds_until_due",
+            0,
+        )
+    )
+
+    try:
+        restore_seconds = float(
+            restore_seconds
+        )
+    except (
+        TypeError,
+        ValueError,
+    ):
+        restore_seconds = 0
+
+    if restore_last_success is None:
+        restore_test_status = "DUE"
+        restore_test_health = "WARNING"
+
+    elif restore_last_test_success is False:
+        restore_test_status = "FAIL"
+        restore_test_health = "FAIL"
+
+    elif restore_due:
+        restore_test_status = "DUE"
+        restore_test_health = "WARNING"
+
+    else:
+        restore_test_status = "PASS"
+        restore_test_health = "PASS"
+
+    if restore_due:
+        if restore_seconds < 0:
+            restore_test_countdown = (
+                "OVERDUE BY "
+                + format_duration(
+                    abs(
+                        restore_seconds
+                    )
+                )
+            )
+        else:
+            restore_test_countdown = (
+                "DUE NOW"
+            )
+
+    else:
+        restore_test_countdown = (
+            format_duration(
+                restore_seconds
+            )
+        )
+
+    restore_next_due = (
+        restore_schedule.get(
+            "next_due"
+        )
+    )
+
+    if isinstance(
+        restore_next_due,
+        datetime,
+    ):
+        restore_next_due_text = (
+            restore_next_due
+            .astimezone(
+                TORONTO_TIMEZONE
+            )
+            .strftime(
+                "%b %d, %Y %I:%M %p"
+            )
+            .replace(
+                " 0",
+                " ",
+            )
+        )
+    else:
+        restore_next_due_text = (
+            "Unknown"
+        )
+
     return {
         "drive_status": drive_status,
         "drive_health": drive_health,
@@ -483,5 +605,33 @@ def build_backup_health_data(
         ),
         "local_fallback_health": (
             fallback_health
+        ),
+        "restore_test_status": (
+            restore_test_status
+        ),
+        "restore_test_health": (
+            restore_test_health
+        ),
+        "last_restore_test": (
+            format_backup_timestamp(
+                restore_last_attempt
+            )
+        ),
+        "last_successful_restore_test": (
+            format_backup_timestamp(
+                restore_last_success
+            )
+        ),
+        "next_restore_test": (
+            restore_next_due_text
+        ),
+        "restore_test_countdown": (
+            restore_test_countdown
+        ),
+        "restore_test_backup_path": (
+            restore_status_data.get(
+                "last_test_backup_path",
+                "--",
+            )
         ),
     }

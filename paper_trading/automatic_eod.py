@@ -10,6 +10,9 @@ block the Trading Workstation.
 """
 
 from utilities.backup_manager import create_backup
+from utilities.restore_verifier import (
+    run_restore_test_if_due,
+)
 from datetime import datetime, time, timedelta
 import json
 import os
@@ -709,6 +712,112 @@ def build_scan_results_from_live_snapshot(
             )
 
     return results
+def run_restore_verification_after_backup(
+    backup_result,
+    current_datetime=None,
+    runner=run_restore_test_if_due,
+):
+    """
+    Run monthly disaster-recovery verification only
+    after a successful physical/external backup.
+
+    Daily local backups and local fallback backups do
+    not trigger a restore test.
+    """
+
+    if not isinstance(
+        backup_result,
+        dict,
+    ):
+        return {
+            "success": False,
+            "status": "ERROR",
+            "ran": False,
+            "errors": [
+                "Backup result is not a dictionary."
+            ],
+        }
+
+    if not backup_result.get(
+        "success",
+        False,
+    ):
+        return {
+            "success": True,
+            "status": "NOT_APPLICABLE",
+            "ran": False,
+            "errors": [],
+        }
+
+    if (
+        backup_result.get(
+            "backup_type"
+        )
+        != "EXTERNAL"
+    ):
+        return {
+            "success": True,
+            "status": "NOT_APPLICABLE",
+            "ran": False,
+            "errors": [],
+        }
+
+    backup_path = backup_result.get(
+        "backup_path"
+    )
+
+    if not backup_path:
+        return {
+            "success": False,
+            "status": "ERROR",
+            "ran": False,
+            "errors": [
+                (
+                    "External backup succeeded but "
+                    "no backup path was reported."
+                )
+            ],
+        }
+
+    try:
+        result = runner(
+            backup_path=backup_path,
+            current_datetime=(
+                current_datetime
+            ),
+        )
+
+    except Exception as error:
+        return {
+            "success": False,
+            "status": "ERROR",
+            "ran": False,
+            "backup_path": backup_path,
+            "errors": [
+                str(error)
+            ],
+        }
+
+    if not isinstance(
+        result,
+        dict,
+    ):
+        return {
+            "success": False,
+            "status": "ERROR",
+            "ran": False,
+            "backup_path": backup_path,
+            "errors": [
+                (
+                    "Restore-test runner did not "
+                    "return a result dictionary."
+                )
+            ],
+        }
+
+    return result
+
+
 def run_automatic_eod_cycle(
     paper_engine,
     breakout_52week_engine=None,
@@ -1037,6 +1146,31 @@ def run_automatic_eod_cycle(
         }
 
     summary["backup"] = backup_result
+
+    restore_test_result = (
+        run_restore_verification_after_backup(
+            backup_result=backup_result,
+            current_datetime=current_datetime,
+        )
+    )
+
+    summary["restore_test"] = (
+        restore_test_result
+    )
+
+    if not restore_test_result.get(
+        "success",
+        False,
+    ):
+        print(
+            "Monthly restore verification warning: "
+            + "; ".join(
+                restore_test_result.get(
+                    "errors",
+                    [],
+                )
+            )
+        )
 
     if validation_result["report_path"]:
         print(

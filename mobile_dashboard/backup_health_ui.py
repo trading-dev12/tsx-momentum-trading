@@ -1,4 +1,4 @@
-﻿from html import escape
+from html import escape
 
 from mobile_dashboard.backup_health import (
     build_backup_health_data,
@@ -75,7 +75,7 @@ def render_backup_health_panel(
 
             <div class="health-item">
                 <div class="health-label">
-                    Next Expected EOD Backup
+                    Next Physical Backup Due
                 </div>
 
                 <div class="health-value">
@@ -85,7 +85,7 @@ def render_backup_health_panel(
 
             <div class="health-item">
                 <div class="health-label">
-                    Backup Countdown
+                    Physical Backup Countdown
                 </div>
 
                 <div class="health-value {reminder_class}">
@@ -95,7 +95,7 @@ def render_backup_health_panel(
 
             <div class="health-item">
                 <div class="health-label">
-                    Local Fallback
+                    Daily Local Backup
                 </div>
 
                 <div class="health-value {fallback_class}">
@@ -105,7 +105,7 @@ def render_backup_health_panel(
 
             <div class="health-item">
                 <div class="health-label">
-                    Last Backup Destination
+                    Last Daily Backup Destination
                 </div>
 
                 <div class="health-value">

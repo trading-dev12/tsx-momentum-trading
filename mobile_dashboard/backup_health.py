@@ -1,4 +1,4 @@
-﻿from datetime import datetime, timedelta
+from datetime import datetime, timedelta
 
 from core.market_hours import (
     TORONTO_TIMEZONE,
@@ -16,6 +16,7 @@ from utilities.backup_manager import (
 
 
 BACKUP_DELAY_MINUTES = 5
+PHYSICAL_BACKUP_INTERVAL_DAYS = 7
 
 
 def normalize_dashboard_datetime(
@@ -221,6 +222,55 @@ def format_duration(seconds):
     return " ".join(parts)
 
 
+def get_physical_backup_schedule(
+    last_external_success,
+    current_datetime=None,
+):
+    """
+    Physical SanDisk backups are required once
+    every seven days from the last successful
+    external backup.
+    """
+
+    now = normalize_dashboard_datetime(
+        current_datetime
+    )
+
+    last_external = parse_backup_timestamp(
+        last_external_success
+    )
+
+    if last_external is None:
+        return {
+            "now": now,
+            "last_external": None,
+            "next_due": now,
+            "due": True,
+            "seconds_until_due": 0,
+        }
+
+    next_due = (
+        last_external
+        + timedelta(
+            days=PHYSICAL_BACKUP_INTERVAL_DAYS
+        )
+    )
+
+    seconds_until_due = (
+        next_due - now
+    ).total_seconds()
+
+    return {
+        "now": now,
+        "last_external": last_external,
+        "next_due": next_due,
+        "due": seconds_until_due <= 0,
+        "seconds_until_due": (
+            seconds_until_due
+        ),
+    }
+
+
 def build_backup_health_data(
     current_datetime=None,
 ):
@@ -228,11 +278,8 @@ def build_backup_health_data(
         current_datetime
     )
 
-    schedule = get_backup_schedule(
-        now
-    )
-
     status = load_backup_status()
+
     local_settings = (
         load_local_backup_settings()
     )
@@ -259,12 +306,28 @@ def build_backup_health_data(
             )
         )
 
-    last_external = (
-        parse_backup_timestamp(
+    physical_schedule = (
+        get_physical_backup_schedule(
             status.get(
                 "last_external_success"
-            )
+            ),
+            now,
         )
+    )
+
+    last_external = (
+        physical_schedule[
+            "last_external"
+        ]
+    )
+
+    physical_due = (
+        physical_schedule["due"]
+    )
+
+    external_current = (
+        last_external is not None
+        and not physical_due
     )
 
     if last_external is None:
@@ -278,62 +341,64 @@ def build_backup_health_data(
             ).total_seconds()
         )
 
-    external_current = bool(
-        last_external is not None
-        and last_external
-        >= schedule["last_required"]
-    )
-
     if not external_value:
         drive_status = "NOT CONFIGURED"
         drive_health = "FAIL"
 
-    elif not external_connected:
-        drive_status = "DISCONNECTED"
+    elif physical_due:
+        if external_connected:
+            drive_status = (
+                "CONNECTED - BACKUP DUE"
+            )
+        else:
+            drive_status = (
+                "DISCONNECTED - BACKUP DUE"
+            )
+
         drive_health = "WARNING"
 
-    elif last_external is None:
-        drive_status = "CONNECTED - BACKUP NEEDED"
-        drive_health = "WARNING"
-
-    elif not external_current:
-        drive_status = "CONNECTED - BACKUP OVERDUE"
-        drive_health = "WARNING"
-
-    else:
+    elif external_connected:
         drive_status = "CONNECTED"
         drive_health = "PASS"
 
-    countdown_seconds = (
-        schedule["next_expected"]
-        - now
-    ).total_seconds()
+    else:
+        drive_status = "DISCONNECTED - OK"
+        drive_health = "PASS"
 
-    countdown = format_duration(
-        countdown_seconds
-    )
+    if physical_due:
+        countdown = "DUE NOW"
 
-    if (
-        last_external is not None
-        and not external_current
-    ):
-        reminder = (
-            "PHYSICAL BACKUP OVERDUE"
-        )
-        reminder_health = "WARNING"
+        if last_external is None:
+            reminder = (
+                "Connect SanDisk - "
+                "physical backup needed"
+            )
+        else:
+            overdue_seconds = abs(
+                physical_schedule[
+                    "seconds_until_due"
+                ]
+            )
 
-    elif not external_connected:
-        reminder = (
-            f"Connect SanDisk - next EOD "
-            f"backup in {countdown}"
-        )
+            reminder = (
+                "Physical backup overdue by "
+                f"{format_duration(overdue_seconds)}"
+            )
+
         reminder_health = "WARNING"
 
     else:
+        countdown = format_duration(
+            physical_schedule[
+                "seconds_until_due"
+            ]
+        )
+
         reminder = (
-            f"Next EOD backup in "
+            "Physical backup due in "
             f"{countdown}"
         )
+
         reminder_health = "PASS"
 
     last_backup_type = status.get(
@@ -341,14 +406,30 @@ def build_backup_health_data(
         "UNKNOWN",
     )
 
-    if (
-        last_backup_type
-        == "LOCAL_FALLBACK"
+    last_backup_success = status.get(
+        "last_backup_success",
+        True,
+    )
+
+    if not last_backup_success:
+        fallback_text = (
+            "LAST DAILY BACKUP FAILED"
+        )
+        fallback_health = "FAIL"
+
+    elif last_backup_type in (
+        "LOCAL",
+        "LOCAL_FALLBACK",
     ):
-        fallback_text = "USED LAST BACKUP"
-        fallback_health = "WARNING"
+        fallback_text = (
+            "DAILY LOCAL BACKUP OK"
+        )
+        fallback_health = "PASS"
+
     else:
-        fallback_text = "READY"
+        fallback_text = (
+            "LOCAL BACKUP READY"
+        )
         fallback_health = "PASS"
 
     return {
@@ -374,8 +455,8 @@ def build_backup_health_data(
             external_current
         ),
         "next_expected": (
-            schedule[
-                "next_expected"
+            physical_schedule[
+                "next_due"
             ].strftime(
                 "%b %d, %Y %I:%M %p"
             ).replace(

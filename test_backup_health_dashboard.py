@@ -19,15 +19,8 @@ def test_weekday_before_eod_counts_down_to_today():
         == "2026-08-25"
     )
 
-    assert (
-        data["next_expected"].hour
-        == 16
-    )
-
-    assert (
-        data["next_expected"].minute
-        == 5
-    )
+    assert data["next_expected"].hour == 16
+    assert data["next_expected"].minute == 5
 
 
 def test_weekday_after_eod_uses_next_trading_day():
@@ -74,7 +67,32 @@ def test_weekend_uses_previous_and_next_trading_days():
     )
 
 
-def test_disconnected_external_drive_warns(
+def test_physical_backup_due_seven_days_later():
+    schedule = (
+        backup_health
+        .get_physical_backup_schedule(
+            "2026-08-25T09:19:00-04:00",
+            datetime(
+                2026,
+                8,
+                25,
+                10,
+                0,
+            ),
+        )
+    )
+
+    assert (
+        schedule["next_due"]
+        .date()
+        .isoformat()
+        == "2026-09-01"
+    )
+
+    assert schedule["due"] is False
+
+
+def test_disconnected_drive_is_ok_before_weekly_due(
     monkeypatch,
 ):
     monkeypatch.setattr(
@@ -98,10 +116,75 @@ def test_disconnected_external_drive_warns(
         lambda: {
             "last_backup_type":
                 "LOCAL_FALLBACK",
-            "last_backup_path":
-                r"C:\Northstar_Backups\2026-08-25",
+            "last_backup_success":
+                True,
             "last_external_success":
-                "2026-08-24T16:10:00-04:00",
+                "2026-08-25T09:00:00-04:00",
+        },
+    )
+
+    data = (
+        backup_health
+        .build_backup_health_data(
+            datetime(
+                2026,
+                8,
+                26,
+                9,
+                0,
+            )
+        )
+    )
+
+    assert (
+        data["drive_status"]
+        == "DISCONNECTED - OK"
+    )
+
+    assert (
+        data["drive_health"]
+        == "PASS"
+    )
+
+    assert (
+        data["external_current"]
+        is True
+    )
+
+    assert (
+        data["local_fallback"]
+        == "DAILY LOCAL BACKUP OK"
+    )
+
+
+def test_physical_backup_warns_after_seven_days(
+    monkeypatch,
+):
+    monkeypatch.setattr(
+        backup_health,
+        "load_local_backup_settings",
+        lambda: {
+            "external_backup_root":
+                r"D:\Northstar_Backups"
+        },
+    )
+
+    monkeypatch.setattr(
+        backup_health,
+        "external_backup_available",
+        lambda path: False,
+    )
+
+    monkeypatch.setattr(
+        backup_health,
+        "load_backup_status",
+        lambda: {
+            "last_backup_type":
+                "LOCAL_FALLBACK",
+            "last_backup_success":
+                True,
+            "last_external_success":
+                "2026-08-18T09:00:00-04:00",
         },
     )
 
@@ -113,14 +196,14 @@ def test_disconnected_external_drive_warns(
                 8,
                 25,
                 9,
-                30,
+                1,
             )
         )
     )
 
     assert (
         data["drive_status"]
-        == "DISCONNECTED"
+        == "DISCONNECTED - BACKUP DUE"
     )
 
     assert (
@@ -129,12 +212,17 @@ def test_disconnected_external_drive_warns(
     )
 
     assert (
-        data["local_fallback"]
-        == "USED LAST BACKUP"
+        data["external_current"]
+        is False
+    )
+
+    assert (
+        data["countdown"]
+        == "DUE NOW"
     )
 
 
-def test_current_external_backup_is_healthy(
+def test_connected_recent_external_backup_is_healthy(
     monkeypatch,
 ):
     monkeypatch.setattr(
@@ -158,8 +246,8 @@ def test_current_external_backup_is_healthy(
         lambda: {
             "last_backup_type":
                 "EXTERNAL",
-            "last_backup_path":
-                r"D:\Northstar_Backups\2026-08-25",
+            "last_backup_success":
+                True,
             "last_external_success":
                 "2026-08-25T09:00:00-04:00",
         },
@@ -178,17 +266,6 @@ def test_current_external_backup_is_healthy(
         )
     )
 
-    assert (
-        data["drive_status"]
-        == "CONNECTED"
-    )
-
-    assert (
-        data["drive_health"]
-        == "PASS"
-    )
-
-    assert (
-        data["external_current"]
-        is True
-    )
+    assert data["drive_status"] == "CONNECTED"
+    assert data["drive_health"] == "PASS"
+    assert data["external_current"] is True

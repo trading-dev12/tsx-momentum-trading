@@ -36,6 +36,9 @@ from mobile_dashboard.stock_research_ui import (
     inject_stock_research_form,
     render_stock_research_page,
 )
+from mobile_dashboard.backup_health_ui import (
+    inject_backup_health_panel,
+)
 
 
 app = Flask(__name__)
@@ -146,6 +149,39 @@ def add_edge_research_shortcut_to_dashboard(
 
     updated_html = (
         inject_edge_research_shortcut(
+            html
+        )
+    )
+
+    if updated_html != html:
+        response.set_data(
+            updated_html
+        )
+
+    return response
+
+
+@app.after_request
+def add_backup_health_to_dashboard(
+    response,
+):
+    """
+    Add read-only Backup Health information
+    to the main dashboard.
+    """
+
+    if request.path != "/":
+        return response
+
+    if response.mimetype != "text/html":
+        return response
+
+    html = response.get_data(
+        as_text=True
+    )
+
+    updated_html = (
+        inject_backup_health_panel(
             html
         )
     )

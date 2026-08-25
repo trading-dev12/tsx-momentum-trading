@@ -263,3 +263,6 @@ data/incident_backups/
 tools/launch_northstar_dashboard.bat
 tools/launch_northstar_workstation.bat
 tools/northstar_recovery_task_before_installer.xml
+
+# Machine-specific Northstar settings
+config/local_settings.json

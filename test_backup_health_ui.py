@@ -1,4 +1,4 @@
-﻿import mobile_dashboard.backup_health_ui as backup_ui
+import mobile_dashboard.backup_health_ui as backup_ui
 
 
 def sample_backup_data():
@@ -35,6 +35,25 @@ def sample_backup_data():
 
         "local_fallback_health":
             "PASS",
+
+        "cloud_backup_status":
+            "PASS",
+
+        "cloud_backup_health":
+            "PASS",
+
+        "last_cloud_backup":
+            "Aug 25, 2026 9:56 AM",
+
+        "cloud_backup_age":
+            "4m",
+
+        "next_cloud_backup":
+            "Aug 25, 2026 4:05 PM",
+
+        "cloud_backup_path": (
+            r"C:\Users\Chris\OneDrive\Northstar_Cloud_Backups\northstar_critical.nsbackup"
+        ),
 
         "restore_test_status":
             "PASS",
@@ -81,6 +100,31 @@ def test_render_backup_health_panel():
 
     assert (
         "DAILY LOCAL BACKUP OK"
+        in html
+    )
+
+    assert (
+        "Encrypted Cloud Backup"
+        in html
+    )
+
+    assert (
+        "Last Cloud Backup"
+        in html
+    )
+
+    assert (
+        "Cloud Backup Age"
+        in html
+    )
+
+    assert (
+        "Next Cloud Backup Expected"
+        in html
+    )
+
+    assert (
+        "Aug 25, 2026 9:56 AM"
         in html
     )
 

@@ -10,6 +10,9 @@ block the Trading Workstation.
 """
 
 from utilities.backup_manager import create_backup
+from utilities.cloud_backup import (
+    create_cloud_backup,
+)
 from utilities.restore_verifier import (
     run_restore_test_if_due,
 )
@@ -818,6 +821,62 @@ def run_restore_verification_after_backup(
     return result
 
 
+def run_cloud_backup_after_eod(
+    current_datetime=None,
+    runner=None,
+):
+    """
+    Run the encrypted off-site cloud backup
+    without allowing cloud availability to
+    interfere with the trading EOD cycle.
+    """
+
+    if runner is None:
+        return {
+            "success": True,
+            "status": "NOT_REQUESTED",
+            "ran": False,
+            "errors": [],
+        }
+
+    try:
+        result = runner(
+            created_at=current_datetime
+        )
+
+    except Exception as error:
+        return {
+            "success": False,
+            "status": "ERROR",
+            "ran": True,
+            "backup_path": None,
+            "errors": [
+                str(error)
+            ],
+        }
+
+    if not isinstance(
+        result,
+        dict,
+    ):
+        return {
+            "success": False,
+            "status": "ERROR",
+            "ran": True,
+            "backup_path": None,
+            "errors": [
+                (
+                    "Cloud backup runner did not "
+                    "return a result dictionary."
+                )
+            ],
+        }
+
+    result["ran"] = True
+
+    return result
+
+
 def run_automatic_eod_cycle(
     paper_engine,
     breakout_52week_engine=None,
@@ -833,6 +892,7 @@ def run_automatic_eod_cycle(
     momentum_research_saver=None,
     forward_outcome_runner=None,
     time_exit_runner=run_eod_time_exits,
+    cloud_backup_runner=None,
 ):
     """
     Run one automatic EOD cycle when eligible.
@@ -1147,6 +1207,31 @@ def run_automatic_eod_cycle(
 
     summary["backup"] = backup_result
 
+    cloud_backup_result = (
+        run_cloud_backup_after_eod(
+            current_datetime=current_datetime,
+            runner=cloud_backup_runner,
+        )
+    )
+
+    summary["cloud_backup"] = (
+        cloud_backup_result
+    )
+
+    if not cloud_backup_result.get(
+        "success",
+        False,
+    ):
+        print(
+            "Encrypted cloud backup warning: "
+            + "; ".join(
+                cloud_backup_result.get(
+                    "errors",
+                    [],
+                )
+            )
+        )
+
     restore_test_result = (
         run_restore_verification_after_backup(
             backup_result=backup_result,
@@ -1456,6 +1541,9 @@ def automatic_eod_worker(
                 ),
                 forward_outcome_runner=(
                     run_candidate_forward_outcome_refresh
+                ),
+                cloud_backup_runner=(
+                    create_cloud_backup
                 ),
             )
 

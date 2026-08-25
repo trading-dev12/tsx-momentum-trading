@@ -13,6 +13,9 @@ from utilities.backup_manager import (
     load_local_backup_settings,
     resolve_backup_root,
 )
+from utilities.cloud_backup import (
+    load_cloud_backup_status,
+)
 from utilities.restore_verifier import (
     get_restore_test_schedule,
     load_restore_test_status,
@@ -284,6 +287,16 @@ def build_backup_health_data(
 
     status = load_backup_status()
 
+    cloud_status_data = (
+        load_cloud_backup_status()
+    )
+
+    cloud_schedule = (
+        get_backup_schedule(
+            now
+        )
+    )
+
     restore_status_data = (
         load_restore_test_status()
     )
@@ -446,6 +459,82 @@ def build_backup_health_data(
         )
         fallback_health = "PASS"
 
+    cloud_last_success_value = (
+        cloud_status_data.get(
+            "last_success"
+        )
+    )
+
+    cloud_last_success = (
+        parse_backup_timestamp(
+            cloud_last_success_value
+        )
+    )
+
+    cloud_latest_success = (
+        cloud_status_data.get(
+            "last_backup_success"
+        )
+    )
+
+    cloud_last_required = (
+        cloud_schedule[
+            "last_required"
+        ]
+    )
+
+    cloud_next_expected = (
+        cloud_schedule[
+            "next_expected"
+        ]
+    )
+
+    cloud_current = (
+        cloud_last_success is not None
+        and cloud_last_success
+        >= cloud_last_required
+    )
+
+    if cloud_last_success is None:
+        cloud_backup_age = (
+            "No cloud backup recorded"
+        )
+    else:
+        cloud_backup_age = (
+            format_duration(
+                (
+                    now
+                    - cloud_last_success
+                ).total_seconds()
+            )
+        )
+
+    if cloud_latest_success is False:
+        cloud_backup_status = "FAIL"
+        cloud_backup_health = "FAIL"
+
+    elif cloud_current:
+        cloud_backup_status = "PASS"
+        cloud_backup_health = "PASS"
+
+    else:
+        cloud_backup_status = "DUE"
+        cloud_backup_health = "WARNING"
+
+    cloud_next_expected_text = (
+        cloud_next_expected
+        .astimezone(
+            TORONTO_TIMEZONE
+        )
+        .strftime(
+            "%b %d, %Y %I:%M %p"
+        )
+        .replace(
+            " 0",
+            " ",
+        )
+    )
+
     restore_last_success = (
         restore_status_data.get(
             "last_success"
@@ -605,6 +694,29 @@ def build_backup_health_data(
         ),
         "local_fallback_health": (
             fallback_health
+        ),
+        "cloud_backup_status": (
+            cloud_backup_status
+        ),
+        "cloud_backup_health": (
+            cloud_backup_health
+        ),
+        "last_cloud_backup": (
+            format_backup_timestamp(
+                cloud_last_success_value
+            )
+        ),
+        "cloud_backup_age": (
+            cloud_backup_age
+        ),
+        "next_cloud_backup": (
+            cloud_next_expected_text
+        ),
+        "cloud_backup_path": (
+            cloud_status_data.get(
+                "last_backup_path",
+                "--",
+            )
         ),
         "restore_test_status": (
             restore_test_status

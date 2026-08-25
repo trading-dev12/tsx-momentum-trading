@@ -266,3 +266,6 @@ tools/northstar_recovery_task_before_installer.xml
 
 # Machine-specific Northstar settings
 config/local_settings.json
+
+# Northstar cloud backup encryption key
+config/cloud_backup.key

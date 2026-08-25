@@ -35,6 +35,10 @@ def render_backup_health_panel(
         data["local_fallback_health"]
     )
 
+    cloud_class = health_class(
+        data["cloud_backup_health"]
+    )
+
     restore_class = health_class(
         data["restore_test_health"]
     )
@@ -124,6 +128,46 @@ def render_backup_health_panel(
 
                 <div class="health-value {reminder_class}">
                     {escape(data["reminder"])}
+                </div>
+            </div>
+
+            <div class="health-item">
+                <div class="health-label">
+                    Encrypted Cloud Backup
+                </div>
+
+                <div class="health-value {cloud_class}">
+                    {escape(data["cloud_backup_status"])}
+                </div>
+            </div>
+
+            <div class="health-item">
+                <div class="health-label">
+                    Last Cloud Backup
+                </div>
+
+                <div class="health-value">
+                    {escape(data["last_cloud_backup"])}
+                </div>
+            </div>
+
+            <div class="health-item">
+                <div class="health-label">
+                    Cloud Backup Age
+                </div>
+
+                <div class="health-value">
+                    {escape(data["cloud_backup_age"])}
+                </div>
+            </div>
+
+            <div class="health-item">
+                <div class="health-label">
+                    Next Cloud Backup Expected
+                </div>
+
+                <div class="health-value">
+                    {escape(data["next_cloud_backup"])}
                 </div>
             </div>
 

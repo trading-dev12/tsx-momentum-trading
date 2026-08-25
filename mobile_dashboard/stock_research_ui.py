@@ -47,6 +47,7 @@ STOCK_RESEARCH_FORM_HTML = """
     </div>
 
     <form
+        id="stock-research-form"
         action="/stock-research"
         method="get"
         style="
@@ -56,6 +57,7 @@ STOCK_RESEARCH_FORM_HTML = """
         "
     >
         <input
+            id="stock-research-symbol"
             type="text"
             name="symbol"
             placeholder="DOL.TO"
@@ -77,6 +79,7 @@ STOCK_RESEARCH_FORM_HTML = """
         >
 
         <button
+            id="stock-research-button"
             type="submit"
             style="
                 padding: 12px 16px;
@@ -92,6 +95,155 @@ STOCK_RESEARCH_FORM_HTML = """
             Analyze
         </button>
     </form>
+
+    <div
+        id="stock-research-loading"
+        style="
+            display: none;
+            margin-top: 13px;
+        "
+    >
+        <div
+            id="stock-research-loading-text"
+            style="
+                margin-bottom: 7px;
+                color: #aeb8c8;
+                font-size: 13px;
+                font-weight: bold;
+            "
+        >
+            Analyzing stock...
+        </div>
+
+        <div
+            style="
+                width: 100%;
+                height: 7px;
+                overflow: hidden;
+                border-radius: 999px;
+                background: #10141b;
+                border: 1px solid #303a4c;
+            "
+        >
+            <div
+                class="northstar-research-progress"
+            ></div>
+        </div>
+    </div>
+
+    <style>
+        @keyframes northstarResearchProgress {
+            0% {
+                transform: translateX(-110%);
+            }
+
+            50% {
+                transform: translateX(120%);
+            }
+
+            100% {
+                transform: translateX(260%);
+            }
+        }
+
+        .northstar-research-progress {
+            width: 38%;
+            height: 100%;
+            border-radius: 999px;
+            background: #2563eb;
+            animation:
+                northstarResearchProgress
+                1.15s
+                ease-in-out
+                infinite;
+        }
+    </style>
+
+    <script>
+        (function () {
+            const form = document.getElementById(
+                "stock-research-form"
+            );
+
+            const input = document.getElementById(
+                "stock-research-symbol"
+            );
+
+            const button = document.getElementById(
+                "stock-research-button"
+            );
+
+            const loading = document.getElementById(
+                "stock-research-loading"
+            );
+
+            const loadingText = document.getElementById(
+                "stock-research-loading-text"
+            );
+
+            if (
+                !form ||
+                !input ||
+                !button ||
+                !loading ||
+                !loadingText
+            ) {
+                return;
+            }
+
+            let submitting = false;
+
+            form.addEventListener(
+                "submit",
+                function (event) {
+                    if (submitting) {
+                        event.preventDefault();
+                        return;
+                    }
+
+                    event.preventDefault();
+
+                    const symbol = (
+                        input.value || ""
+                    ).trim().toUpperCase();
+
+                    if (!symbol) {
+                        input.reportValidity();
+                        return;
+                    }
+
+                    submitting = true;
+
+                    input.value = symbol;
+
+                    loadingText.textContent =
+                        "Analyzing " +
+                        symbol +
+                        "...";
+
+                    loading.style.display =
+                        "block";
+
+                    button.disabled = true;
+                    button.textContent =
+                        "Working...";
+
+                    button.style.opacity =
+                        "0.7";
+
+                    button.style.cursor =
+                        "wait";
+
+                    setTimeout(
+                        function () {
+                            form.submit();
+                        },
+                        75
+                    );
+                }
+            );
+        })();
+    </script>
 </section>
 """
 

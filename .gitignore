@@ -249,3 +249,17 @@ research/shadow_edge_snapshots/
 
 # Generated Momentum EOD research results
 research/momentum_results/
+
+# Northstar generated runtime / evidence
+paper_portfolio_state_52week.json
+paper_portfolio_state_mean_reversion.json
+paper_trade_journal_52week.csv
+paper_trade_journal_mean_reversion.csv
+pending_trades_mean_reversion.csv
+research/candidate_history/
+data/incident_backups/
+
+# Machine-specific Northstar launch / recovery files
+tools/launch_northstar_dashboard.bat
+tools/launch_northstar_workstation.bat
+tools/northstar_recovery_task_before_installer.xml

@@ -1,4 +1,4 @@
-# TSX Momentum Trading Pro - Development Roadmap
+﻿# TSX Momentum Trading Pro - Development Roadmap
 
 ## Phase 1 - Foundation
 
@@ -1321,3 +1321,64 @@ Candidate History / Stability - COMPLETE
 The objective remains to discover and validate repeatable market edges
 using evidence rather than changing the strategies in response to
 short-term results.
+---
+
+# Stock Research Mode - Current Status
+
+## Completed - August 17, 2026
+
+### Technical Research
+
+- [x] Arbitrary TSX ticker research from mobile dashboard
+- [x] IBKR quote
+- [x] Market regime
+- [x] Relative strength vs XIC and XIU
+- [x] Moving-average context
+- [x] Volatility regime
+- [x] RSI, StochRSI and MFI
+- [x] Bollinger %B
+- [x] ATR pullback / extension
+- [x] 52-week position and drawdown
+- [x] Oversold and extension flags
+- [x] Recovery-state classification
+
+### Fundamental Valuation
+
+- [x] Trailing P/E vs recent history
+- [x] Forward P/E vs recent history
+- [x] Price/Sales vs recent history
+- [x] Price/Book vs recent history
+- [x] EV/Revenue vs recent history
+- [x] EV/EBITDA vs recent history
+- [x] Preserve mixed valuation evidence instead of forcing a cheap/expensive answer
+
+### Fundamental Health / Value-Trap Check
+
+- [x] Free-cash-flow yield
+- [x] Dividend yield and payout ratio
+- [x] Net debt / EBITDA
+- [x] ROE and ROA
+- [x] Profit and operating margins
+- [x] Latest revenue and earnings growth
+- [x] Annual revenue, EBITDA and net-income trends
+- [x] Annual operating-cash-flow and FCF trends
+- [x] Annual debt trend
+- [x] Mobile Value-Trap Check panel
+
+### Validation / Safety
+
+- [x] Research-only architecture
+- [x] No trading actions
+- [x] No scanner-universe changes
+- [x] No changes to the three strategy rules
+- [x] No effect on the 200-trade validation samples
+- [x] Real TSX validation
+- [x] Full regression suite: 328 passed
+
+## Future Stock Research Enhancements
+
+- [ ] Sector-relative fundamental valuation when reliable data is available
+- [ ] Longer valuation-history source if a reliable licensed provider is added
+- [ ] Replace Yahoo fundamental data before commercial deployment requiring licensed data
+- [ ] Add US Stock Research after the planned post-200-trade US expansion
+- [ ] Do not create a composite bargain/BUY score until evidence supports factor weights

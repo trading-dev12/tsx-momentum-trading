@@ -840,9 +840,14 @@ def run_cloud_backup_after_eod(
         }
 
     try:
-        result = runner(
-            created_at=current_datetime
-        )
+        # Cloud backups represent the actual
+        # disaster-recovery copy time.
+        #
+        # Never pass the EOD cycle timestamp here:
+        # recovery EOD cycles may intentionally use
+        # an older historical datetime, which would
+        # incorrectly backdate cloud backup health.
+        result = runner()
 
     except Exception as error:
         return {

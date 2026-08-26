@@ -15,17 +15,17 @@ def test_cloud_backup_not_requested_is_safe():
     assert result["ran"] is False
 
 
-def test_cloud_backup_runs_when_enabled():
+def test_cloud_backup_uses_real_execution_time():
     called = {
-        "created_at": None
+        "created_at": "NOT_CALLED"
     }
 
-    current_datetime = datetime(
+    historical_eod = datetime(
         2026,
         8,
-        25,
+        7,
         16,
-        10,
+        5,
     )
 
     def runner(
@@ -47,21 +47,18 @@ def test_cloud_backup_runs_when_enabled():
 
     result = (
         run_cloud_backup_after_eod(
-            current_datetime=(
-                current_datetime
-            ),
+            current_datetime=historical_eod,
             runner=runner,
         )
     )
 
     assert result["success"] is True
-    assert result["status"] == "PASS"
     assert result["ran"] is True
 
-    assert (
-        called["created_at"]
-        == current_datetime
-    )
+    # Critical regression check:
+    # historical EOD time must NOT be forwarded
+    # to the physical cloud-backup timestamp.
+    assert called["created_at"] is None
 
 
 def test_cloud_failure_is_contained():

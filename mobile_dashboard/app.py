@@ -39,9 +39,85 @@ from mobile_dashboard.stock_research_ui import (
 from mobile_dashboard.backup_health_ui import (
     inject_backup_health_panel,
 )
+from mobile_dashboard.benchmark_performance import (
+    build_matched_xic_performance,
+)
+from research.strategy_risk_benchmark import (
+    build_whole_strategy_metrics,
+)
 
 
 app = Flask(__name__)
+
+
+WHOLE_STRATEGY_CACHE_SECONDS = 3600
+
+_whole_strategy_dashboard_cache = {}
+
+
+def get_cached_whole_strategy_metrics(
+    cache_name,
+    open_positions,
+    closed_trades,
+):
+    now = datetime.now()
+
+    market_status = (
+        get_tsx_market_status().get(
+            "status",
+            "UNKNOWN",
+        )
+    )
+
+    fingerprint = json.dumps(
+        {
+            "date": now.date().isoformat(),
+            "market_status": market_status,
+            "open_positions": open_positions,
+            "closed_trades": closed_trades,
+        },
+        sort_keys=True,
+        default=str,
+    )
+
+    cached = (
+        _whole_strategy_dashboard_cache.get(
+            cache_name
+        )
+    )
+
+    if cached is not None:
+        age_seconds = (
+            now
+            - cached["generated_at"]
+        ).total_seconds()
+
+        if (
+            cached["fingerprint"]
+            == fingerprint
+            and age_seconds
+            < WHOLE_STRATEGY_CACHE_SECONDS
+        ):
+            return cached["result"]
+
+    result = (
+        build_whole_strategy_metrics(
+            open_positions,
+            closed_trades,
+        )
+    )
+
+    _whole_strategy_dashboard_cache[
+        cache_name
+    ] = {
+        "generated_at": now,
+        "fingerprint": fingerprint,
+        "result": result,
+    }
+
+    return result
+
+
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
@@ -101,6 +177,351 @@ SCANNER_HEALTH_FILE = (
     / "runtime"
     / "scanner_health.json"
 )
+
+
+def build_benchmark_metric_display(
+    result,
+):
+    if (
+        result.get("status")
+        != "AVAILABLE"
+    ):
+        return {
+            "strategy_return_display": "N/A",
+            "strategy_return_color": "#ffffff",
+            "benchmark_return_display": "N/A",
+            "benchmark_return_color": "#ffffff",
+            "versus_display": "N/A",
+            "versus_color": "#ffffff",
+            "strategy_note": (
+                "Benchmark unavailable"
+            ),
+            "source_note": (
+                "XIC unavailable"
+            ),
+            "dollar_note": (
+                "Comparison unavailable"
+            ),
+        }
+
+    strategy_return = float(
+        result.get(
+            "strategy_return",
+            0,
+        )
+        or 0
+    )
+
+    benchmark_return = float(
+        result.get(
+            "benchmark_return",
+            0,
+        )
+        or 0
+    )
+
+    versus = float(
+        result.get(
+            "versus_benchmark",
+            0,
+        )
+        or 0
+    )
+
+    dollar_advantage = float(
+        result.get(
+            "dollar_advantage",
+            0,
+        )
+        or 0
+    )
+
+    def return_color(value):
+        if value > 0:
+            return "#198754"
+
+        if value < 0:
+            return "#dc3545"
+
+        return "#ffffff"
+
+    trading_since = result.get(
+        "trading_since",
+        "--",
+    )
+
+    try:
+        trading_since_display = (
+            datetime.strptime(
+                str(trading_since)[:10],
+                "%Y-%m-%d",
+            )
+            .strftime(
+                "%b %d, %Y"
+            )
+            .replace(
+                " 0",
+                " ",
+            )
+        )
+    except ValueError:
+        trading_since_display = str(
+            trading_since
+        )
+
+    data_source = str(
+        result.get(
+            "benchmark_data_source",
+            "",
+        )
+    )
+
+    if data_source.startswith(
+        "IBKR"
+    ):
+        source_label = "IBKR"
+
+    elif "YAHOO" in data_source:
+        source_label = (
+            "Yahoo fallback"
+        )
+
+    else:
+        source_label = (
+            data_source
+            or "Unknown source"
+        )
+
+    return {
+        "strategy_return_display": (
+            f"{strategy_return:+.2f}%"
+        ),
+        "strategy_return_color": (
+            return_color(
+                strategy_return
+            )
+        ),
+        "benchmark_return_display": (
+            f"{benchmark_return:+.2f}%"
+        ),
+        "benchmark_return_color": (
+            return_color(
+                benchmark_return
+            )
+        ),
+        "versus_display": (
+            f"{versus:+.2f}%"
+        ),
+        "versus_color": (
+            return_color(
+                versus
+            )
+        ),
+        "strategy_note": (
+            "Since "
+            f"{trading_since_display}"
+        ),
+        "source_note": (
+            f"{source_label} | "
+            "matched trade windows"
+        ),
+        "dollar_note": (
+            f"${dollar_advantage:+,.2f} "
+            "vs XIC"
+        ),
+    }
+
+
+
+def build_whole_strategy_display(
+    result,
+):
+    if (
+        result.get("status")
+        != "AVAILABLE"
+    ):
+        return {
+            "system_return": "N/A",
+            "system_color": "#ffffff",
+            "xic_return": "N/A",
+            "xic_color": "#ffffff",
+            "excess_return": "N/A",
+            "excess_color": "#ffffff",
+            "dollar_advantage": "N/A",
+            "max_drawdown": "N/A",
+            "xic_max_drawdown": "N/A",
+            "utilization": "N/A",
+            "required_capital": "N/A",
+            "average_deployed": "N/A",
+            "period_note": (
+                "Risk data unavailable"
+            ),
+        }
+
+    system_return = float(
+        result.get(
+            "strategy_return",
+            0,
+        )
+        or 0
+    )
+
+    xic_return = float(
+        result.get(
+            "xic_return",
+            0,
+        )
+        or 0
+    )
+
+    excess_return = float(
+        result.get(
+            "excess_return",
+            0,
+        )
+        or 0
+    )
+
+    dollar_advantage = float(
+        result.get(
+            "dollar_advantage",
+            0,
+        )
+        or 0
+    )
+
+    required_capital = float(
+        result.get(
+            "required_starting_capital",
+            0,
+        )
+        or 0
+    )
+
+    average_deployed = float(
+        result.get(
+            "average_capital_deployed",
+            0,
+        )
+        or 0
+    )
+
+    utilization = float(
+        result.get(
+            "average_capital_utilization",
+            0,
+        )
+        or 0
+    )
+
+    max_drawdown = float(
+        result.get(
+            "strategy_max_drawdown",
+            0,
+        )
+        or 0
+    )
+
+    xic_max_drawdown = float(
+        result.get(
+            "xic_max_drawdown",
+            0,
+        )
+        or 0
+    )
+
+    risk_through = str(
+        result.get(
+            "risk_through",
+            "--",
+        )
+    )
+
+    try:
+        risk_through_display = (
+            datetime.strptime(
+                risk_through[:10],
+                "%Y-%m-%d",
+            )
+            .strftime(
+                "%b %d"
+            )
+            .replace(
+                " 0",
+                " ",
+            )
+        )
+    except ValueError:
+        risk_through_display = (
+            risk_through
+        )
+
+    days_measured = int(
+        result.get(
+            "days_measured",
+            0,
+        )
+        or 0
+    )
+
+    def value_color(value):
+        if value > 0:
+            return "#198754"
+
+        if value < 0:
+            return "#dc3545"
+
+        return "#ffffff"
+
+    return {
+        "system_return": (
+            f"{system_return:+.2f}%"
+        ),
+        "system_color": (
+            value_color(
+                system_return
+            )
+        ),
+        "xic_return": (
+            f"{xic_return:+.2f}%"
+        ),
+        "xic_color": (
+            value_color(
+                xic_return
+            )
+        ),
+        "excess_return": (
+            f"{excess_return:+.2f}%"
+        ),
+        "excess_color": (
+            value_color(
+                excess_return
+            )
+        ),
+        "dollar_advantage": (
+            f"${dollar_advantage:+,.2f}"
+        ),
+        "max_drawdown": (
+            f"{max_drawdown:.2f}%"
+        ),
+        "xic_max_drawdown": (
+            f"{xic_max_drawdown:.2f}%"
+        ),
+        "utilization": (
+            f"{utilization:.1f}%"
+        ),
+        "required_capital": (
+            f"${required_capital:,.0f}"
+        ),
+        "average_deployed": (
+            f"${average_deployed:,.0f}"
+        ),
+        "period_note": (
+            f"Through {risk_through_display}"
+            f" | {days_measured} days"
+        ),
+    }
+
 
 
 def count_pending_trades(file_path: Path) -> int:
@@ -1376,6 +1797,90 @@ def dashboard():
         - mean_reversion_summary["cash"]
     )
 
+    momentum_benchmark = (
+        build_matched_xic_performance(
+            open_positions,
+            closed_trades,
+            current_prices,
+        )
+    )
+
+    breakout_52week_benchmark = (
+        build_matched_xic_performance(
+            breakout_52week_open_positions,
+            breakout_52week_closed_trades,
+            current_prices,
+        )
+    )
+
+    mean_reversion_benchmark = (
+        build_matched_xic_performance(
+            mean_reversion_open_positions,
+            mean_reversion_closed_trades,
+            current_prices,
+        )
+    )
+
+    momentum_benchmark_display = (
+        build_benchmark_metric_display(
+            momentum_benchmark
+        )
+    )
+
+    breakout_52week_benchmark_display = (
+        build_benchmark_metric_display(
+            breakout_52week_benchmark
+        )
+    )
+
+    mean_reversion_benchmark_display = (
+        build_benchmark_metric_display(
+            mean_reversion_benchmark
+        )
+    )
+
+    momentum_whole_strategy = (
+        get_cached_whole_strategy_metrics(
+            "momentum",
+            open_positions,
+            closed_trades,
+        )
+    )
+
+    breakout_52week_whole_strategy = (
+        get_cached_whole_strategy_metrics(
+            "52_week_breakout",
+            breakout_52week_open_positions,
+            breakout_52week_closed_trades,
+        )
+    )
+
+    mean_reversion_whole_strategy = (
+        get_cached_whole_strategy_metrics(
+            "mean_reversion",
+            mean_reversion_open_positions,
+            mean_reversion_closed_trades,
+        )
+    )
+
+    momentum_whole_display = (
+        build_whole_strategy_display(
+            momentum_whole_strategy
+        )
+    )
+
+    breakout_52week_whole_display = (
+        build_whole_strategy_display(
+            breakout_52week_whole_strategy
+        )
+    )
+
+    mean_reversion_whole_display = (
+        build_whole_strategy_display(
+            mean_reversion_whole_strategy
+        )
+    )
+
     refreshed_at = datetime.now().strftime(
         "%Y-%m-%d %H:%M:%S"
     )    
@@ -1522,6 +2027,18 @@ def dashboard():
             .metric-value {{
                 margin-top: 8px;
                 font-size: 24px;
+                font-weight: bold;
+            }}
+
+            .metric-note {{
+                margin-top: 6px;
+                color: #aeb8c8;
+                font-size: 12px;
+            }}
+
+            .metric-subvalue {{
+                margin-top: 5px;
+                font-size: 16px;
                 font-weight: bold;
             }}
 
@@ -1685,29 +2202,138 @@ def dashboard():
 </div>
 <div class="metric">
                     <div class="metric-label">
+                        System Return
+                    </div>
+
+                    <div
+                        class="metric-value"
+                        style="color: {momentum_whole_display["system_color"]};"
+                    >
+                        {momentum_whole_display["system_return"]}
+                    </div>
+
+                    <div class="metric-note">
+                        On {momentum_whole_display["required_capital"]}
+                        required capital
+                    </div>
+                </div>
+<div class="metric">
+                    <div class="metric-label">
+                        Fully Invested XIC
+                    </div>
+
+                    <div
+                        class="metric-value"
+                        style="color: {momentum_whole_display["xic_color"]};"
+                    >
+                        {momentum_whole_display["xic_return"]}
+                    </div>
+
+                    <div class="metric-note">
+                        {momentum_whole_display["period_note"]}
+                    </div>
+                </div>
+<div class="metric">
+                    <div class="metric-label">
+                        Vs Fully Invested XIC
+                    </div>
+
+                    <div
+                        class="metric-value"
+                        style="color: {momentum_whole_display["excess_color"]};"
+                    >
+                        {momentum_whole_display["excess_return"]}
+                    </div>
+
+                    <div
+                        class="metric-subvalue"
+                        style="color: {momentum_whole_display["excess_color"]};"
+                    >
+                        {momentum_whole_display["dollar_advantage"]}
+                    </div>
+
+                    <div class="metric-note">
+                        Whole-system advantage
+                    </div>
+                </div>
+<div class="metric">
+                    <div class="metric-label">
+                        Max Drawdown
+                    </div>
+
+                    <div
+                        class="metric-value"
+                        style="color: #dc3545;"
+                    >
+                        {momentum_whole_display["max_drawdown"]}
+                    </div>
+
+                    <div class="metric-note">
+                        Northstar system
+                    </div>
+                </div>
+<div class="metric">
+                    <div class="metric-label">
+                        XIC Max Drawdown
+                    </div>
+
+                    <div
+                        class="metric-value"
+                        style="color: #dc3545;"
+                    >
+                        {momentum_whole_display["xic_max_drawdown"]}
+                    </div>
+
+                    <div class="metric-note">
+                        Fully invested benchmark
+                    </div>
+                </div>
+<div class="metric">
+                    <div class="metric-label">
+                        Avg Capital Utilization
+                    </div>
+
+                    <div class="metric-value">
+                        {momentum_whole_display["utilization"]}
+                    </div>
+
+                    <div class="metric-note">
+                        {momentum_whole_display["average_deployed"]}
+                        average deployed
+                    </div>
+                </div>
+<div class="metric">
+                    <div class="metric-label">
+                        Trade Edge Vs XIC
+                    </div>
+
+                    <div
+                        class="metric-value"
+                        style="color: {momentum_benchmark_display["versus_color"]};"
+                    >
+                        {momentum_benchmark_display["versus_display"]}
+                    </div>
+
+                    <div
+                        class="metric-subvalue"
+                        style="color: {momentum_benchmark_display["versus_color"]};"
+                    >
+                        {momentum_benchmark_display["dollar_note"]}
+                    </div>
+
+                    <div class="metric-note">
+                        Strategy {momentum_benchmark_display["strategy_return_display"]}
+                        | matched XIC
+                        {momentum_benchmark_display["benchmark_return_display"]}
+                    </div>
+                </div>
+<div class="metric">
+                    <div class="metric-label">
                         Open Positions Value
                     </div>
 
                     <div class="metric-value">
                         ${open_positions_value:,.2f}
-                    </div>
-                </div>
-<div class="metric">
-                    <div class="metric-label">
-                        Exposure
-                    </div>
-
-                    <div class="metric-value">
-                        {summary["portfolio_exposure"]:.2f}%
-                    </div>
-                </div>
-<div class="metric">
-                    <div class="metric-label">
-                        Total Return
-                    </div>
-
-                    <div class="metric-value">
-                        {summary["total_return"]:.2f}%
                     </div>
                 </div>
 <div class="metric">
@@ -1792,29 +2418,138 @@ def dashboard():
                 </div>
 <div class="metric">
                     <div class="metric-label">
+                        System Return
+                    </div>
+
+                    <div
+                        class="metric-value"
+                        style="color: {breakout_52week_whole_display["system_color"]};"
+                    >
+                        {breakout_52week_whole_display["system_return"]}
+                    </div>
+
+                    <div class="metric-note">
+                        On {breakout_52week_whole_display["required_capital"]}
+                        required capital
+                    </div>
+                </div>
+<div class="metric">
+                    <div class="metric-label">
+                        Fully Invested XIC
+                    </div>
+
+                    <div
+                        class="metric-value"
+                        style="color: {breakout_52week_whole_display["xic_color"]};"
+                    >
+                        {breakout_52week_whole_display["xic_return"]}
+                    </div>
+
+                    <div class="metric-note">
+                        {breakout_52week_whole_display["period_note"]}
+                    </div>
+                </div>
+<div class="metric">
+                    <div class="metric-label">
+                        Vs Fully Invested XIC
+                    </div>
+
+                    <div
+                        class="metric-value"
+                        style="color: {breakout_52week_whole_display["excess_color"]};"
+                    >
+                        {breakout_52week_whole_display["excess_return"]}
+                    </div>
+
+                    <div
+                        class="metric-subvalue"
+                        style="color: {breakout_52week_whole_display["excess_color"]};"
+                    >
+                        {breakout_52week_whole_display["dollar_advantage"]}
+                    </div>
+
+                    <div class="metric-note">
+                        Whole-system advantage
+                    </div>
+                </div>
+<div class="metric">
+                    <div class="metric-label">
+                        Max Drawdown
+                    </div>
+
+                    <div
+                        class="metric-value"
+                        style="color: #dc3545;"
+                    >
+                        {breakout_52week_whole_display["max_drawdown"]}
+                    </div>
+
+                    <div class="metric-note">
+                        Northstar system
+                    </div>
+                </div>
+<div class="metric">
+                    <div class="metric-label">
+                        XIC Max Drawdown
+                    </div>
+
+                    <div
+                        class="metric-value"
+                        style="color: #dc3545;"
+                    >
+                        {breakout_52week_whole_display["xic_max_drawdown"]}
+                    </div>
+
+                    <div class="metric-note">
+                        Fully invested benchmark
+                    </div>
+                </div>
+<div class="metric">
+                    <div class="metric-label">
+                        Avg Capital Utilization
+                    </div>
+
+                    <div class="metric-value">
+                        {breakout_52week_whole_display["utilization"]}
+                    </div>
+
+                    <div class="metric-note">
+                        {breakout_52week_whole_display["average_deployed"]}
+                        average deployed
+                    </div>
+                </div>
+<div class="metric">
+                    <div class="metric-label">
+                        Trade Edge Vs XIC
+                    </div>
+
+                    <div
+                        class="metric-value"
+                        style="color: {breakout_52week_benchmark_display["versus_color"]};"
+                    >
+                        {breakout_52week_benchmark_display["versus_display"]}
+                    </div>
+
+                    <div
+                        class="metric-subvalue"
+                        style="color: {breakout_52week_benchmark_display["versus_color"]};"
+                    >
+                        {breakout_52week_benchmark_display["dollar_note"]}
+                    </div>
+
+                    <div class="metric-note">
+                        Strategy {breakout_52week_benchmark_display["strategy_return_display"]}
+                        | matched XIC
+                        {breakout_52week_benchmark_display["benchmark_return_display"]}
+                    </div>
+                </div>
+<div class="metric">
+                    <div class="metric-label">
                         Open Positions Value
                     </div>
 
                     <div class="metric-value">
                         ${breakout_52week_open_positions_value:,.2f}
-                    </div>
-                </div>
-<div class="metric">
-                    <div class="metric-label">
-                        Exposure
-                    </div>
-
-                    <div class="metric-value">
-                        {breakout_52week_summary["portfolio_exposure"]:.2f}%
-                    </div>
-                </div>
-<div class="metric">
-                    <div class="metric-label">
-                        Total Return
-                    </div>
-
-                    <div class="metric-value">
-                        {breakout_52week_summary["total_return"]:.2f}%
                     </div>
                 </div>
 <div class="metric">
@@ -1898,29 +2633,138 @@ def dashboard():
                 </div>
 <div class="metric">
                     <div class="metric-label">
+                        System Return
+                    </div>
+
+                    <div
+                        class="metric-value"
+                        style="color: {mean_reversion_whole_display["system_color"]};"
+                    >
+                        {mean_reversion_whole_display["system_return"]}
+                    </div>
+
+                    <div class="metric-note">
+                        On {mean_reversion_whole_display["required_capital"]}
+                        required capital
+                    </div>
+                </div>
+<div class="metric">
+                    <div class="metric-label">
+                        Fully Invested XIC
+                    </div>
+
+                    <div
+                        class="metric-value"
+                        style="color: {mean_reversion_whole_display["xic_color"]};"
+                    >
+                        {mean_reversion_whole_display["xic_return"]}
+                    </div>
+
+                    <div class="metric-note">
+                        {mean_reversion_whole_display["period_note"]}
+                    </div>
+                </div>
+<div class="metric">
+                    <div class="metric-label">
+                        Vs Fully Invested XIC
+                    </div>
+
+                    <div
+                        class="metric-value"
+                        style="color: {mean_reversion_whole_display["excess_color"]};"
+                    >
+                        {mean_reversion_whole_display["excess_return"]}
+                    </div>
+
+                    <div
+                        class="metric-subvalue"
+                        style="color: {mean_reversion_whole_display["excess_color"]};"
+                    >
+                        {mean_reversion_whole_display["dollar_advantage"]}
+                    </div>
+
+                    <div class="metric-note">
+                        Whole-system advantage
+                    </div>
+                </div>
+<div class="metric">
+                    <div class="metric-label">
+                        Max Drawdown
+                    </div>
+
+                    <div
+                        class="metric-value"
+                        style="color: #dc3545;"
+                    >
+                        {mean_reversion_whole_display["max_drawdown"]}
+                    </div>
+
+                    <div class="metric-note">
+                        Northstar system
+                    </div>
+                </div>
+<div class="metric">
+                    <div class="metric-label">
+                        XIC Max Drawdown
+                    </div>
+
+                    <div
+                        class="metric-value"
+                        style="color: #dc3545;"
+                    >
+                        {mean_reversion_whole_display["xic_max_drawdown"]}
+                    </div>
+
+                    <div class="metric-note">
+                        Fully invested benchmark
+                    </div>
+                </div>
+<div class="metric">
+                    <div class="metric-label">
+                        Avg Capital Utilization
+                    </div>
+
+                    <div class="metric-value">
+                        {mean_reversion_whole_display["utilization"]}
+                    </div>
+
+                    <div class="metric-note">
+                        {mean_reversion_whole_display["average_deployed"]}
+                        average deployed
+                    </div>
+                </div>
+<div class="metric">
+                    <div class="metric-label">
+                        Trade Edge Vs XIC
+                    </div>
+
+                    <div
+                        class="metric-value"
+                        style="color: {mean_reversion_benchmark_display["versus_color"]};"
+                    >
+                        {mean_reversion_benchmark_display["versus_display"]}
+                    </div>
+
+                    <div
+                        class="metric-subvalue"
+                        style="color: {mean_reversion_benchmark_display["versus_color"]};"
+                    >
+                        {mean_reversion_benchmark_display["dollar_note"]}
+                    </div>
+
+                    <div class="metric-note">
+                        Strategy {mean_reversion_benchmark_display["strategy_return_display"]}
+                        | matched XIC
+                        {mean_reversion_benchmark_display["benchmark_return_display"]}
+                    </div>
+                </div>
+<div class="metric">
+                    <div class="metric-label">
                         Open Positions Value
                     </div>
 
                     <div class="metric-value">
                         ${mean_reversion_open_positions_value:,.2f}
-                    </div>
-                </div>
-<div class="metric">
-                    <div class="metric-label">
-                        Exposure
-                    </div>
-
-                    <div class="metric-value">
-                        {mean_reversion_summary["portfolio_exposure"]:.2f}%
-                    </div>
-                </div>
-<div class="metric">
-                    <div class="metric-label">
-                        Total Return
-                    </div>
-
-                    <div class="metric-value">
-                        {mean_reversion_summary["total_return"]:.2f}%
                     </div>
                 </div>
 <div class="metric">

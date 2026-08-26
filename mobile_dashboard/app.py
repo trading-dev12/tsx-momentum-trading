@@ -1361,6 +1361,21 @@ def dashboard():
         </tr>
         """
 
+    open_positions_value = (
+        summary["portfolio_value"]
+        - summary["cash"]
+    )
+
+    breakout_52week_open_positions_value = (
+        breakout_52week_summary["portfolio_value"]
+        - breakout_52week_summary["cash"]
+    )
+
+    mean_reversion_open_positions_value = (
+        mean_reversion_summary["portfolio_value"]
+        - mean_reversion_summary["cash"]
+    )
+
     refreshed_at = datetime.now().strftime(
         "%Y-%m-%d %H:%M:%S"
     )    
@@ -1646,14 +1661,17 @@ def dashboard():
             <section class="grid">
                 <div class="metric">
                     <div class="metric-label">
-                        Portfolio Value
+                        Total Open P/L
                     </div>
 
-                    <div class="metric-value">
-                        ${summary["portfolio_value"]:,.2f}
+                    <div
+                        class="metric-value"
+                        style="color: {total_open_pl_color};"
+                    >
+                        {total_open_pl_display}
                     </div>
                 </div>
-                <div class="metric">
+<div class="metric">
     <div class="metric-label">
         Realized P/L
     </div>
@@ -1665,30 +1683,16 @@ def dashboard():
         {realized_pl_display}
     </div>
 </div>
-                <div class="metric">
+<div class="metric">
                     <div class="metric-label">
-                        Total Open P/L
-                    </div>
-
-                    <div
-                        class="metric-value"
-                        style="color: {total_open_pl_color};"
-                    >
-                        {total_open_pl_display}
-                    </div>
-                </div>
-
-                <div class="metric">
-                    <div class="metric-label">
-                        Cash
+                        Open Positions Value
                     </div>
 
                     <div class="metric-value">
-                        ${summary["cash"]:,.2f}
+                        ${open_positions_value:,.2f}
                     </div>
                 </div>
-
-                <div class="metric">
+<div class="metric">
                     <div class="metric-label">
                         Exposure
                     </div>
@@ -1697,8 +1701,7 @@ def dashboard():
                         {summary["portfolio_exposure"]:.2f}%
                     </div>
                 </div>
-
-                <div class="metric">
+<div class="metric">
                     <div class="metric-label">
                         Total Return
                     </div>
@@ -1707,8 +1710,7 @@ def dashboard():
                         {summary["total_return"]:.2f}%
                     </div>
                 </div>
-
-                <div class="metric">
+<div class="metric">
                     <div class="metric-label">
                         Open Positions
                     </div>
@@ -1717,8 +1719,7 @@ def dashboard():
                         {summary["open_positions"]}
                     </div>
                 </div>
-
-                <div class="metric">
+<div class="metric">
                     <div class="metric-label">
                         Closed Trades
                     </div>
@@ -1767,15 +1768,17 @@ def dashboard():
             <section class="grid">
                 <div class="metric">
                     <div class="metric-label">
-                        Portfolio Value
+                        Total Open P/L
                     </div>
 
-                    <div class="metric-value">
-                        ${breakout_52week_summary["portfolio_value"]:,.2f}
+                    <div
+                        class="metric-value"
+                        style="color: {breakout_52week_total_open_pl_color};"
+                    >
+                        {breakout_52week_total_open_pl_display}
                     </div>
                 </div>
-
-                <div class="metric">
+<div class="metric">
                     <div class="metric-label">
                         Realized P/L
                     </div>
@@ -1787,31 +1790,16 @@ def dashboard():
                         {breakout_52week_realized_pl_display}
                     </div>
                 </div>
-
-                <div class="metric">
+<div class="metric">
                     <div class="metric-label">
-                        Total Open P/L
-                    </div>
-
-                    <div
-                        class="metric-value"
-                        style="color: {breakout_52week_total_open_pl_color};"
-                    >
-                        {breakout_52week_total_open_pl_display}
-                    </div>
-                </div>
-
-                <div class="metric">
-                    <div class="metric-label">
-                        Cash
+                        Open Positions Value
                     </div>
 
                     <div class="metric-value">
-                        ${breakout_52week_summary["cash"]:,.2f}
+                        ${breakout_52week_open_positions_value:,.2f}
                     </div>
                 </div>
-
-                <div class="metric">
+<div class="metric">
                     <div class="metric-label">
                         Exposure
                     </div>
@@ -1820,8 +1808,7 @@ def dashboard():
                         {breakout_52week_summary["portfolio_exposure"]:.2f}%
                     </div>
                 </div>
-
-                <div class="metric">
+<div class="metric">
                     <div class="metric-label">
                         Total Return
                     </div>
@@ -1830,8 +1817,7 @@ def dashboard():
                         {breakout_52week_summary["total_return"]:.2f}%
                     </div>
                 </div>
-
-                <div class="metric">
+<div class="metric">
                     <div class="metric-label">
                         Open Positions
                     </div>
@@ -1840,8 +1826,7 @@ def dashboard():
                         {breakout_52week_summary["open_positions"]}
                     </div>
                 </div>
-
-                <div class="metric">
+<div class="metric">
                     <div class="metric-label">
                         Closed Trades
                     </div>
@@ -1889,15 +1874,17 @@ def dashboard():
             <section class="grid">
                 <div class="metric">
                     <div class="metric-label">
-                        Portfolio Value
+                        Total Open P/L
                     </div>
 
-                    <div class="metric-value">
-                        ${mean_reversion_summary["portfolio_value"]:,.2f}
+                    <div
+                        class="metric-value"
+                        style="color: {mean_reversion_total_open_pl_color};"
+                    >
+                        {mean_reversion_total_open_pl_display}
                     </div>
                 </div>
-
-                <div class="metric">
+<div class="metric">
                     <div class="metric-label">
                         Realized P/L
                     </div>
@@ -1909,31 +1896,16 @@ def dashboard():
                         {mean_reversion_realized_pl_display}
                     </div>
                 </div>
-
-                <div class="metric">
+<div class="metric">
                     <div class="metric-label">
-                        Total Open P/L
-                    </div>
-
-                    <div
-                        class="metric-value"
-                        style="color: {mean_reversion_total_open_pl_color};"
-                    >
-                        {mean_reversion_total_open_pl_display}
-                    </div>
-                </div>
-
-                <div class="metric">
-                    <div class="metric-label">
-                        Cash
+                        Open Positions Value
                     </div>
 
                     <div class="metric-value">
-                        ${mean_reversion_summary["cash"]:,.2f}
+                        ${mean_reversion_open_positions_value:,.2f}
                     </div>
                 </div>
-
-                <div class="metric">
+<div class="metric">
                     <div class="metric-label">
                         Exposure
                     </div>
@@ -1942,8 +1914,7 @@ def dashboard():
                         {mean_reversion_summary["portfolio_exposure"]:.2f}%
                     </div>
                 </div>
-
-                <div class="metric">
+<div class="metric">
                     <div class="metric-label">
                         Total Return
                     </div>
@@ -1952,8 +1923,7 @@ def dashboard():
                         {mean_reversion_summary["total_return"]:.2f}%
                     </div>
                 </div>
-
-                <div class="metric">
+<div class="metric">
                     <div class="metric-label">
                         Open Positions
                     </div>
@@ -1962,8 +1932,7 @@ def dashboard():
                         {mean_reversion_summary["open_positions"]}
                     </div>
                 </div>
-
-                <div class="metric">
+<div class="metric">
                     <div class="metric-label">
                         Closed Trades
                     </div>

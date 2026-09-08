@@ -914,6 +914,11 @@ def build_whole_strategy_metrics(
             xic_history[-1]["date"]
         )
 
+        # Daily stock history is only required when a
+        # position survives beyond its entry day. A trade
+        # closed on its entry date is completely valued by
+        # its recorded entry and exit prices and therefore
+        # does not require historical stock bars.
         symbols = sorted(
             {
                 str(
@@ -926,12 +931,30 @@ def build_whole_strategy_metrics(
                 if trade.get(
                     "symbol"
                 )
+                and trade.get(
+                    "entry_date"
+                )
                 and _date(
                     trade[
                         "entry_date"
                     ]
                 )
                 <= risk_end_date
+                and (
+                    not trade.get(
+                        "exit_date"
+                    )
+                    or _date(
+                        trade[
+                            "exit_date"
+                        ]
+                    )
+                    > _date(
+                        trade[
+                            "entry_date"
+                        ]
+                    )
+                )
             }
         )
 

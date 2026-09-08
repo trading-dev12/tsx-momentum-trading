@@ -2674,10 +2674,304 @@ class TradingWorkstation:
             last_refresh=self.last_successful_refresh,
         )
 
-    def is_mobile_dashboard_running(self, host="127.0.0.1", port=5000):
+    def _mobile_dashboard_pid_file(self):
         """
-        Return True when something is already listening on the
-        mobile dashboard port.
+        Persistent record of the Northstar dashboard process.
+
+        This lets a later workstation instance identify a dashboard
+        started by an earlier workstation instance.
+        """
+        project_root = Path(__file__).resolve().parent.parent
+
+        runtime_dir = (
+            project_root
+            / "data"
+            / "runtime"
+        )
+
+        runtime_dir.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+
+        return (
+            runtime_dir
+            / "mobile_dashboard.pid"
+        )
+
+    def _read_mobile_dashboard_pid(self):
+        try:
+            return int(
+                self._mobile_dashboard_pid_file()
+                .read_text(encoding="utf-8")
+                .strip()
+            )
+        except (
+            OSError,
+            ValueError,
+        ):
+            return None
+
+    def _write_mobile_dashboard_pid(self, pid):
+        try:
+            self._mobile_dashboard_pid_file().write_text(
+                str(pid),
+                encoding="utf-8",
+            )
+        except OSError as error:
+            print(
+                "Unable to save mobile dashboard PID: "
+                f"{error}"
+            )
+
+    def _clear_mobile_dashboard_pid(self, expected_pid=None):
+        pid_file = self._mobile_dashboard_pid_file()
+
+        try:
+            if (
+                expected_pid is not None
+                and pid_file.exists()
+            ):
+                saved_pid = int(
+                    pid_file.read_text(
+                        encoding="utf-8"
+                    ).strip()
+                )
+
+                if saved_pid != expected_pid:
+                    return
+
+            pid_file.unlink(
+                missing_ok=True
+            )
+
+        except (
+            OSError,
+            ValueError,
+        ):
+            pass
+
+    def _get_mobile_dashboard_port_owner(
+        self,
+        port=5000,
+    ):
+        """
+        Return the Windows PID listening on the dashboard port.
+
+        None means the port is currently free.
+        """
+        if sys.platform != "win32":
+            return None
+
+        powershell_command = (
+            "$connection = "
+            "Get-NetTCPConnection "
+            f"-LocalPort {port} "
+            "-State Listen "
+            "-ErrorAction SilentlyContinue "
+            "| Select-Object -First 1; "
+            "if ($connection) { "
+            "Write-Output "
+            "$connection.OwningProcess "
+            "}"
+        )
+
+        try:
+            result = subprocess.run(
+                [
+                    "powershell.exe",
+                    "-NoProfile",
+                    "-Command",
+                    powershell_command,
+                ],
+                capture_output=True,
+                text=True,
+                timeout=5,
+                creationflags=(
+                    subprocess.CREATE_NO_WINDOW
+                ),
+            )
+
+            output = result.stdout.strip()
+
+            if not output:
+                return None
+
+            return int(
+                output.splitlines()[-1]
+            )
+
+        except (
+            OSError,
+            ValueError,
+            subprocess.SubprocessError,
+        ):
+            return None
+
+    def _get_mobile_dashboard_build_id(self):
+        """
+        Return the build fingerprint expected from the dashboard
+        code currently on disk.
+        """
+        import hashlib
+
+        project_root = (
+            Path(__file__)
+            .resolve()
+            .parent
+            .parent
+        )
+
+        dashboard_path = (
+            project_root
+            / "mobile_dashboard"
+            / "app.py"
+        )
+
+        try:
+            return hashlib.sha256(
+                dashboard_path.read_bytes()
+            ).hexdigest()[:16]
+
+        except OSError:
+            return None
+
+    def _get_mobile_dashboard_health(
+        self,
+        host="127.0.0.1",
+        port=5000,
+    ):
+        """
+        Ask the process on port 5000 to identify itself.
+
+        No IBKR or trading-data requests are made by this endpoint.
+        """
+        import json
+        import urllib.request
+
+        url = (
+            f"http://{host}:{port}/health"
+        )
+
+        try:
+            with urllib.request.urlopen(
+                url,
+                timeout=2.0,
+            ) as response:
+                if response.status != 200:
+                    return None
+
+                payload = json.loads(
+                    response.read().decode(
+                        "utf-8"
+                    )
+                )
+
+        except Exception:
+            return None
+
+        if not isinstance(payload, dict):
+            return None
+
+        return payload
+
+    def _is_northstar_dashboard_health(
+        self,
+        health,
+        expected_pid=None,
+    ):
+        """
+        Verify that the listener positively identifies itself as
+        the Northstar mobile dashboard.
+
+        An unknown service is never treated as safe to terminate.
+        """
+        if not health:
+            return False
+
+        if (
+            health.get("service")
+            != "NORTHSTAR_MOBILE_DASHBOARD"
+        ):
+            return False
+
+        if expected_pid is not None:
+            try:
+                health_pid = int(
+                    health.get("pid")
+                )
+            except (
+                TypeError,
+                ValueError,
+            ):
+                return False
+
+            if health_pid != expected_pid:
+                return False
+
+        return True
+
+    def _terminate_mobile_dashboard_pid(self, pid):
+        if sys.platform != "win32":
+            return False
+
+        try:
+            result = subprocess.run(
+                [
+                    "taskkill",
+                    "/PID",
+                    str(pid),
+                    "/T",
+                    "/F",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=10,
+                creationflags=(
+                    subprocess.CREATE_NO_WINDOW
+                ),
+            )
+
+        except (
+            OSError,
+            subprocess.SubprocessError,
+        ) as error:
+            print(
+                "Unable to terminate old mobile dashboard: "
+                f"{error}"
+            )
+            return False
+
+        if result.returncode != 0:
+            message = (
+                result.stderr.strip()
+                or result.stdout.strip()
+                or "Unknown Windows error."
+            )
+
+            print(
+                "Unable to recycle old mobile dashboard "
+                f"PID {pid}: {message}"
+            )
+            return False
+
+        remaining_owner = (
+            self._get_mobile_dashboard_port_owner()
+        )
+
+        return remaining_owner is None
+
+    def is_mobile_dashboard_running(
+        self,
+        host="127.0.0.1",
+        port=5000,
+    ):
+        """
+        Return True when something is listening on the dashboard
+        port.
+
+        Startup does NOT assume that an occupied port means the
+        correct Northstar dashboard is running.
         """
         try:
             with socket.create_connection(
@@ -2690,17 +2984,100 @@ class TradingWorkstation:
 
     def start_mobile_dashboard(self):
         """
-        Start the Waitress mobile dashboard unless port 5000
-        is already being used.
+        Start a fresh Northstar Waitress dashboard.
+
+        An existing dashboard owned by Northstar is recycled so
+        stale Python code cannot remain on port 5000 indefinitely.
+
+        An unknown process using port 5000 is never killed.
         """
-        if self.is_mobile_dashboard_running():
+        existing_child = (
+            self.mobile_dashboard_process
+        )
+
+        if (
+            existing_child is not None
+            and existing_child.poll() is None
+        ):
             print(
-                "Mobile dashboard is already running "
-                "on port 5000."
+                "Mobile dashboard already running "
+                f"under this workstation. PID: "
+                f"{existing_child.pid}"
             )
             return
 
-        project_root = Path(__file__).resolve().parent.parent
+        current_owner = (
+            self._get_mobile_dashboard_port_owner()
+        )
+
+        if current_owner is not None:
+            health = (
+                self._get_mobile_dashboard_health()
+            )
+
+            recognized_dashboard = (
+                self._is_northstar_dashboard_health(
+                    health,
+                    expected_pid=current_owner,
+                )
+            )
+
+            if not recognized_dashboard:
+                print(
+                    "Mobile dashboard NOT started: "
+                    "port 5000 is occupied by an "
+                    "unrecognized process. "
+                    f"PID: {current_owner}"
+                )
+                return
+
+            expected_build = (
+                self._get_mobile_dashboard_build_id()
+            )
+
+            running_build = (
+                health.get("build")
+            )
+
+            if (
+                expected_build is not None
+                and running_build == expected_build
+            ):
+                print(
+                    "Current Northstar mobile dashboard "
+                    "is already running. "
+                    f"PID: {current_owner}"
+                )
+                return
+
+            print(
+                "Recycling stale Northstar mobile "
+                "dashboard. "
+                f"PID: {current_owner}, "
+                f"running build: {running_build}, "
+                f"current build: {expected_build}"
+            )
+
+            if not self._terminate_mobile_dashboard_pid(
+                current_owner
+            ):
+                print(
+                    "Mobile dashboard NOT started because "
+                    "the stale dashboard could not be "
+                    "terminated."
+                )
+                return
+
+            self._clear_mobile_dashboard_pid(
+                expected_pid=current_owner
+            )
+
+        project_root = (
+            Path(__file__)
+            .resolve()
+            .parent
+            .parent
+        )
 
         command = [
             sys.executable,
@@ -2715,11 +3092,16 @@ class TradingWorkstation:
 
         if sys.platform == "win32":
             startup_info = subprocess.STARTUPINFO()
-            startup_info.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-            creation_flags = subprocess.CREATE_NO_WINDOW
+            startup_info.dwFlags |= (
+                subprocess.STARTF_USESHOWWINDOW
+            )
+
+            creation_flags = (
+                subprocess.CREATE_NO_WINDOW
+            )
 
         try:
-            self.mobile_dashboard_process = subprocess.Popen(
+            process = subprocess.Popen(
                 command,
                 cwd=project_root,
                 stdout=subprocess.DEVNULL,
@@ -2728,11 +3110,20 @@ class TradingWorkstation:
                 creationflags=creation_flags,
             )
 
+            self.mobile_dashboard_process = (
+                process
+            )
+
             self.mobile_dashboard_started_here = True
+
+            self._write_mobile_dashboard_pid(
+                process.pid
+            )
 
             print(
                 "Mobile dashboard started automatically "
-                "on port 5000."
+                "on port 5000. "
+                f"PID: {process.pid}"
             )
 
         except Exception as error:
@@ -2747,7 +3138,6 @@ class TradingWorkstation:
     def stop_mobile_dashboard(self):
         """
         Stop the dashboard only when this workstation started it.
-        Do not stop an independently running dashboard.
         """
         if not self.mobile_dashboard_started_here:
             return
@@ -2757,15 +3147,22 @@ class TradingWorkstation:
         if process is None:
             return
 
-        if process.poll() is not None:
-            return
+        pid = process.pid
 
         try:
-            process.terminate()
-            process.wait(timeout=5)
+            if process.poll() is None:
+                process.terminate()
 
-        except subprocess.TimeoutExpired:
-            process.kill()
+                try:
+                    process.wait(
+                        timeout=5
+                    )
+
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                    process.wait(
+                        timeout=5
+                    )
 
         except Exception as error:
             print(
@@ -2774,6 +3171,10 @@ class TradingWorkstation:
             )
 
         finally:
+            self._clear_mobile_dashboard_pid(
+                expected_pid=pid
+            )
+
             self.mobile_dashboard_process = None
             self.mobile_dashboard_started_here = False
 

@@ -9,7 +9,9 @@ modify trading data.
 """
 
 import csv
+import hashlib
 import json
+import os
 from datetime import datetime
 from pathlib import Path
 
@@ -48,6 +50,32 @@ from research.strategy_risk_benchmark import (
 
 
 app = Flask(__name__)
+
+
+DASHBOARD_SERVICE_ID = "NORTHSTAR_MOBILE_DASHBOARD"
+
+DASHBOARD_BUILD_ID = hashlib.sha256(
+    Path(__file__).read_bytes()
+).hexdigest()[:16]
+
+
+@app.get("/health")
+def dashboard_health():
+    """
+    Lightweight identity endpoint.
+
+    This performs no IBKR requests and lets the Northstar
+    workstation distinguish the current dashboard from a stale
+    or unrelated process using port 5000.
+    """
+    return jsonify(
+        {
+            "status": "OK",
+            "service": DASHBOARD_SERVICE_ID,
+            "pid": os.getpid(),
+            "build": DASHBOARD_BUILD_ID,
+        }
+    )
 
 
 WHOLE_STRATEGY_CACHE_SECONDS = 3600
@@ -107,13 +135,17 @@ def get_cached_whole_strategy_metrics(
         )
     )
 
-    _whole_strategy_dashboard_cache[
-        cache_name
-    ] = {
-        "generated_at": now,
-        "fingerprint": fingerprint,
-        "result": result,
-    }
+    # Cache successful whole-strategy calculations.
+    # Do not cache transient IBKR/history failures for an hour;
+    # retry them on the next dashboard request instead.
+    if result.get("status") == "AVAILABLE":
+        _whole_strategy_dashboard_cache[
+            cache_name
+        ] = {
+            "generated_at": now,
+            "fingerprint": fingerprint,
+            "result": result,
+        }
 
     return result
 
@@ -354,7 +386,13 @@ def build_whole_strategy_display(
             "required_capital": "N/A",
             "average_deployed": "N/A",
             "period_note": (
-                "Risk data unavailable"
+                "Risk data unavailable: "
+                + str(
+                    result.get(
+                        "reason",
+                        "Unknown reason",
+                    )
+                )
             ),
         }
 

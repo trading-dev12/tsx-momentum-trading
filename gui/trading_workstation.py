@@ -1134,6 +1134,40 @@ class TradingWorkstation:
                 quote.get("breakout", "N/A"),
             )
 
+            if view == "EOD":
+                # EOD strategy scans do not calculate the live
+                # scanner Confidence / grade fields. Display an
+                # honest unavailable marker instead of a fake 0%.
+                confidence_display = "--"
+                rvol_grade_display = "--"
+                momentum_grade_display = "--"
+                liquidity_grade_display = "--"
+            else:
+                confidence_value = quote.get(
+                    "confidence_score"
+                )
+
+                confidence_display = (
+                    "--"
+                    if confidence_value is None
+                    else f"{confidence_value}%"
+                )
+
+                rvol_grade_display = grades.get(
+                    "RVOL",
+                    "N/A",
+                )
+
+                momentum_grade_display = grades.get(
+                    "Momentum",
+                    "N/A",
+                )
+
+                liquidity_grade_display = grades.get(
+                    "Liquidity",
+                    "N/A",
+                )
+
             self.tree.insert(
                 "",
                 "end",
@@ -1144,12 +1178,12 @@ class TradingWorkstation:
                     quote.get("strategy", "MOMENTUM"),
                     f"{price:.2f}",
                     quote.get("tmqs", 0),
-                    f"{quote.get('confidence_score', 0)}%",
+                    confidence_display,
                     f"{rvol:.2f}x",
-                    grades.get("RVOL", "N/A"),
+                    rvol_grade_display,
                     breakout,
-                    grades.get("Momentum", "N/A"),
-                    grades.get("Liquidity", "N/A"),
+                    momentum_grade_display,
+                    liquidity_grade_display,
                     decision,
                     quote.get("reason", ""),
                 ),

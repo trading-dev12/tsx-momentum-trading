@@ -123,6 +123,11 @@ def write_heartbeat(
         exist_ok=True,
     )
 
+    # Only the trading-service owner may publish service health.
+    # A standby runtime must not overwrite the owner's heartbeat.
+    if trading_services_enabled and not trading_services_owned:
+        return
+
     dashboard_running = (
         is_dashboard_running()
     )

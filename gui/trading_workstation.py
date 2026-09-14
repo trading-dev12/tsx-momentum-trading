@@ -3351,56 +3351,6 @@ class TradingWorkstation:
             ),
         )
 
-        # The GUI can be in standby while the independent
-        # headless runtime owns Northstar's trading services.
-        # Give the once-daily morning report a small heartbeat
-        # grace window so a transient delay does not create a
-        # false ATTENTION REQUIRED alert.
-        morning_heartbeat_max_age_seconds = 180
-
-        headless_services_running = (
-            is_headless_service_running(
-                "market_services_status",
-                max_age_seconds=(
-                    morning_heartbeat_max_age_seconds
-                ),
-            )
-        )
-
-        if headless_services_running:
-            headless_execution_running = (
-                is_headless_service_running(
-                    "execution_status",
-                    max_age_seconds=(
-                        morning_heartbeat_max_age_seconds
-                    ),
-                )
-            )
-
-            eod_running = (
-                is_headless_service_running(
-                    "eod_status",
-                    max_age_seconds=(
-                        morning_heartbeat_max_age_seconds
-                    ),
-                )
-            )
-
-            execution_states = {
-                label: headless_execution_running
-                for label, _, _ in engines
-            }
-
-        else:
-            execution_states = {
-                label: execution_thread.is_alive()
-                for label, _, execution_thread in engines
-            }
-
-            eod_running = (
-                self.automatic_eod_thread.is_alive()
-            )
-
         # Allow the once-daily morning report a slightly
         # wider heartbeat window than normal live monitoring.
         # This prevents one transient heartbeat delay from

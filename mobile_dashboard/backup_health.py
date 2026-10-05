@@ -428,7 +428,7 @@ def build_backup_health_data(
 
         reminder_health = "PASS"
 
-    last_backup_type = status.get(
+    recorded_backup_type = status.get(
         "last_backup_type",
         "UNKNOWN",
     )
@@ -438,22 +438,56 @@ def build_backup_health_data(
         True,
     )
 
-    if not last_backup_success:
+    last_local_success = parse_backup_timestamp(
+        status.get(
+            "last_local_success"
+        )
+    )
+
+    last_local_backup_path = status.get(
+        "last_local_backup_path"
+    )
+
+    # Daily backup health is independent of physical
+    # external-backup activity.
+    if (
+        recorded_backup_type in (
+            "LOCAL",
+            "LOCAL_FALLBACK",
+        )
+        and not last_backup_success
+    ):
+        last_backup_type = recorded_backup_type
         fallback_text = (
             "LAST DAILY BACKUP FAILED"
         )
         fallback_health = "FAIL"
 
-    elif last_backup_type in (
-        "LOCAL",
-        "LOCAL_FALLBACK",
+    elif (
+        last_local_success is not None
+        or (
+            recorded_backup_type in (
+                "LOCAL",
+                "LOCAL_FALLBACK",
+            )
+            and last_backup_success
+        )
     ):
+        last_backup_type = (
+            recorded_backup_type
+            if recorded_backup_type in (
+                "LOCAL",
+                "LOCAL_FALLBACK",
+            )
+            else "LOCAL_FALLBACK"
+        )
         fallback_text = (
             "DAILY LOCAL BACKUP OK"
         )
         fallback_health = "PASS"
 
     else:
+        last_backup_type = "UNKNOWN"
         fallback_text = (
             "LOCAL BACKUP READY"
         )
@@ -477,23 +511,24 @@ def build_backup_health_data(
         )
     )
 
-    cloud_last_required = (
-        cloud_schedule[
-            "last_required"
-        ]
-    )
-
-    cloud_next_expected = (
-        cloud_schedule[
-            "next_expected"
-        ]
-    )
-
-    cloud_current = (
-        cloud_last_success is not None
-        and cloud_last_success
-        >= cloud_last_required
-    )
+    #
+    # Encrypted cloud backup health is WEEKLY.
+    #
+    # A successful cloud backup remains current for
+    # seven full days. This is intentionally independent
+    # of the daily TSX/EOD backup schedule.
+    #
+    if cloud_last_success is not None:
+        cloud_next_expected = (
+            cloud_last_success
+            + timedelta(days=7)
+        )
+        cloud_current = (
+            now < cloud_next_expected
+        )
+    else:
+        cloud_next_expected = now
+        cloud_current = False
 
     if cloud_last_success is None:
         cloud_backup_age = (
@@ -684,10 +719,8 @@ def build_backup_health_data(
             last_backup_type
         ),
         "last_backup_path": (
-            status.get(
-                "last_backup_path",
-                "--",
-            )
+            last_local_backup_path
+            or "--"
         ),
         "local_fallback": (
             fallback_text

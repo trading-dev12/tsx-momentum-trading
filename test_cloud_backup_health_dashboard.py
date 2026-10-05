@@ -1,4 +1,4 @@
-﻿from datetime import datetime
+from datetime import datetime
 
 import mobile_dashboard.backup_health as backup_health
 
@@ -111,12 +111,12 @@ def test_recent_cloud_backup_is_pass(
     )
 
     assert (
-        "Aug 25, 2026 4:05 PM"
+        "Sep 1, 2026 9:56 AM"
         in data["next_cloud_backup"]
     )
 
 
-def test_cloud_backup_becomes_due_after_eod(
+def test_cloud_backup_becomes_due_after_one_week(
     monkeypatch,
 ):
     configure_common_state(
@@ -137,7 +137,7 @@ def test_cloud_backup_becomes_due_after_eod(
             datetime(
                 2026,
                 8,
-                25,
+                31,
                 17,
                 0,
             )

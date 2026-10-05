@@ -74,3 +74,31 @@ else {
         $northstarProcess[0].ProcessId
     )
 }
+# ------------------------------------------------------------
+# EXTERNAL BACKUP WATCHER
+# ------------------------------------------------------------
+
+$BackupWatcher = Join-Path $ProjectRoot "tools\northstar_external_backup_watcher.ps1"
+
+$BackupWatcherProcess = Get-CimInstance Win32_Process |
+    Where-Object {
+        $_.Name -ieq "powershell.exe" -and
+        $_.CommandLine -match '(?i)northstar_external_backup_watcher\.ps1'
+    }
+
+if (-not $BackupWatcherProcess) {
+
+    Start-Process `
+        -FilePath "powershell.exe" `
+        -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$BackupWatcher`"" `
+        -WindowStyle Hidden
+
+    Write-Host "External backup watcher launch requested."
+}
+else {
+
+    Write-Host (
+        "External backup watcher already running. PID: " +
+        $BackupWatcherProcess[0].ProcessId
+    )
+}

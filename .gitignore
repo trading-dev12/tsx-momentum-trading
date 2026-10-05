@@ -269,3 +269,5 @@ config/local_settings.json
 
 # Northstar cloud backup encryption key
 config/cloud_backup.key
+*.before_*
+*.bak-*
